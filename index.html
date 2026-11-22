@@ -6,7 +6,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>深淵の胎動（仮） - Cthulhu Horror Novel Engine</title>
+  <title>深淵の胎動（仮） v0.3.0 - Cthulhu Horror Novel Engine</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Shippori+Mincho:wght@400;600;700&display=swap" rel="stylesheet">
@@ -16,12 +16,12 @@
        ========================================================================== */
     :root {
       --font-serif: 'Shippori Mincho', 'Noto Serif JP', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
-      --bg-void: #030305;
-      --text-main: #e8e3dc;
-      --text-dim: #968f86;
-      --accent-blood: #8c1616;
-      --accent-blood-bright: #d92323;
-      --accent-gold: #c4ae7a;
+      --bg-void: #020204;
+      --text-main: #e8e2da;
+      --text-dim: #928b82;
+      --accent-blood: #8c1414;
+      --accent-blood-bright: #e02020;
+      --accent-gold: #c7b07c;
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --safe-left: env(safe-area-inset-left, 0px);
@@ -37,8 +37,8 @@
     }
 
     html, body {
-      width: 100%;
-      height: 100%;
+      width: 100vw;
+      height: 100dvh;
       overflow: hidden;
       background-color: var(--bg-void);
       color: var(--text-main);
@@ -48,23 +48,21 @@
       touch-action: manipulation;
     }
 
-    /* アプリ全体：100dvh 固定（フォールバック 100%）、スケーリング一切なし */
+    /* アプリ全体ルート */
     #app-root {
       position: fixed;
       inset: 0;
-      width: 100%;
-      height: 100%;
+      width: 100vw;
       height: 100dvh;
       overflow: hidden;
       background: #000;
     }
 
-    /* 各画面レイヤー：非表示時は確実に display: none でヒットテストから完全除外 */
+    /* 各画面レイヤー：非アクティブ時は厳格に display: none */
     .screen-layer {
       position: fixed;
       inset: 0;
-      width: 100%;
-      height: 100%;
+      width: 100vw;
       height: 100dvh;
       display: none;
       overflow: hidden;
@@ -75,13 +73,12 @@
     }
 
     /* ==========================================================================
-       2. 縦向き（ポートレート）ガード：最前面 z-index: 99999 で誤タップ完全遮断
+       2. 縦向き（ポートレート）ガード（z-index: 99999）
        ========================================================================== */
     #portrait-guard {
       position: fixed;
       inset: 0;
-      width: 100%;
-      height: 100%;
+      width: 100vw;
       height: 100dvh;
       z-index: 99999;
       background: #020204;
@@ -92,7 +89,7 @@
       justify-content: center;
       text-align: center;
       padding: 2rem;
-      gap: 1.4rem;
+      gap: 1.3rem;
     }
 
     @media (orientation: portrait) {
@@ -108,7 +105,7 @@
     .rotate-icon {
       width: 68px;
       height: 68px;
-      color: #b53a3a;
+      color: #b82828;
       animation: rotateHint 2.6s ease-in-out infinite;
     }
 
@@ -126,16 +123,145 @@
 
     .portrait-guard-sub {
       font-size: 0.84rem;
-      color: #8f8981;
+      color: #918a82;
       line-height: 1.8;
       max-width: 320px;
     }
 
     /* ==========================================================================
-       3. 起動警告画面
+       3. 起動時バージョン情報・変更点オーバーレイ（z-index: 5000）
+          ※ × ボタンを押すまで絶対に閉じない
+       ========================================================================== */
+    #version-changelog-modal {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100dvh;
+      z-index: 5000;
+      background: rgba(2, 2, 5, 0.94);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: max(0.75rem, var(--safe-top)) max(1rem, var(--safe-right)) max(0.75rem, var(--safe-bottom)) max(1rem, var(--safe-left));
+    }
+
+    #version-changelog-modal.dismissed {
+      display: none;
+    }
+
+    .changelog-panel {
+      position: relative;
+      width: 100%;
+      max-width: 640px;
+      max-height: calc(100dvh - 24px);
+      overflow-y: auto;
+      background: linear-gradient(180deg, #101016 0%, #09090d 100%);
+      border: 1px solid rgba(190, 44, 44, 0.52);
+      border-radius: 10px;
+      padding: clamp(0.9rem, 2.8dvh, 1.4rem) clamp(1rem, 3.2vw, 1.6rem);
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.96), 0 0 28px rgba(140, 20, 20, 0.18);
+    }
+
+    .changelog-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+      padding-bottom: 0.65rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .changelog-title-group {
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+    }
+
+    .changelog-version-badge {
+      display: inline-block;
+      padding: 0.16rem 0.65rem;
+      background: rgba(155, 22, 22, 0.9);
+      border: 1px solid rgba(235, 80, 80, 0.7);
+      border-radius: 6px;
+      color: #fff6f2;
+      font-size: clamp(0.9rem, 2.7dvh, 1.12rem);
+      font-weight: 700;
+      letter-spacing: 0.12em;
+    }
+
+    .changelog-heading {
+      font-size: clamp(0.92rem, 2.6dvh, 1.1rem);
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      color: #f0eae2;
+    }
+
+    .changelog-close-btn {
+      width: 44px;
+      height: 44px;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.34);
+      border-radius: 8px;
+      color: #ffffff;
+      font-family: sans-serif;
+      font-size: 1.45rem;
+      line-height: 1;
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.12s ease;
+    }
+
+    .changelog-close-btn:hover,
+    .changelog-close-btn:active {
+      background: rgba(180, 26, 26, 0.92);
+      border-color: #ff6b6b;
+      transform: scale(0.96);
+    }
+
+    .changelog-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.52rem;
+    }
+
+    .changelog-list li {
+      position: relative;
+      padding-left: 1.15rem;
+      font-size: clamp(0.8rem, 2.35dvh, 0.94rem);
+      color: #e4ddd4;
+      line-height: 1.62;
+    }
+
+    .changelog-list li::before {
+      content: '▪';
+      position: absolute;
+      left: 0;
+      top: 0.02rem;
+      color: #d63636;
+    }
+
+    .changelog-footer-note {
+      margin-top: 0.85rem;
+      padding-top: 0.55rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: clamp(0.72rem, 2dvh, 0.82rem);
+      color: #a79f95;
+      text-align: right;
+      letter-spacing: 0.08em;
+    }
+
+    /* ==========================================================================
+       4. 起動警告画面（z-index: 90）
        ========================================================================== */
     #screen-warning {
-      z-index: 50;
+      z-index: 90;
       flex-direction: column;
       align-items: center;
       justify-content: center;
@@ -145,7 +271,7 @@
     }
 
     .warning-box {
-      max-width: 640px;
+      max-width: 660px;
       width: 100%;
       text-align: center;
       display: flex;
@@ -155,16 +281,16 @@
     }
 
     .warning-title {
-      font-size: clamp(1.1rem, 3.2dvh, 1.65rem);
+      font-size: clamp(1.1rem, 3.3dvh, 1.65rem);
       font-weight: 600;
-      letter-spacing: 0.25em;
-      color: #f0ece6;
+      letter-spacing: 0.28em;
+      color: #f2ede6;
     }
 
     .warning-text {
       font-size: clamp(0.82rem, 2.3dvh, 1rem);
-      color: #d0cbc4;
-      line-height: 1.85;
+      color: #d2ccc4;
+      line-height: 1.88;
     }
 
     .warning-start-btn {
@@ -172,20 +298,20 @@
       min-height: 44px;
       padding: 0.65rem 1.8rem;
       background: transparent;
-      border: 1px solid rgba(255, 255, 255, 0.24);
-      border-radius: 4px;
-      color: #e6e0d8;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 6px;
+      color: #eae4dc;
       font-family: var(--font-serif);
       font-size: clamp(0.85rem, 2.3dvh, 1rem);
       letter-spacing: 0.2em;
       cursor: pointer;
-      animation: pulseSlow 2.5s ease-in-out infinite;
+      animation: pulseSlow 2.4s ease-in-out infinite;
     }
 
     .warning-start-btn:hover,
     .warning-start-btn:active {
-      border-color: rgba(180, 40, 40, 0.8);
-      background: rgba(120, 18, 18, 0.25);
+      border-color: rgba(190, 35, 35, 0.85);
+      background: rgba(120, 14, 14, 0.28);
     }
 
     @keyframes pulseSlow {
@@ -194,7 +320,7 @@
     }
 
     /* ==========================================================================
-       4. タイトル画面（Canvas + 下部装飾なし明朝メニュー + 右上全画面トグル）
+       5. タイトル画面
        ========================================================================== */
     #screen-title {
       z-index: 40;
@@ -219,12 +345,24 @@
       width: 100%;
       display: flex;
       justify-content: flex-end;
-      padding: max(0.6rem, var(--safe-top)) max(0.9rem, var(--safe-right)) 0 max(0.9rem, var(--safe-left));
+      padding: max(0.55rem, var(--safe-top)) max(0.85rem, var(--safe-right)) 0 max(0.85rem, var(--safe-left));
       pointer-events: none;
     }
 
     .title-top-bar button {
       pointer-events: auto;
+    }
+
+    .title-version-corner {
+      position: fixed;
+      left: max(0.85rem, var(--safe-left));
+      bottom: max(0.55rem, var(--safe-bottom));
+      z-index: 16;
+      font-size: 0.72rem;
+      color: rgba(168, 160, 150, 0.65);
+      letter-spacing: 0.12em;
+      pointer-events: none;
+      text-shadow: 0 1px 6px #000;
     }
 
     .title-ui-overlay {
@@ -234,7 +372,7 @@
       display: none;
       flex-direction: column;
       align-items: center;
-      padding: 0 max(1rem, var(--safe-right)) max(0.9rem, calc(var(--safe-bottom) + 0.6rem)) max(1rem, var(--safe-left));
+      padding: 0 max(1rem, var(--safe-right)) max(0.85rem, calc(var(--safe-bottom) + 0.5rem)) max(1rem, var(--safe-left));
     }
 
     .title-ui-overlay.visible {
@@ -252,7 +390,7 @@
       flex-wrap: wrap;
       justify-content: center;
       gap: clamp(0.8rem, 4vw, 3.2rem);
-      margin-bottom: 0.25rem;
+      margin-bottom: 0.2rem;
     }
 
     .title-menu-btn {
@@ -266,7 +404,7 @@
       letter-spacing: 0.22em;
       cursor: pointer;
       position: relative;
-      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.95);
+      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.96);
       transition: color 0.25s ease, text-shadow 0.25s ease;
     }
 
@@ -277,14 +415,14 @@
       bottom: 6px;
       width: 0;
       height: 1px;
-      background: rgba(190, 42, 42, 0.85);
+      background: rgba(196, 36, 36, 0.85);
       transition: width 0.3s ease, left 0.3s ease;
     }
 
     .title-menu-btn:hover:not(:disabled),
     .title-menu-btn:active:not(:disabled) {
       color: #fff;
-      text-shadow: 0 0 14px rgba(190, 35, 35, 0.75);
+      text-shadow: 0 0 16px rgba(196, 32, 32, 0.82);
     }
 
     .title-menu-btn:hover:not(:disabled)::after {
@@ -293,7 +431,7 @@
     }
 
     .title-menu-btn:disabled {
-      color: #4f4b47;
+      color: #4f4a45;
       cursor: not-allowed;
     }
 
@@ -304,7 +442,7 @@
     }
 
     /* ==========================================================================
-       5. 本編ノベル画面（横画面360px〜430pxでも絶対に重ならない厳格レイヤー構造）
+       6. 本編ノベル画面（厳格レイヤー階層：Tap=20 / Choices=35 / HUD=40）
        ========================================================================== */
     #screen-game {
       z-index: 30;
@@ -328,7 +466,7 @@
       inset: 0;
       z-index: 2;
       pointer-events: none;
-      background: radial-gradient(circle at center, transparent 48%, rgba(0, 0, 0, 0.86) 100%);
+      background: radial-gradient(circle at center, transparent 46%, rgba(0, 0, 0, 0.88) 100%);
     }
 
     #madness-stains {
@@ -338,13 +476,13 @@
       pointer-events: none;
       opacity: 0;
       background-image:
-        radial-gradient(ellipse at 10% 15%, rgba(6, 0, 0, 0.82) 0%, transparent 40%),
-        radial-gradient(ellipse at 92% 80%, rgba(10, 0, 2, 0.86) 0%, transparent 45%),
-        radial-gradient(ellipse at 85% 12%, rgba(14, 2, 2, 0.72) 0%, transparent 32%);
+        radial-gradient(ellipse at 9% 16%, rgba(6, 0, 0, 0.86) 0%, transparent 40%),
+        radial-gradient(ellipse at 91% 82%, rgba(12, 0, 2, 0.88) 0%, transparent 45%),
+        radial-gradient(ellipse at 86% 14%, rgba(16, 2, 2, 0.76) 0%, transparent 32%);
       transition: opacity 1s ease;
     }
 
-    /* 上部HUD：z-index: 40（常に最前面でボタンが確実に押せる） */
+    /* 上部HUD：z-index: 40 */
     .game-top-hud {
       position: relative;
       z-index: 40;
@@ -353,9 +491,9 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 0.6rem;
-      padding: max(0.4rem, var(--safe-top)) max(0.75rem, var(--safe-right)) 0.45rem max(0.75rem, var(--safe-left));
-      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.86) 0%, rgba(0, 0, 0, 0.48) 72%, transparent 100%);
+      gap: 0.55rem;
+      padding: max(0.38rem, var(--safe-top)) max(0.7rem, var(--safe-right)) 0.42rem max(0.7rem, var(--safe-left));
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.88) 0%, rgba(0, 0, 0, 0.5) 72%, transparent 100%);
       pointer-events: none;
     }
 
@@ -363,14 +501,14 @@
       display: flex;
       align-items: center;
       flex-wrap: wrap;
-      gap: 0.5rem 0.9rem;
+      gap: 0.45rem 0.85rem;
       pointer-events: auto;
       min-width: 0;
     }
 
     .hud-location {
       font-size: clamp(0.74rem, 2.2dvh, 0.88rem);
-      color: #cfc8be;
+      color: #d0c9bf;
       letter-spacing: 0.14em;
       white-space: nowrap;
       text-shadow: 0 1px 6px #000;
@@ -378,14 +516,14 @@
 
     .status-bars {
       display: flex;
-      gap: 0.65rem;
+      gap: 0.6rem;
       align-items: center;
     }
 
     .status-bar-group {
       display: flex;
       align-items: center;
-      gap: 0.32rem;
+      gap: 0.3rem;
     }
 
     .status-label {
@@ -396,7 +534,7 @@
     }
 
     .bar-track {
-      width: clamp(54px, 11vw, 96px);
+      width: clamp(52px, 10.5vw, 94px);
       height: 6px;
       background: rgba(255, 255, 255, 0.14);
       border-radius: 3px;
@@ -409,40 +547,39 @@
       transition: width 0.5s ease;
     }
 
-    .bar-fill.hp { background: linear-gradient(90deg, #541515, #a32d2d); }
+    .bar-fill.hp { background: linear-gradient(90deg, #541515, #a82b2b); }
     .bar-fill.san { background: linear-gradient(90deg, #27394a, #6082a1); }
 
     .bar-glitch {
-      animation: barGlitch 0.18s steps(2) infinite;
+      animation: barGlitch 0.16s steps(2) infinite;
     }
 
     @keyframes barGlitch {
       0% { transform: translate(0, 0); filter: hue-rotate(0deg); }
-      33% { transform: translate(-2px, 1px); filter: hue-rotate(135deg) contrast(1.6); }
-      66% { transform: translate(2px, -1px); filter: hue-rotate(-95deg); }
+      33% { transform: translate(-2px, 1px); filter: hue-rotate(140deg) contrast(1.7); }
+      66% { transform: translate(2px, -1px); filter: hue-rotate(-100deg); }
       100% { transform: translate(0, 0); }
     }
 
     .hud-right {
       display: flex;
       align-items: center;
-      gap: 0.3rem;
+      gap: 0.28rem;
       flex-shrink: 0;
       pointer-events: auto;
     }
 
-    /* 押しやすいヒット領域（最低高さ38px）を確保した控えめなボタン */
     .hud-btn {
-      min-height: 38px;
-      min-width: 44px;
-      padding: 0 0.65rem;
-      background: rgba(12, 12, 16, 0.68);
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      border-radius: 4px;
-      color: #d4cec5;
+      min-height: 36px;
+      min-width: 42px;
+      padding: 0 0.6rem;
+      background: rgba(12, 12, 16, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.17);
+      border-radius: 6px;
+      color: #d6d0c7;
       font-family: var(--font-serif);
-      font-size: clamp(0.72rem, 2dvh, 0.82rem);
-      letter-spacing: 0.08em;
+      font-size: clamp(0.7rem, 1.95dvh, 0.8rem);
+      letter-spacing: 0.07em;
       white-space: nowrap;
       cursor: pointer;
       display: inline-flex;
@@ -453,12 +590,12 @@
 
     .hud-btn:hover,
     .hud-btn:active {
-      background: rgba(110, 20, 20, 0.72);
-      border-color: rgba(195, 55, 55, 0.75);
+      background: rgba(115, 18, 18, 0.78);
+      border-color: rgba(205, 50, 50, 0.8);
       color: #fff;
     }
 
-    /* 中央〜下部テキスト送りタップ領域：z-index: 20（HUDより下、Canvasより上） */
+    /* テキスト送りタップ領域：z-index: 20 */
     .novel-tap-layer {
       position: relative;
       z-index: 20;
@@ -471,14 +608,14 @@
       min-height: 0;
     }
 
-    /* 枠なし・下部黒グラデーション直置き明朝テキスト */
+    /* シネマティックUI：枠なし・下部黒グラデーション直置き明朝体 */
     .novel-bottom-gradient {
       width: 100%;
-      padding: clamp(1.2rem, 5dvh, 2.8rem) max(1.2rem, var(--safe-right)) max(0.85rem, calc(var(--safe-bottom) + 0.6rem)) max(1.2rem, var(--safe-left));
+      padding: clamp(1.1rem, 4.8dvh, 2.6rem) max(1.2rem, var(--safe-right)) max(0.8rem, calc(var(--safe-bottom) + 0.55rem)) max(1.2rem, var(--safe-left));
       background: linear-gradient(to top,
         rgba(2, 2, 4, 0.96) 0%,
         rgba(2, 2, 4, 0.88) 58%,
-        rgba(2, 2, 4, 0.45) 85%,
+        rgba(2, 2, 4, 0.44) 85%,
         transparent 100%
       );
     }
@@ -493,7 +630,7 @@
       font-size: clamp(0.78rem, 2.2dvh, 0.92rem);
       color: #b0a698;
       letter-spacing: 0.16em;
-      margin-bottom: 0.2rem;
+      margin-bottom: 0.18rem;
       min-height: 1.2em;
       text-shadow: 0 2px 8px #000;
     }
@@ -518,11 +655,26 @@
       98% { transform: translate(-0.5px, 0); }
     }
 
+    /* エンコード崩れ文字化けグリッチ用スパン */
+    .mojibake-char {
+      display: inline-block;
+      color: #e6d4d0;
+      text-shadow: -1px 0 rgba(200, 24, 24, 0.78), 1px 0 rgba(90, 22, 22, 0.55);
+      animation: mojibakeFlicker 1.9s steps(2) infinite;
+    }
+
+    @keyframes mojibakeFlicker {
+      0%, 84%, 100% { opacity: 1; transform: translate(0, 0); }
+      86% { opacity: 0.58; transform: translate(-0.8px, 0.5px); }
+      90% { opacity: 0.95; transform: translate(0.8px, -0.5px); }
+      94% { opacity: 0.68; transform: translate(0, 0.6px); }
+    }
+
     .next-indicator {
       display: inline-block;
       margin-left: 0.35rem;
       font-size: 0.8em;
-      color: #b03a3a;
+      color: #b83232;
       opacity: 0;
       animation: blinkCursor 1.2s infinite;
     }
@@ -536,10 +688,10 @@
       50% { opacity: 0.95; }
     }
 
-    /* 選択肢レイヤー：z-index: 35（上部HUDより下、テキスト送り層より上。非表示時は display: none） */
+    /* 選択肢レイヤー：z-index: 35（非表示時は厳格に display: none） */
     #choices-container {
       position: fixed;
-      top: 52px;
+      top: 50px;
       left: 0;
       right: 0;
       bottom: 0;
@@ -549,8 +701,8 @@
       align-items: center;
       justify-content: center;
       gap: 0.55rem;
-      padding: 0.6rem max(1.2rem, var(--safe-right)) max(0.9rem, var(--safe-bottom)) max(1.2rem, var(--safe-left));
-      background: rgba(0, 0, 0, 0.52);
+      padding: 0.6rem max(1.2rem, var(--safe-right)) max(0.85rem, var(--safe-bottom)) max(1.2rem, var(--safe-left));
+      background: rgba(0, 0, 0, 0.56);
       backdrop-filter: blur(2px);
       overflow-y: auto;
     }
@@ -561,63 +713,360 @@
 
     .choice-btn {
       width: 100%;
-      max-width: 580px;
+      max-width: 590px;
       min-height: 44px;
-      background: rgba(8, 8, 12, 0.9);
+      background: rgba(8, 8, 12, 0.92);
       border: 1px solid rgba(255, 255, 255, 0.2);
-      border-left: 3px solid rgba(165, 155, 145, 0.6);
+      border-left: 3px solid rgba(165, 155, 145, 0.62);
       color: var(--text-main);
       font-family: var(--font-serif);
       font-size: clamp(0.84rem, 2.4dvh, 1rem);
       letter-spacing: 0.06em;
-      padding: 0.65rem 1.1rem;
-      border-radius: 4px;
+      padding: 0.62rem 1.1rem;
+      border-radius: 6px;
       text-align: left;
       cursor: pointer;
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 0.75rem;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.8);
+      box-shadow: 0 6px 22px rgba(0, 0, 0, 0.85);
       transition: background 0.2s, border-color 0.2s;
       flex-shrink: 0;
     }
 
     .choice-btn:hover:not(:disabled),
     .choice-btn:active:not(:disabled) {
-      background: rgba(65, 14, 14, 0.92);
-      border-color: rgba(200, 48, 48, 0.8);
-      border-left-color: #d92323;
+      background: rgba(68, 14, 14, 0.94);
+      border-color: rgba(205, 45, 45, 0.85);
+      border-left-color: #e02020;
     }
 
     .choice-btn.silver-key {
-      border-color: rgba(196, 174, 122, 0.5);
+      border-color: rgba(199, 176, 124, 0.55);
       border-left-color: var(--accent-gold);
-      background: linear-gradient(90deg, rgba(30, 25, 16, 0.94), rgba(12, 12, 18, 0.92));
+      background: linear-gradient(90deg, rgba(32, 26, 16, 0.95), rgba(12, 12, 18, 0.93));
     }
 
     .choice-btn.silver-key:hover:not(:disabled),
     .choice-btn.silver-key:active:not(:disabled) {
-      background: linear-gradient(90deg, rgba(64, 52, 28, 0.96), rgba(24, 20, 16, 0.95));
-      border-color: #dfd0a8;
+      background: linear-gradient(90deg, rgba(66, 54, 28, 0.96), rgba(24, 20, 16, 0.95));
+      border-color: #e4d4ab;
     }
 
     .choice-tag {
       font-size: 0.72rem;
-      color: #b0a698;
+      color: #b4aa9c;
       white-space: nowrap;
-      padding: 0.14rem 0.45rem;
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      border-radius: 3px;
+      padding: 0.14rem 0.46rem;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
     }
 
     .choice-btn.silver-key .choice-tag {
-      color: #e3d3a8;
-      border-color: rgba(227, 211, 168, 0.45);
+      color: #e6d6ab;
+      border-color: rgba(230, 214, 171, 0.48);
     }
 
     /* ==========================================================================
-       6. 全画面赤文字侵食 & 画面振動（タップを一切邪魔しない pointer-events: none）
+       7. 汎用モーダル（z-index: 60 / 非表示時は厳格に display: none）
+       ========================================================================== */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100dvh;
+      z-index: 60;
+      background: rgba(2, 2, 4, 0.88);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: max(0.65rem, var(--safe-top)) max(0.9rem, var(--safe-right)) max(0.65rem, var(--safe-bottom)) max(0.9rem, var(--safe-left));
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-panel {
+      width: 100%;
+      max-width: 650px;
+      max-height: calc(100dvh - 20px);
+      overflow-y: auto;
+      background: #0b0b0f;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 8px;
+      padding: clamp(0.8rem, 2.5dvh, 1.35rem) clamp(0.95rem, 3vw, 1.55rem);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.94);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      padding-bottom: 0.55rem;
+      margin-bottom: 0.85rem;
+      gap: 0.6rem;
+    }
+
+    .modal-title {
+      font-size: clamp(0.95rem, 2.8dvh, 1.18rem);
+      letter-spacing: 0.18em;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      min-height: 36px;
+      min-width: 62px;
+      padding: 0 0.8rem;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      color: #cdc7be;
+      font-family: var(--font-serif);
+      font-size: 0.82rem;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .modal-close:hover,
+    .modal-close:active {
+      background: rgba(145, 20, 20, 0.58);
+      color: #fff;
+    }
+
+    .scenario-card {
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      padding: 0.8rem 0.95rem;
+      margin-bottom: 0.7rem;
+    }
+
+    .scenario-card.locked { opacity: 0.52; }
+
+    .scenario-card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .scenario-badge {
+      font-size: 0.7rem;
+      padding: 0.12rem 0.46rem;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      color: #dac58e;
+      white-space: nowrap;
+    }
+
+    .scenario-synopsis {
+      font-size: 0.82rem;
+      color: #b2aba2;
+      line-height: 1.65;
+      margin-bottom: 0.65rem;
+    }
+
+    .primary-action-btn {
+      min-height: 42px;
+      padding: 0.5rem 1.3rem;
+      background: rgba(128, 20, 20, 0.85);
+      border: 1px solid rgba(202, 50, 50, 0.8);
+      color: #f5f1eb;
+      font-family: var(--font-serif);
+      font-size: 0.88rem;
+      letter-spacing: 0.15em;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .primary-action-btn:hover,
+    .primary-action-btn:active {
+      background: rgba(168, 24, 24, 0.96);
+    }
+
+    .save-slot {
+      min-height: 50px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.8rem;
+      padding: 0.65rem 0.9rem;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 6px;
+      margin-bottom: 0.5rem;
+      background: rgba(255, 255, 255, 0.025);
+      cursor: pointer;
+    }
+
+    .save-slot:hover,
+    .save-slot:active {
+      border-color: rgba(190, 42, 42, 0.7);
+      background: rgba(110, 16, 16, 0.22);
+    }
+
+    .save-slot-meta {
+      font-size: 0.75rem;
+      color: #968f86;
+    }
+
+    .setting-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.7rem 1.05rem;
+    }
+
+    .setting-row { margin-bottom: 0.7rem; }
+
+    .setting-row label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      color: #d6d0c7;
+      margin-bottom: 0.25rem;
+    }
+
+    .setting-row input[type="range"] {
+      width: 100%;
+      height: 26px;
+      accent-color: #a82424;
+      cursor: pointer;
+    }
+
+    .setting-row select,
+    .setting-row input[type="password"],
+    .setting-row textarea {
+      width: 100%;
+      background: #060609;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--text-main);
+      font-family: var(--font-serif);
+      font-size: 0.88rem;
+      padding: 0.52rem 0.72rem;
+      border-radius: 6px;
+      user-select: text;
+    }
+
+    .setting-note {
+      font-size: 0.72rem;
+      color: #958e85;
+      margin-top: 0.28rem;
+      line-height: 1.5;
+    }
+
+    /* 見下ろし間取り図 */
+    .map-paper {
+      background:
+        radial-gradient(circle at 20% 25%, rgba(110, 88, 60, 0.16), transparent 55%),
+        radial-gradient(circle at 80% 75%, rgba(80, 40, 30, 0.18), transparent 50%),
+        #1a1713;
+      border: 1px solid #4a3f31;
+      border-radius: 6px;
+      padding: 0.7rem;
+      box-shadow: inset 0 0 36px rgba(0, 0, 0, 0.86);
+    }
+
+    #map-svg {
+      width: 100%;
+      height: auto;
+      max-height: 55dvh;
+      display: block;
+    }
+
+    .map-legend {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      font-size: 0.74rem;
+      color: #aea292;
+      margin-top: 0.45rem;
+    }
+
+    /* ==========================================================================
+       8. 禍々しい10面ダイス オーバーレイ（z-index: 70 / 非表示時は display: none）
+       ========================================================================== */
+    #dice-overlay {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100dvh;
+      z-index: 70;
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      background: radial-gradient(circle at center, rgba(16, 4, 6, 0.78) 0%, rgba(2, 1, 3, 0.94) 100%);
+      backdrop-filter: blur(3px);
+      padding: max(0.8rem, var(--safe-top)) max(1rem, var(--safe-right)) max(0.9rem, var(--safe-bottom)) max(1rem, var(--safe-left));
+    }
+
+    #dice-overlay.active {
+      display: flex;
+    }
+
+    #dice-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .dice-hud-top,
+    .dice-hud-bottom {
+      position: relative;
+      z-index: 5;
+      text-align: center;
+      width: 100%;
+      max-width: 640px;
+    }
+
+    .dice-skill-banner {
+      display: inline-block;
+      padding: 0.35rem 1.2rem;
+      background: rgba(10, 6, 8, 0.82);
+      border: 1px solid rgba(175, 34, 34, 0.45);
+      border-radius: 6px;
+      font-size: clamp(0.84rem, 2.4dvh, 1rem);
+      letter-spacing: 0.16em;
+      color: #dfd6cb;
+      text-shadow: 0 2px 10px #000;
+    }
+
+    .dice-result-panel {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.45rem;
+      background: rgba(8, 5, 7, 0.86);
+      border: 1px solid rgba(185, 36, 36, 0.4);
+      border-radius: 8px;
+      padding: 0.7rem 1.3rem;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.9);
+    }
+
+    .dice-result-panel.show {
+      display: flex;
+      animation: fadeInSlow 0.35s ease forwards;
+    }
+
+    .dice-total-line {
+      font-size: clamp(1rem, 3.2dvh, 1.4rem);
+      font-weight: 700;
+      letter-spacing: 0.18em;
+    }
+
+    .dice-total-line.success { color: #a7c4a3; text-shadow: 0 0 14px rgba(110, 175, 110, 0.45); }
+    .dice-total-line.fail { color: #e83232; text-shadow: 0 0 18px rgba(220, 28, 28, 0.7); }
+
+    /* ==========================================================================
+       9. 全画面赤文字侵食・振動・エンディング・トースト・暗転幕
        ========================================================================== */
     #red-text-flash {
       position: fixed;
@@ -625,8 +1074,8 @@
       z-index: 75;
       pointer-events: none;
       display: none;
-      background: rgba(68, 0, 0, 0.58);
-      color: rgba(240, 28, 28, 0.94);
+      background: rgba(74, 0, 0, 0.62);
+      color: rgba(242, 26, 26, 0.95);
       font-family: var(--font-serif);
       font-weight: 700;
       font-size: clamp(1.1rem, 4dvh, 2.2rem);
@@ -649,8 +1098,8 @@
     @keyframes redFlashAnim {
       0% { opacity: 0; }
       12% { opacity: 1; }
-      40% { opacity: 0.85; }
-      60% { opacity: 0.95; }
+      40% { opacity: 0.86; }
+      62% { opacity: 0.96; }
       100% { opacity: 0; }
     }
 
@@ -660,269 +1109,13 @@
 
     @keyframes shakeHeavy {
       0%, 100% { transform: translate(0, 0); }
-      15% { transform: translate(-10px, 6px); }
-      30% { transform: translate(9px, -7px); }
-      45% { transform: translate(-7px, -5px); }
-      60% { transform: translate(6px, 5px); }
+      15% { transform: translate(-11px, 7px); }
+      30% { transform: translate(10px, -8px); }
+      45% { transform: translate(-8px, -5px); }
+      60% { transform: translate(7px, 5px); }
       75% { transform: translate(-3px, 2px); }
     }
 
-    /* ==========================================================================
-       7. 汎用モーダル・オーバーレイ（非表示時は確実に display: none）
-       ========================================================================== */
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      height: 100dvh;
-      z-index: 60;
-      background: rgba(2, 2, 4, 0.88);
-      backdrop-filter: blur(4px);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: max(0.7rem, var(--safe-top)) max(0.9rem, var(--safe-right)) max(0.7rem, var(--safe-bottom)) max(0.9rem, var(--safe-left));
-    }
-
-    .modal-overlay.active {
-      display: flex;
-    }
-
-    .modal-panel {
-      width: 100%;
-      max-width: 640px;
-      max-height: calc(100dvh - 24px);
-      overflow-y: auto;
-      background: #0b0b0f;
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      border-radius: 6px;
-      padding: clamp(0.85rem, 2.6dvh, 1.4rem) clamp(1rem, 3vw, 1.6rem);
-      box-shadow: 0 18px 56px rgba(0, 0, 0, 0.92);
-    }
-
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-      padding-bottom: 0.6rem;
-      margin-bottom: 0.9rem;
-      gap: 0.6rem;
-    }
-
-    .modal-title {
-      font-size: clamp(0.95rem, 2.8dvh, 1.2rem);
-      letter-spacing: 0.18em;
-      font-weight: 600;
-    }
-
-    .modal-close {
-      min-height: 38px;
-      min-width: 64px;
-      padding: 0 0.85rem;
-      background: transparent;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: #cbc5bc;
-      font-family: var(--font-serif);
-      font-size: 0.82rem;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    .modal-close:hover,
-    .modal-close:active {
-      background: rgba(140, 22, 22, 0.55);
-      color: #fff;
-    }
-
-    .scenario-card {
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      background: rgba(255, 255, 255, 0.03);
-      border-radius: 6px;
-      padding: 0.85rem 1rem;
-      margin-bottom: 0.75rem;
-    }
-
-    .scenario-card.locked {
-      opacity: 0.52;
-    }
-
-    .scenario-card-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 0.5rem;
-      margin-bottom: 0.4rem;
-    }
-
-    .scenario-badge {
-      font-size: 0.7rem;
-      padding: 0.12rem 0.48rem;
-      border-radius: 3px;
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      color: #d9c48c;
-      white-space: nowrap;
-    }
-
-    .scenario-synopsis {
-      font-size: 0.82rem;
-      color: #b0a9a0;
-      line-height: 1.65;
-      margin-bottom: 0.7rem;
-    }
-
-    .primary-action-btn {
-      min-height: 42px;
-      padding: 0.5rem 1.3rem;
-      background: rgba(125, 22, 22, 0.82);
-      border: 1px solid rgba(195, 52, 52, 0.75);
-      color: #f4f0ea;
-      font-family: var(--font-serif);
-      font-size: 0.88rem;
-      letter-spacing: 0.15em;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    .primary-action-btn:hover,
-    .primary-action-btn:active {
-      background: rgba(160, 28, 28, 0.95);
-    }
-
-    .save-slot {
-      min-height: 52px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 0.8rem;
-      padding: 0.7rem 0.95rem;
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      border-radius: 5px;
-      margin-bottom: 0.55rem;
-      background: rgba(255, 255, 255, 0.025);
-      cursor: pointer;
-    }
-
-    .save-slot:hover,
-    .save-slot:active {
-      border-color: rgba(185, 45, 45, 0.65);
-      background: rgba(105, 18, 18, 0.2);
-    }
-
-    .save-slot-meta {
-      font-size: 0.75rem;
-      color: #968f86;
-    }
-
-    .setting-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 0.75rem 1.1rem;
-    }
-
-    .setting-row {
-      margin-bottom: 0.75rem;
-    }
-
-    .setting-row label {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.82rem;
-      color: #d4cec5;
-      margin-bottom: 0.28rem;
-    }
-
-    .setting-row input[type="range"] {
-      width: 100%;
-      height: 28px;
-      accent-color: #a62828;
-      cursor: pointer;
-    }
-
-    .setting-row select,
-    .setting-row input[type="password"],
-    .setting-row textarea {
-      width: 100%;
-      background: #060609;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: var(--text-main);
-      font-family: var(--font-serif);
-      font-size: 0.88rem;
-      padding: 0.55rem 0.75rem;
-      border-radius: 4px;
-      user-select: text;
-    }
-
-    .setting-note {
-      font-size: 0.72rem;
-      color: #948d84;
-      margin-top: 0.3rem;
-      line-height: 1.5;
-    }
-
-    /* 見下ろし間取り図 */
-    .map-paper {
-      background:
-        radial-gradient(circle at 20% 25%, rgba(110, 88, 60, 0.16), transparent 55%),
-        radial-gradient(circle at 80% 75%, rgba(80, 40, 30, 0.18), transparent 50%),
-        #1a1713;
-      border: 1px solid #4a3f31;
-      border-radius: 4px;
-      padding: 0.75rem;
-      box-shadow: inset 0 0 36px rgba(0, 0, 0, 0.85);
-    }
-
-    #map-svg {
-      width: 100%;
-      height: auto;
-      max-height: 56dvh;
-      display: block;
-    }
-
-    .map-legend {
-      display: flex;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      font-size: 0.74rem;
-      color: #aea292;
-      margin-top: 0.5rem;
-    }
-
-    /* ダイス演出 */
-    .dice-box {
-      text-align: center;
-      padding: 0.8rem 0.5rem;
-    }
-
-    .dice-skill {
-      font-size: 0.9rem;
-      color: #bab3a8;
-      letter-spacing: 0.16em;
-      margin-bottom: 0.5rem;
-    }
-
-    .dice-number {
-      font-size: clamp(2.6rem, 11dvh, 4.4rem);
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      line-height: 1.1;
-      margin: 0.35rem 0;
-    }
-
-    .dice-result {
-      font-size: 1.05rem;
-      font-weight: 600;
-      letter-spacing: 0.2em;
-      min-height: 1.6em;
-      margin-bottom: 0.9rem;
-    }
-
-    .dice-result.success { color: #9db89a; }
-    .dice-result.fail { color: #d93838; }
-
-    /* エンディング画面 */
     #screen-ending {
       z-index: 45;
       background: #020204;
@@ -936,7 +1129,7 @@
 
     .ending-type {
       font-size: 0.8rem;
-      color: #963636;
+      color: #a33434;
       letter-spacing: 0.28em;
       margin-bottom: 0.45rem;
     }
@@ -950,39 +1143,12 @@
     .ending-desc {
       max-width: 600px;
       font-size: clamp(0.84rem, 2.5dvh, 1rem);
-      color: #cbc5bc;
+      color: #cdc7be;
       line-height: 1.85;
       margin-bottom: 1.4rem;
       white-space: pre-wrap;
     }
 
-    /* トースト通知（alert代替） */
-    #toast-msg {
-      position: fixed;
-      top: max(3.4rem, calc(var(--safe-top) + 3rem));
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 85;
-      background: rgba(14, 12, 14, 0.95);
-      border: 1px solid rgba(196, 174, 122, 0.5);
-      color: #efe8dc;
-      font-size: 0.82rem;
-      letter-spacing: 0.1em;
-      padding: 0.48rem 1.1rem;
-      border-radius: 4px;
-      display: none;
-      pointer-events: none;
-      white-space: nowrap;
-      max-width: 90vw;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    #toast-msg.show {
-      display: block;
-    }
-
-    /* 暗転幕 */
     #fade-curtain {
       position: fixed;
       inset: 0;
@@ -997,12 +1163,37 @@
       opacity: 1;
       pointer-events: auto;
     }
+
+    #toast-msg {
+      position: fixed;
+      top: max(3.3rem, calc(var(--safe-top) + 2.9rem));
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 85;
+      background: rgba(14, 12, 14, 0.96);
+      border: 1px solid rgba(199, 176, 124, 0.55);
+      color: #f0e9dd;
+      font-size: 0.82rem;
+      letter-spacing: 0.1em;
+      padding: 0.48rem 1.1rem;
+      border-radius: 6px;
+      display: none;
+      pointer-events: none;
+      white-space: nowrap;
+      max-width: 90vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #toast-msg.show {
+      display: block;
+    }
   </style>
 </head>
 <body>
 <div id="app-root">
 
-  <!-- 縦向きガード（横画面固定・誤タップ防止） -->
+  <!-- 縦向きガード（z-index: 99999） -->
   <div id="portrait-guard" role="alert" aria-live="assertive">
     <svg class="rotate-icon" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <rect x="19" y="8" width="26" height="44" rx="4"></rect>
@@ -1017,7 +1208,22 @@
     </p>
   </div>
 
-  <!-- 1. 起動警告画面 -->
+  <!-- 0. 起動時バージョン情報・変更点オーバーレイ（z-index: 5000 / ×を押すまで維持） -->
+  <div id="version-changelog-modal" role="dialog" aria-modal="true" aria-labelledby="changelog-version-heading">
+    <div class="changelog-panel" id="changelog-panel">
+      <div class="changelog-header">
+        <div class="changelog-title-group">
+          <span class="changelog-version-badge" id="changelog-version-badge">v0.3.0</span>
+          <h2 class="changelog-heading" id="changelog-version-heading">更新内容・バージョン情報</h2>
+        </div>
+        <button type="button" class="changelog-close-btn" id="btn-close-changelog" aria-label="バージョン情報を閉じる">×</button>
+      </div>
+      <ul class="changelog-list" id="changelog-list"></ul>
+      <div class="changelog-footer-note">右上の「×」ボタンを押すと起動画面へ進みます</div>
+    </div>
+  </div>
+
+  <!-- 1. 起動警告画面（z-index: 90） -->
   <section id="screen-warning" class="screen-layer active" role="button" tabindex="0" aria-label="警告画面をタップして開始">
     <div class="warning-box">
       <div class="warning-title">⚠️ 警告</div>
@@ -1035,13 +1241,14 @@
     <div class="title-top-bar">
       <button type="button" class="hud-btn" id="btn-title-fullscreen">全画面</button>
     </div>
+    <div class="title-version-corner" id="title-version-corner">v0.3.0</div>
     <div class="title-ui-overlay" id="title-ui-overlay">
       <nav class="title-menu" aria-label="タイトルメニュー">
         <button type="button" class="title-menu-btn" id="btn-new-game">はじめから</button>
         <button type="button" class="title-menu-btn" id="btn-continue">つづきから</button>
         <button type="button" class="title-menu-btn" id="btn-title-settings">設定</button>
       </nav>
-      <div class="title-footnote">CTHULHU HORROR NOVEL ENGINE — LANDSCAPE PROTOTYPE</div>
+      <div class="title-footnote">CTHULHU HORROR NOVEL ENGINE</div>
     </div>
   </section>
 
@@ -1087,7 +1294,7 @@
       </div>
     </div>
 
-    <!-- 選択肢レイヤー（z-index: 35 / 非表示時は display: none） -->
+    <!-- 選択肢レイヤー（z-index: 35） -->
     <div id="choices-container"></div>
   </section>
 
@@ -1099,10 +1306,24 @@
     <button type="button" class="primary-action-btn" id="btn-ending-to-title">タイトルへ戻る</button>
   </section>
 
-  <!-- 全画面赤文字侵食フラッシュ -->
+  <!-- 5. 禍々しい2x10面ダイス オーバーレイ（z-index: 70） -->
+  <div id="dice-overlay" aria-live="polite">
+    <canvas id="dice-canvas"></canvas>
+    <div class="dice-hud-top">
+      <div class="dice-skill-banner" id="dice-skill-label">危機脱出判定：隠密（目標値 65 以下）</div>
+    </div>
+    <div class="dice-hud-bottom">
+      <div class="dice-result-panel" id="dice-result-panel">
+        <div class="dice-total-line" id="dice-result-label"></div>
+        <button type="button" class="primary-action-btn" id="btn-dice-proceed">結果を受け入れる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 全画面赤文字侵食フラッシュ（z-index: 75） -->
   <div id="red-text-flash" aria-hidden="true"></div>
 
-  <!-- モーダル：シナリオ選択 -->
+  <!-- モーダル：シナリオ選択（z-index: 60） -->
   <div class="modal-overlay" id="modal-scenarios">
     <div class="modal-panel">
       <div class="modal-header">
@@ -1142,11 +1363,11 @@
             <input type="range" id="opt-vol-bgm" min="0" max="100" value="75">
           </div>
           <div class="setting-row">
-            <label><span>SE（足音・驚かし音）</span><span id="val-vol-se">90%</span></label>
+            <label><span>SE（足音・驚かし・ダイス）</span><span id="val-vol-se">90%</span></label>
             <input type="range" id="opt-vol-se" min="0" max="100" value="90">
           </div>
-          <div class="setting-row">
-            <button type="button" class="hud-btn" id="btn-audio-test">音量テスト（紙擦れ音）</button>
+          <div class="setting-row" style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+            <button type="button" class="hud-btn" id="btn-audio-test">音量テスト（足音）</button>
           </div>
         </div>
         <div>
@@ -1162,7 +1383,11 @@
           <div class="setting-row">
             <label><span>【銀の鍵】BYOK APIキー（任意）</span></label>
             <input type="password" id="opt-api-key" placeholder="Gemini APIキー（端末ローカル保存）" autocomplete="off">
-            <p class="setting-note">※未設定のままでもオフライン固定シナリオ＆専用分岐で最後まで完結します。</p>
+            <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.4rem;">
+              <button type="button" class="hud-btn" id="btn-api-test">接続テスト</button>
+              <span id="api-status-label" style="font-size:0.74rem; color:#968f86;">未設定（オフライン完結可）</span>
+            </div>
+            <p class="setting-note">※未設定のままでもオフライン固定シナリオ＆専用分岐で最後まで遊べます。</p>
           </div>
         </div>
       </div>
@@ -1202,27 +1427,15 @@
     </div>
   </div>
 
-  <!-- モーダル：1d100危機脱出ダイス -->
-  <div class="modal-overlay" id="modal-dice">
-    <div class="modal-panel">
-      <div class="dice-box">
-        <div class="dice-skill" id="dice-skill-label">判定：隠密（目標値 65以下）</div>
-        <div class="dice-number" id="dice-number-display">00</div>
-        <div class="dice-result" id="dice-result-label"></div>
-        <button type="button" class="primary-action-btn" id="btn-dice-proceed" style="display:none;">結果を受け入れる</button>
-      </div>
-    </div>
-  </div>
-
   <!-- モーダル：【銀の鍵】自由入力 -->
   <div class="modal-overlay" id="modal-silver-key">
     <div class="modal-panel">
       <div class="modal-header">
-        <h2 class="modal-title" style="color:#d6c089;">【銀の鍵】自由行動</h2>
+        <h2 class="modal-title" style="color:#d9c28b;">【銀の鍵】自由行動</h2>
         <button type="button" class="modal-close" data-close="modal-silver-key">閉じる</button>
       </div>
-      <p style="font-size:0.83rem; color:#c4bcb0; margin-bottom:0.65rem;">
-        残り使用回数：<strong id="silver-key-remain" style="color:#d6c089;">2</strong> 回 ／ 所持品や周囲の状況を使い、取りたい行動を自由に記述してください。
+      <p style="font-size:0.83rem; color:#c6beb2; margin-bottom:0.65rem;">
+        残り使用回数：<strong id="silver-key-remain" style="color:#d9c28b;">2</strong> 回 ／ 所持品や周囲の状況を使い、取りたい行動を自由に記述してください。
       </p>
       <div class="setting-row">
         <textarea id="silver-key-input" rows="3" placeholder="例：油缶を撒いて火をつけ、怪異の進路を塞いで階段を駆け上がる"></textarea>
@@ -1235,9 +1448,9 @@
     </div>
   </div>
 
-  <!-- トースト通知 & 暗転幕 -->
-  <div id="toast-msg"></div>
+  <!-- 暗転幕 & トースト通知 -->
   <div id="fade-curtain"></div>
+  <div id="toast-msg"></div>
 </div>
 
 <script>
@@ -1245,7 +1458,19 @@
   'use strict';
 
   /* ============================================================================
-     SECTION 1: シナリオデータ部（データ駆動型：JSON追加のみでDLC・続編拡張可能）
+     SECTION 0: バージョン・変更履歴定義（更新時にここを編集）
+     ============================================================================ */
+  const APP_VERSION = 'v0.3.0';
+  const CHANGELOG = [
+    '起動時のバージョン情報・変更点表示（×ボタンで閉じるまで表示維持）を追加',
+    '音響の重厚化（40〜60Hzサブベース・ダーク歪み・地下残響リバーブを強化）',
+    '狂気時の文字化けをエンコード崩れ系（縺・繝・繧・半角カナ等）に変更し、本文の約2割に混入',
+    '1d100判定時に禍々しい2つの10面ダイス（十の位・一の位）が転がり跳ねるCanvas演出と衝突SEを追加',
+    '横画面固定・フルスクリーン化・タップ座標ズレ解消を維持'
+  ];
+
+  /* ============================================================================
+     SECTION 1: シナリオデータ部（データ駆動型：エンジン本体と完全分離）
      ============================================================================ */
   const SCENARIO_CATALOG = [
     {
@@ -1260,7 +1485,7 @@
       title: '第弐話：黒潮の灯台守（追加予定）',
       status: 'locked',
       badge: 'DLC枠',
-      synopsis: 'エンジン本体を変更せず、外部シナリオデータとアセットを追加するだけで配信・拡張できる構造のプレースホルダーです。'
+      synopsis: 'エンジンを変更せず、シナリオデータとアセットの追加のみで続編・DLCを配信できるデータ駆動型構造のプレースホルダーです。'
     }
   ];
 
@@ -1270,49 +1495,55 @@
         id: 'ep01_sanatorium',
         title: '第壱話：廃療養所の地下室',
         silverKeyLimit: 2,
-        aiWorldTruth: '地下室には旧支配者の落とし子が封印されている。所持品「油缶」と「錆びた鍵」を併用して火を放つか扉を封鎖すれば生還・焼却エンドへ到達できる。'
+        aiWorldTruth: '地下室には旧支配者の落とし子が封印されている。所持品「油缶」と「錆びた鍵」を併用して火を放つか防火扉を施錠すれば焼却生還（burn）へ到達できる。'
       },
       madnessThresholds: {
-        stage1: 25, // 画面端の黒いシミ・微細な文字揺れ
-        stage2: 55, // 文字化け・精神バーノイズ・赤文字侵食
-        stage3: 80  // 現実逃避（歪んだクレヨン画＋陽気なオルゴール＋生々しいSE/テキスト）
+        stage1: 25, // 画面端の黒いシミ・微細揺れ
+        stage2: 50, // Shift_JIS/UTF-8風文字化け(約20%)・精神バーグリッチ・赤文字侵食
+        stage3: 80  // 現実逃避（歪んだクレヨン画＋陽気なオルゴール、テキストとSEは冷徹な現実）
       },
       rooms: {
         room_entrance: {
           id: 'room_entrance',
           name: '玄関ホール',
-          rect: { x: 40, y: 110, w: 120, h: 85 },
+          rect: { x: 35, y: 112, w: 112, h: 80 },
           connectedTo: ['room_corridor']
         },
         room_corridor: {
           id: 'room_corridor',
           name: '暗い廊下',
-          rect: { x: 195, y: 122, w: 170, h: 60 },
-          connectedTo: ['room_entrance', 'room_clinic', 'room_basement']
+          rect: { x: 175, y: 122, w: 148, h: 60 },
+          connectedTo: ['room_entrance', 'room_clinic', 'room_stairs']
         },
         room_clinic: {
           id: 'room_clinic',
           name: '旧診察室',
-          rect: { x: 220, y: 24, w: 120, h: 72 },
+          rect: { x: 192, y: 24, w: 114, h: 70 },
           connectedTo: ['room_corridor']
         },
-        room_basement: {
-          id: 'room_basement',
+        room_stairs: {
+          id: 'room_stairs',
           name: '地下階段',
-          rect: { x: 405, y: 105, w: 145, h: 95 },
-          connectedTo: ['room_corridor']
+          rect: { x: 352, y: 116, w: 96, h: 72 },
+          connectedTo: ['room_corridor', 'room_abyss']
+        },
+        room_abyss: {
+          id: 'room_abyss',
+          name: '深淵の間',
+          rect: { x: 472, y: 98, w: 102, h: 108 },
+          connectedTo: ['room_stairs']
         }
       },
       itemsCatalog: {
         rusty_key: {
           id: 'rusty_key',
           name: '錆びた鍵',
-          desc: '旧診察室の机から見つけた重い鉄鍵。「焼却・地下」と刻まれている。'
+          desc: '旧診察室の机から見つけた重い鉄鍵。「焼却・地下防火扉」と刻まれている。'
         },
         oil_can: {
           id: 'oil_can',
           name: '油缶',
-          desc: 'まだ半分ほど灯油が残っている古いブリキ缶。鼻を突く臭いがする。'
+          desc: 'まだ半分ほど灯油が残っている古いブリキ缶。鼻を突く強い臭いがする。'
         }
       },
       startEvent: 'evt_entrance_01',
@@ -1347,21 +1578,21 @@
           bg: 'corridor',
           steps: [
             {
-              sfx: { type: 'footstep_drag', pan: 0.85, distance: 'far' },
-              madnessAdd: 15,
+              sfx: { type: 'footstep_drag', pan: 0.88, distance: 'far' },
+              madnessAdd: 16,
               text: '廊下に足を踏み入れた瞬間――右側の暗い奥から、何か重たく湿ったものを引きずる音が聞こえた。'
             },
             {
-              text: '……ズリ、ズリッ。自分の足音が止まっているのに、音だけは確実にこちらへ近づいてくる。'
+              text: '……ズリ、ズリッ。自分の足音が止まっているのに、湿った音だけは確実にこちらへ近づいてくる。'
             },
             {
               sfx: { type: 'footstep_stop', pan: -0.95, distance: 'near' },
               madnessAdd: 18,
-              text: '息を呑んだ刹那、すぐ左耳の真横で「ドンッ」と何かが立ち止まった。――誰も、見えないのに。'
+              text: '息を呑んだ刹那、すぐ左耳の真後ろで「ドンッ」と重たい何かが立ち止まった。――誰も、見えないのに。'
             },
             {
-              sfx: { type: 'door_creak', pan: 0.5 },
-              text: 'すぐ横の錆びた鉄扉が、勝手に……ギィィィィ……と不快な高音を立てて開き始める。'
+              sfx: { type: 'door_creak', pan: 0.55 },
+              text: 'すぐ横の錆びた鉄扉が、勝手に……ギィィィィ……と腹の底に響く低い軋みを上げて開き始める。'
             },
             {
               bgm: 'silence',
@@ -1369,15 +1600,15 @@
               text: '…………。'
             },
             {
-              sfx: { type: 'door_slam_jumpscare', pan: -0.2 },
+              sfx: { type: 'door_slam_jumpscare', pan: -0.15 },
               madnessAdd: 22,
               redFlash: 'ミテイル ミテイル ウシロニイル ニゲロ ニゲロ ミテイル',
               shake: 'heavy',
-              text: '鼓膜を突き破る爆音とともに鉄扉が叩きつけられ、闇の隙間から無数の節と濡れた眼が覗き込んだ！'
+              text: '鼓膜を突き破る爆音とともに鉄扉が叩きつけられ、闇の隙間から無数の節と濡れた眼球が覗き込んだ！'
             },
             {
               bgm: 'heartbeat',
-              text: '冷たい粘液の匂いが廊下を満たす。今すぐ動かなければ、ここで飲み込まれる――！'
+              text: '腐敗した粘液の匂いが廊下を満たす。今すぐ動かなければ、ここで飲み込まれる――！'
             }
           ],
           choices: [
@@ -1405,7 +1636,7 @@
           steps: [
             {
               bgm: 'drone_low',
-              sfx: { type: 'footstep_drag', pan: -0.6, distance: 'far' },
+              sfx: { type: 'footstep_drag', pan: -0.65, distance: 'far' },
               text: '呼吸を完全に殺し、錆びたロッカーの隙間に身を滑り込ませた。ずるずると肉塊を引きずる音は、やがて廊下の奥へと遠ざかっていった……。'
             },
             {
@@ -1414,7 +1645,7 @@
           ],
           choices: [
             { label: '「旧診察室」を調べて手がかりを探す', next: 'evt_clinic_01' },
-            { label: 'そのまま「地下階段」へ降りる', next: 'evt_basement_01' }
+            { label: 'そのまま「地下階段」へ降りる', next: 'evt_stairs_01' }
           ]
         },
 
@@ -1424,7 +1655,7 @@
           steps: [
             {
               bgm: 'drone_low',
-              text: '医療棚を渾身の力で押し倒した。割れた薬瓶と金属音が響き渡り、闇の中の「何か」が一瞬怯んで奥へ退く。'
+              text: '医療棚を渾身の力で押し倒した。割れた薬瓶と重い金属音が響き渡り、闇の中の「何か」が一瞬怯んで奥へ退く。'
             },
             {
               text: '今のうちに先へ進まなければ。横の「旧診察室」へ飛び込むか、そのまま「地下階段」へ向かうか。'
@@ -1432,7 +1663,7 @@
           ],
           choices: [
             { label: '「旧診察室」へ飛び込む', next: 'evt_clinic_01' },
-            { label: 'そのまま「地下階段」へ降りる', next: 'evt_basement_01' }
+            { label: 'そのまま「地下階段」へ降りる', next: 'evt_stairs_01' }
           ]
         },
 
@@ -1454,7 +1685,7 @@
           ],
           choices: [
             { label: '「旧診察室」に逃げ込んで調べる', next: 'evt_clinic_01' },
-            { label: '強引に「地下階段」へ進む', next: 'evt_basement_01' }
+            { label: '強引に「地下階段」へ進む', next: 'evt_stairs_01' }
           ]
         },
 
@@ -1464,57 +1695,71 @@
           steps: [
             {
               sfx: { type: 'door_creak', pan: 0.0 },
-              text: '旧診察室の中は、割れたホルマリン瓶と散乱したカルテで埋め尽くされていた。'
+              text: '旧診察室の中は、割れたホルマリン瓶と散乱したカルテで埋め尽くされていた。視界の端で文字が歪み、頭が割れそうに痛む。'
             },
             {
-              madnessAdd: 20,
+              madnessAdd: 16,
               redFlash: 'ナカヲミルナ ナカヲミルナ カルテヲヨムナ',
               text: '机の上に残された院長の記録には、人間とは思えない解剖図と「地下の胎児に餌を与え続けよ」という震えた筆跡がびっしりと書き連ねられていた。'
             },
             {
               addItem: 'rusty_key',
-              text: '記録の下から、重たい【錆びた鍵】を見つけた。「焼却・地下」と刻まれている。'
+              text: '記録の下から、重たい【錆びた鍵】を見つけた。「焼却・地下防火扉」と刻まれている。'
             },
             {
               addItem: 'oil_can',
               text: 'さらに診察台の足元には、まだ灯油の入った古い【油缶】が転がっていた。いざという時の切り札になるかもしれない。'
             },
             {
-              sfx: { type: 'footstep_drag', pan: 0.7, distance: 'near' },
-              text: '廊下の向こうから、またあの粘着質な引きずる音が聞こえてきた。残る道は「地下階段」だけだ。'
+              sfx: { type: 'footstep_drag', pan: 0.72, distance: 'near' },
+              text: '廊下の向こうから、またあの粘着質な引きずる音が近づいてきた。残る道は「地下階段」だけだ。'
             }
           ],
           choices: [
-            { label: '「地下階段」へ向かう', next: 'evt_basement_01' }
+            { label: '「地下階段」へ向かう', next: 'evt_stairs_01' }
           ]
         },
 
-        evt_basement_01: {
-          room: 'room_basement',
-          bg: 'basement',
+        evt_stairs_01: {
+          room: 'room_stairs',
+          bg: 'stairs',
           steps: [
             {
-              madnessAdd: 35,
+              madnessAdd: 30,
               bgm: 'musicbox_happy',
-              text: '地下へ降りた瞬間、視界がふいに眩しいほどの色で塗り潰された。……ああ、なんて綺麗なお花畑だろう。'
+              text: '地下階段を降りた瞬間、視界がふいに眩しいほどの色で塗り潰された。……ああ、なんて綺麗なお花畑だろう。'
             },
             {
-              sfx: { type: 'footstep_drag', pan: 0.3, distance: 'near' },
-              text: '脳が拒絶しているのに、足元だけは「ペチャ、ペチャ」と温かな肉片と粘液を踏み潰す生々しい感触を伝え続けてくる。'
+              sfx: { type: 'footstep_drag', pan: 0.35, distance: 'near' },
+              text: '脳が現実を拒絶しているのに、足元だけは「ペチャ、ペチャ」と温かな肉片と粘液を踏み潰す生々しい感触を伝え続けてくる。'
             },
             {
-              text: '陽気なオルゴールが頭の中で鳴り響く。目の前の「お城の門」に見えるそれは、無数の眼球と口が脈打つ巨大な肉の壁だった。'
+              text: '調律のわずかに狂った陽気なオルゴールが頭の中で鳴り響く。階段の先、「深淵の間」から巨大な胎動が響いてくる。'
+            }
+          ],
+          choices: [
+            { label: '「深淵の間」へ足を踏み入れる', next: 'evt_abyss_01' }
+          ]
+        },
+
+        evt_abyss_01: {
+          room: 'room_abyss',
+          bg: 'abyss',
+          steps: [
+            {
+              sfx: { type: 'door_creak', pan: -0.35 },
+              text: '目の前の「お城の門」に見えるそれは、無数の眼球と口が脈打つ巨大な肉の壁だった。'
             },
             {
-              sfx: { type: 'door_creak', pan: -0.4 },
-              text: '肉の壁が裂け、こちらを飲み込もうと大きく開く。これが最後の選択だ――！'
+              sfx: { type: 'footstep_stop', pan: 0.2 },
+              text: '肉の壁が裂け、こちらを丸呑みにしようと大きく開く。これが最後の選択だ――！'
             }
           ],
           choices: [
             {
               label: '【銀の鍵】で所持品や環境を使い自由に行動する',
               tag: '銀の鍵',
-              useSilverKey: { context: 'basement' }
+              useSilverKey: { context: 'abyss' }
             },
             {
               label: '狂気に抗い、非常階段の隙間へ死に物狂いで駆け抜ける',
@@ -1530,8 +1775,8 @@
         },
 
         evt_end_escape: {
-          room: 'room_basement',
-          bg: 'basement',
+          room: 'room_abyss',
+          bg: 'abyss',
           steps: [
             {
               bgm: 'drone_low',
@@ -1549,8 +1794,8 @@
         },
 
         evt_end_madness: {
-          room: 'room_basement',
-          bg: 'basement',
+          room: 'room_abyss',
+          bg: 'abyss',
           steps: [
             {
               text: 'もう怖がる必要なんてなかったのだ。おひさまが笑っている。お花が歌っている。'
@@ -1567,8 +1812,8 @@
         },
 
         evt_end_devoured: {
-          room: 'room_basement',
-          bg: 'basement',
+          room: 'room_abyss',
+          bg: 'abyss',
           steps: [
             {
               hpAdd: -100,
@@ -1586,14 +1831,14 @@
         },
 
         evt_end_burn: {
-          room: 'room_basement',
-          bg: 'basement',
+          room: 'room_abyss',
+          bg: 'abyss',
           steps: [
             {
               bgm: 'drone_low',
               sfx: { type: 'door_slam_jumpscare', pan: 0.1 },
               shake: 'heavy',
-              text: '撒いた灯油に火が移り、紅蓮の炎が一気に地下室を飲み込んだ！名状しがたい怪異が耳を劈く断末魔を上げ、肉の壁が炭化して崩れ落ちていく。'
+              text: '撒いた灯油に火が移り、紅蓮の炎が一気に深淵の間を飲み込んだ！名状しがたい怪異が耳を劈く断末魔を上げ、肉の壁が炭化して崩れ落ちていく。'
             },
             {
               text: 'あなたは錆びた鍵で地下の防火扉を完全に施錠し、燃え上がる療養所を背に夜の闇へと生還した。'
@@ -1610,17 +1855,52 @@
   };
 
   /* ============================================================================
-     SECTION 2: AudioEngine（Web Audio API 立体音響・ホラーSE・ドローン・オルゴール）
+     SECTION 2: AudioEngine（重厚・地下残響・歪み・サブベース・立体音響・ダイスSE）
      ============================================================================ */
   const AudioEngine = (() => {
     let ctx = null;
     let masterGain = null;
     let bgmGain = null;
     let seGain = null;
+    let reverbNode = null;
+    let reverbSend = null;
+    let compressor = null;
+    let saturator = null;
     let bgmNodes = [];
     let bgmTimer = null;
     let currentBgm = null;
     const volumes = { master: 0.8, bgm: 0.75, se: 0.9 };
+
+    /* ダークサチュレーション用の歪みカーブ生成 */
+    function makeDistortionCurve(amount = 28) {
+      const n = 2048;
+      const curve = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        const x = (i * 2) / n - 1;
+        curve[i] = ((3 + amount) * x * 20 * (Math.PI / 180)) / (Math.PI + amount * Math.abs(x));
+      }
+      return curve;
+    }
+
+    /* 深く湿った地下空間のインパルス応答（ConvolverNode用）をアルゴリズム生成 */
+    function createSubterraneanReverb(audioCtx, duration = 2.8, decay = 2.6) {
+      const rate = audioCtx.sampleRate;
+      const length = Math.floor(rate * duration);
+      const impulse = audioCtx.createBuffer(2, length, rate);
+      for (let ch = 0; ch < 2; ch++) {
+        const data = impulse.getChannelData(ch);
+        let lp = 0;
+        for (let i = 0; i < length; i++) {
+          const env = Math.pow(1 - i / length, decay);
+          const white = Math.random() * 2 - 1;
+          lp = lp * 0.72 + white * 0.28;
+          data[i] = lp * env;
+        }
+      }
+      const convolver = audioCtx.createConvolver();
+      convolver.buffer = impulse;
+      return convolver;
+    }
 
     function init() {
       if (ctx) {
@@ -1630,12 +1910,39 @@
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtx) return;
       ctx = new AudioCtx();
+
       masterGain = ctx.createGain();
       bgmGain = ctx.createGain();
       seGain = ctx.createGain();
+
+      // マスターバス：WaveShaper（ダーク歪み） -> DynamicsCompressor（音圧） -> 出力
+      saturator = ctx.createWaveShaper();
+      saturator.curve = makeDistortionCurve(18);
+      saturator.oversample = '2x';
+
+      compressor = ctx.createDynamicsCompressor();
+      compressor.threshold.value = -16;
+      compressor.knee.value = 18;
+      compressor.ratio.value = 6;
+      compressor.attack.value = 0.004;
+      compressor.release.value = 0.22;
+
+      // 地下残響センドバス
+      reverbNode = createSubterraneanReverb(ctx, 2.7, 2.5);
+      reverbSend = ctx.createGain();
+      reverbSend.gain.value = 0.42;
+
       bgmGain.connect(masterGain);
       seGain.connect(masterGain);
-      masterGain.connect(ctx.destination);
+
+      masterGain.connect(saturator);
+      masterGain.connect(reverbSend);
+      reverbSend.connect(reverbNode);
+      reverbNode.connect(saturator);
+
+      saturator.connect(compressor);
+      compressor.connect(ctx.destination);
+
       applyVolumes();
     }
 
@@ -1653,13 +1960,23 @@
       applyVolumes();
     }
 
-    function createNoiseBuffer(durationSec = 2.0) {
+    /* ブラウン/ホワイトノイズ生成 */
+    function createNoiseBuffer(durationSec = 2.0, color = 'brown') {
       const sampleRate = ctx.sampleRate;
       const length = Math.floor(sampleRate * durationSec);
       const buffer = ctx.createBuffer(1, length, sampleRate);
       const data = buffer.getChannelData(0);
-      for (let i = 0; i < length; i++) {
-        data[i] = Math.random() * 2 - 1;
+      if (color === 'brown') {
+        let last = 0;
+        for (let i = 0; i < length; i++) {
+          const white = Math.random() * 2 - 1;
+          last = (last + 0.04 * white) / 1.04;
+          data[i] = Math.max(-1, Math.min(1, last * 4.2));
+        }
+      } else {
+        for (let i = 0; i < length; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
       }
       return buffer;
     }
@@ -1696,81 +2013,104 @@
       const now = ctx.currentTime;
 
       if (type === 'drone_low' || type === 'title_drone') {
-        const osc1 = ctx.createOscillator();
+        // 40-58Hz サブベース＋うねりオシレータ＋ローパスブラウンノイズの圧迫ドローン
+        const sub = ctx.createOscillator();
         const osc2 = ctx.createOscillator();
         const lfo = ctx.createOscillator();
         const lfoGain = ctx.createGain();
         const filter = ctx.createBiquadFilter();
         const gain = ctx.createGain();
 
-        osc1.type = 'sawtooth';
-        osc1.frequency.value = type === 'title_drone' ? 43 : 38;
-        osc2.type = 'triangle';
-        osc2.frequency.value = type === 'title_drone' ? 44.7 : 39.4;
+        sub.type = 'sine';
+        sub.frequency.value = type === 'title_drone' ? 44 : 41;
+        osc2.type = 'sawtooth';
+        osc2.frequency.value = type === 'title_drone' ? 56.5 : 53.2;
 
-        lfo.frequency.value = 0.24;
-        lfoGain.gain.value = 18;
+        lfo.frequency.value = 0.18;
+        lfoGain.gain.value = 28;
         lfo.connect(lfoGain);
         lfoGain.connect(filter.frequency);
 
         filter.type = 'lowpass';
-        filter.frequency.value = 135;
+        filter.frequency.value = 115;
+        filter.Q.value = 2.2;
+
+        const noise = ctx.createBufferSource();
+        noise.buffer = createNoiseBuffer(4.0, 'brown');
+        noise.loop = true;
+        const nFilter = ctx.createBiquadFilter();
+        nFilter.type = 'lowpass';
+        nFilter.frequency.value = 140;
+        const nGain = ctx.createGain();
+        nGain.gain.value = 0.34;
+        noise.connect(nFilter);
+        nFilter.connect(nGain);
+        nGain.connect(gain);
 
         gain.gain.setValueAtTime(0.001, now);
-        gain.gain.linearRampToValueAtTime(0.24, now + 1.4);
+        gain.gain.linearRampToValueAtTime(0.36, now + 1.5);
 
-        osc1.connect(filter);
+        sub.connect(gain);
         osc2.connect(filter);
         filter.connect(gain);
         gain.connect(bgmGain);
 
-        osc1.start(now);
+        sub.start(now);
         osc2.start(now);
         lfo.start(now);
-        bgmNodes.push(osc1, osc2, lfo, gain, filter);
+        noise.start(now);
+        bgmNodes.push(sub, osc2, lfo, noise, gain, filter, nFilter, nGain);
       } else if (type === 'heartbeat') {
         const beat = () => {
           if (currentBgm !== 'heartbeat' || !ctx) return;
           const t = ctx.currentTime;
-          [0, 0.24].forEach((offset, idx) => {
+          [0, 0.25].forEach((offset, idx) => {
             const osc = ctx.createOscillator();
             const g = ctx.createGain();
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(idx === 0 ? 64 : 52, t + offset);
-            osc.frequency.exponentialRampToValueAtTime(28, t + offset + 0.16);
+            osc.frequency.setValueAtTime(idx === 0 ? 68 : 54, t + offset);
+            osc.frequency.exponentialRampToValueAtTime(26, t + offset + 0.19);
             g.gain.setValueAtTime(0.001, t + offset);
-            g.gain.linearRampToValueAtTime(idx === 0 ? 0.45 : 0.3, t + offset + 0.02);
-            g.gain.exponentialRampToValueAtTime(0.001, t + offset + 0.2);
+            g.gain.linearRampToValueAtTime(idx === 0 ? 0.65 : 0.42, t + offset + 0.015);
+            g.gain.exponentialRampToValueAtTime(0.001, t + offset + 0.24);
             osc.connect(g);
             g.connect(bgmGain);
             osc.start(t + offset);
-            osc.stop(t + offset + 0.22);
+            osc.stop(t + offset + 0.26);
           });
         };
         beat();
-        bgmTimer = setInterval(beat, 950);
+        bgmTimer = setInterval(beat, 880);
       } else if (type === 'musicbox_happy') {
+        // 狂気段階3：わずかに調律が狂った陽気なオルゴール
         const notes = [523.25, 659.25, 783.99, 659.25, 880.0, 783.99, 659.25, 587.33];
         let idx = 0;
         const playNote = () => {
           if (currentBgm !== 'musicbox_happy' || !ctx) return;
           const t = ctx.currentTime;
-          const freq = notes[idx % notes.length] * (idx % 7 === 6 ? 0.984 : 1.0);
+          const detuneFactor = idx % 5 === 4 ? 0.978 : (idx % 7 === 3 ? 1.014 : 1.0);
+          const freq = notes[idx % notes.length] * detuneFactor;
           idx++;
           const osc = ctx.createOscillator();
+          const overtone = ctx.createOscillator();
           const g = ctx.createGain();
           osc.type = 'sine';
           osc.frequency.setValueAtTime(freq, t);
+          overtone.type = 'triangle';
+          overtone.frequency.setValueAtTime(freq * 2.005, t);
           g.gain.setValueAtTime(0.001, t);
-          g.gain.linearRampToValueAtTime(0.22, t + 0.015);
-          g.gain.exponentialRampToValueAtTime(0.0008, t + 0.72);
+          g.gain.linearRampToValueAtTime(0.2, t + 0.012);
+          g.gain.exponentialRampToValueAtTime(0.0008, t + 0.78);
           osc.connect(g);
+          overtone.connect(g);
           g.connect(bgmGain);
           osc.start(t);
-          osc.stop(t + 0.75);
+          overtone.start(t);
+          osc.stop(t + 0.8);
+          overtone.stop(t + 0.8);
         };
         playNote();
-        bgmTimer = setInterval(playNote, 420);
+        bgmTimer = setInterval(playNote, 410);
       }
     }
 
@@ -1779,17 +2119,30 @@
       if (!ctx) return;
       const now = ctx.currentTime;
 
+      const sub = ctx.createOscillator();
+      const subG = ctx.createGain();
+      sub.type = 'sine';
+      sub.frequency.setValueAtTime(58, now);
+      sub.frequency.exponentialRampToValueAtTime(34, now + 3.2);
+      subG.gain.setValueAtTime(0.001, now);
+      subG.gain.linearRampToValueAtTime(0.45, now + 0.4);
+      subG.gain.exponentialRampToValueAtTime(0.001, now + 3.4);
+      sub.connect(subG);
+      subG.connect(seGain);
+      sub.start(now);
+      sub.stop(now + 3.45);
+
       const src = ctx.createBufferSource();
-      src.buffer = createNoiseBuffer(3.2);
+      src.buffer = createNoiseBuffer(3.2, 'brown');
       const bp = ctx.createBiquadFilter();
       bp.type = 'bandpass';
-      bp.frequency.setValueAtTime(900, now);
-      bp.frequency.exponentialRampToValueAtTime(2400, now + 2.5);
-      bp.Q.value = 3.5;
+      bp.frequency.setValueAtTime(520, now);
+      bp.frequency.exponentialRampToValueAtTime(1950, now + 2.6);
+      bp.Q.value = 2.8;
       const g = ctx.createGain();
       g.gain.setValueAtTime(0.001, now);
-      g.gain.linearRampToValueAtTime(0.22, now + 0.35);
-      g.gain.exponentialRampToValueAtTime(0.001, now + 3.0);
+      g.gain.linearRampToValueAtTime(0.32, now + 0.35);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 3.1);
       src.connect(bp);
       bp.connect(g);
       g.connect(seGain);
@@ -1798,10 +2151,10 @@
       const ear = ctx.createOscillator();
       const earGain = ctx.createGain();
       ear.type = 'sine';
-      ear.frequency.setValueAtTime(5100, now);
-      ear.frequency.linearRampToValueAtTime(4720, now + 2.8);
+      ear.frequency.setValueAtTime(4950, now);
+      ear.frequency.linearRampToValueAtTime(4620, now + 2.8);
       earGain.gain.setValueAtTime(0.001, now);
-      earGain.gain.linearRampToValueAtTime(0.045, now + 0.6);
+      earGain.gain.linearRampToValueAtTime(0.038, now + 0.55);
       earGain.gain.exponentialRampToValueAtTime(0.0005, now + 3.1);
       ear.connect(earGain);
       earGain.connect(seGain);
@@ -1820,103 +2173,188 @@
 
       if (spec.type === 'paper') {
         const src = ctx.createBufferSource();
-        src.buffer = createNoiseBuffer(0.42);
+        src.buffer = createNoiseBuffer(0.45, 'white');
         const bp = ctx.createBiquadFilter();
         bp.type = 'bandpass';
-        bp.frequency.setValueAtTime(1600, now);
-        bp.frequency.linearRampToValueAtTime(2600, now + 0.25);
-        bp.Q.value = 1.6;
+        bp.frequency.setValueAtTime(1400, now);
+        bp.frequency.linearRampToValueAtTime(2400, now + 0.25);
+        bp.Q.value = 1.5;
         const g = ctx.createGain();
         g.gain.setValueAtTime(0.001, now);
-        g.gain.linearRampToValueAtTime(0.24, now + 0.05);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+        g.gain.linearRampToValueAtTime(0.24, now + 0.04);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
         src.connect(bp);
         bp.connect(g);
         g.connect(panner);
         src.start(now);
       } else if (spec.type === 'footstep_drag') {
         const isFar = spec.distance === 'far';
-        [0, 0.55, 1.15].forEach((offset) => {
-          const src = ctx.createBufferSource();
-          src.buffer = createNoiseBuffer(0.32);
+        [0, 0.62, 1.28].forEach((offset) => {
+          const thud = ctx.createOscillator();
+          const thudG = ctx.createGain();
+          thud.type = 'sine';
+          thud.frequency.setValueAtTime(isFar ? 62 : 84, now + offset);
+          thud.frequency.exponentialRampToValueAtTime(28, now + offset + 0.18);
+          thudG.gain.setValueAtTime(0.001, now + offset);
+          thudG.gain.linearRampToValueAtTime(isFar ? 0.32 : 0.68, now + offset + 0.015);
+          thudG.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.22);
+          thud.connect(thudG);
+          thudG.connect(panner);
+          thud.start(now + offset);
+          thud.stop(now + offset + 0.24);
+
+          const drag = ctx.createBufferSource();
+          drag.buffer = createNoiseBuffer(0.36, 'brown');
           const lp = ctx.createBiquadFilter();
           lp.type = 'lowpass';
-          lp.frequency.value = isFar ? 480 : 1400;
-          const g = ctx.createGain();
-          g.gain.setValueAtTime(0.001, now + offset);
-          g.gain.linearRampToValueAtTime(isFar ? 0.22 : 0.42, now + offset + 0.08);
-          g.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.28);
-          src.connect(lp);
-          lp.connect(g);
-          g.connect(panner);
-          src.start(now + offset);
+          lp.frequency.value = isFar ? 420 : 1200;
+          const dG = ctx.createGain();
+          dG.gain.setValueAtTime(0.001, now + offset + 0.05);
+          dG.gain.linearRampToValueAtTime(isFar ? 0.28 : 0.55, now + offset + 0.14);
+          dG.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.35);
+          drag.connect(lp);
+          lp.connect(dG);
+          dG.connect(panner);
+          drag.start(now + offset + 0.05);
         });
       } else if (spec.type === 'footstep_stop') {
         const osc = ctx.createOscillator();
         const g = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(110, now);
-        osc.frequency.exponentialRampToValueAtTime(32, now + 0.16);
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(98, now);
+        osc.frequency.exponentialRampToValueAtTime(26, now + 0.24);
         g.gain.setValueAtTime(0.001, now);
-        g.gain.linearRampToValueAtTime(0.75, now + 0.01);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        g.gain.linearRampToValueAtTime(0.92, now + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
         osc.connect(g);
         g.connect(panner);
         osc.start(now);
-        osc.stop(now + 0.24);
-      } else if (spec.type === 'door_creak') {
-        const osc = ctx.createOscillator();
-        const mod = ctx.createOscillator();
-        const modGain = ctx.createGain();
-        const g = ctx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(360, now);
-        osc.frequency.linearRampToValueAtTime(620, now + 0.9);
-        osc.frequency.linearRampToValueAtTime(490, now + 1.5);
-        mod.frequency.value = 26;
-        modGain.gain.value = 35;
-        mod.connect(modGain);
-        modGain.connect(osc.frequency);
-        const bp = ctx.createBiquadFilter();
-        bp.type = 'bandpass';
-        bp.frequency.value = 1100;
-        bp.Q.value = 4;
-        g.gain.setValueAtTime(0.001, now);
-        g.gain.linearRampToValueAtTime(0.18, now + 0.25);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 1.6);
-        osc.connect(bp);
-        bp.connect(g);
-        g.connect(panner);
-        osc.start(now);
-        mod.start(now);
-        osc.stop(now + 1.65);
-        mod.stop(now + 1.65);
-      } else if (spec.type === 'door_slam_jumpscare') {
-        const osc = ctx.createOscillator();
-        const oscG = ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(140, now);
-        osc.frequency.exponentialRampToValueAtTime(24, now + 0.35);
-        oscG.gain.setValueAtTime(0.95, now);
-        oscG.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
-        osc.connect(oscG);
-        oscG.connect(panner);
-        osc.start(now);
-        osc.stop(now + 0.48);
+        osc.stop(now + 0.32);
 
-        const noise = ctx.createBufferSource();
-        noise.buffer = createNoiseBuffer(0.65);
+        const impact = ctx.createBufferSource();
+        impact.buffer = createNoiseBuffer(0.18, 'brown');
         const lp = ctx.createBiquadFilter();
         lp.type = 'lowpass';
-        lp.frequency.setValueAtTime(3200, now);
-        lp.frequency.exponentialRampToValueAtTime(220, now + 0.55);
-        const nG = ctx.createGain();
-        nG.gain.setValueAtTime(0.92, now);
-        nG.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-        noise.connect(lp);
-        lp.connect(nG);
-        nG.connect(panner);
-        noise.start(now);
+        lp.frequency.value = 600;
+        const iG = ctx.createGain();
+        iG.gain.setValueAtTime(0.65, now);
+        iG.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+        impact.connect(lp);
+        lp.connect(iG);
+        iG.connect(panner);
+        impact.start(now);
+      } else if (spec.type === 'door_creak') {
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const mod = ctx.createOscillator();
+        const modGain = ctx.createGain();
+        const bp = ctx.createBiquadFilter();
+        const g = ctx.createGain();
+
+        osc1.type = 'sawtooth';
+        osc1.frequency.setValueAtTime(145, now);
+        osc1.frequency.linearRampToValueAtTime(240, now + 0.95);
+        osc1.frequency.linearRampToValueAtTime(185, now + 1.65);
+
+        osc2.type = 'sawtooth';
+        osc2.frequency.setValueAtTime(302, now);
+        osc2.frequency.linearRampToValueAtTime(518, now + 1.0);
+        osc2.frequency.linearRampToValueAtTime(395, now + 1.65);
+
+        mod.frequency.value = 21;
+        modGain.gain.value = 32;
+        mod.connect(modGain);
+        modGain.connect(osc1.frequency);
+        modGain.connect(osc2.frequency);
+
+        bp.type = 'bandpass';
+        bp.frequency.value = 680;
+        bp.Q.value = 3.2;
+
+        g.gain.setValueAtTime(0.001, now);
+        g.gain.linearRampToValueAtTime(0.28, now + 0.3);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 1.75);
+
+        osc1.connect(bp);
+        osc2.connect(bp);
+        bp.connect(g);
+        g.connect(panner);
+
+        osc1.start(now);
+        osc2.start(now);
+        mod.start(now);
+        osc1.stop(now + 1.8);
+        osc2.stop(now + 1.8);
+        mod.stop(now + 1.8);
+      } else if (spec.type === 'door_slam_jumpscare') {
+        const dist = ctx.createWaveShaper();
+        dist.curve = makeDistortionCurve(70);
+        dist.connect(panner);
+
+        const sub = ctx.createOscillator();
+        const subG = ctx.createGain();
+        sub.type = 'sine';
+        sub.frequency.setValueAtTime(115, now);
+        sub.frequency.exponentialRampToValueAtTime(24, now + 0.45);
+        subG.gain.setValueAtTime(1.0, now);
+        subG.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+        sub.connect(subG);
+        subG.connect(dist);
+        sub.start(now);
+        sub.stop(now + 0.58);
+
+        const screech = ctx.createOscillator();
+        const screechG = ctx.createGain();
+        screech.type = 'sawtooth';
+        screech.frequency.setValueAtTime(1650, now);
+        screech.frequency.exponentialRampToValueAtTime(420, now + 0.35);
+        screechG.gain.setValueAtTime(0.38, now);
+        screechG.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+        screech.connect(screechG);
+        screechG.connect(dist);
+        screech.start(now);
+        screech.stop(now + 0.4);
+
+        const burst = ctx.createBufferSource();
+        burst.buffer = createNoiseBuffer(0.75, 'white');
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.setValueAtTime(3800, now);
+        lp.frequency.exponentialRampToValueAtTime(190, now + 0.65);
+        const bG = ctx.createGain();
+        bG.gain.setValueAtTime(0.95, now);
+        bG.gain.exponentialRampToValueAtTime(0.001, now + 0.72);
+        burst.connect(lp);
+        lp.connect(bG);
+        bG.connect(dist);
+        burst.start(now);
+      } else if (spec.type === 'dice_clatter') {
+        const intensity = Math.max(0.15, Math.min(1, spec.intensity || 0.7));
+        const body = ctx.createOscillator();
+        const bodyG = ctx.createGain();
+        body.type = 'triangle';
+        body.frequency.setValueAtTime(190 + Math.random() * 90, now);
+        body.frequency.exponentialRampToValueAtTime(48, now + 0.085);
+        bodyG.gain.setValueAtTime(0.55 * intensity, now);
+        bodyG.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        body.connect(bodyG);
+        bodyG.connect(panner);
+        body.start(now);
+        body.stop(now + 0.11);
+
+        const click = ctx.createBufferSource();
+        click.buffer = createNoiseBuffer(0.09, 'white');
+        const bp = ctx.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.value = 1350 + Math.random() * 700;
+        bp.Q.value = 3.5;
+        const cG = ctx.createGain();
+        cG.gain.setValueAtTime(0.42 * intensity, now);
+        cG.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        click.connect(bp);
+        bp.connect(cG);
+        cG.connect(panner);
+        click.start(now);
       }
     }
 
@@ -1924,7 +2362,7 @@
   })();
 
   /* ============================================================================
-     SECTION 3: TitleCanvas（警告文が黒い糸へ解け、神話生物の断片とタイトルへ収束）
+     SECTION 3: TitleCanvas（3.5秒の糸解け遷移 → 右タイトルロゴ＆左神話生物断片）
      ============================================================================ */
   const TitleCanvas = (() => {
     const canvas = document.getElementById('title-canvas');
@@ -1949,10 +2387,10 @@
       const w = canvas.clientWidth || window.innerWidth;
       const h = canvas.clientHeight || window.innerHeight;
       fibers = [];
-      for (let i = 0; i < 66; i++) {
-        const toMonster = i < 40;
+      for (let i = 0; i < 68; i++) {
+        const toMonster = i < 42;
         const sx = w * 0.5 + (Math.random() - 0.5) * Math.min(w * 0.45, 340);
-        const sy = h * 0.48 + (Math.random() - 0.5) * Math.min(h * 0.35, 130);
+        const sy = h * 0.48 + (Math.random() - 0.5) * Math.min(h * 0.34, 125);
         const tx = toMonster
           ? w * (0.1 + Math.random() * 0.24)
           : w * (0.56 + Math.random() * 0.3);
@@ -1964,7 +2402,7 @@
           toMonster,
           phase: Math.random() * Math.PI * 2,
           amp: 12 + Math.random() * 26,
-          width: 0.7 + Math.random() * 1.7
+          width: 0.7 + Math.random() * 1.8
         });
       }
 
@@ -2021,7 +2459,7 @@
       ctx.fillStyle = '#030305';
       ctx.fillRect(0, 0, w, h);
 
-      // 左側の闇の奥で脈動する神話生物の断片
+      // 左側：闇の奥で呼吸する神話生物の断片
       const monsterAlpha = Math.max(0, (p - 0.35) / 0.65);
       if (monsterAlpha > 0) {
         const mx = w * 0.22;
@@ -2029,23 +2467,23 @@
         const pulse = Math.sin(now * 0.0018) * 7;
         const baseR = Math.min(w, h) * 0.26 + pulse;
 
-        const grad = ctx.createRadialGradient(mx, my, 8, mx, my, baseR * 1.4);
-        grad.addColorStop(0, `rgba(42, 16, 18, ${0.74 * monsterAlpha})`);
-        grad.addColorStop(0.55, `rgba(18, 12, 14, ${0.52 * monsterAlpha})`);
+        const grad = ctx.createRadialGradient(mx, my, 8, mx, my, baseR * 1.42);
+        grad.addColorStop(0, `rgba(44, 14, 16, ${0.78 * monsterAlpha})`);
+        grad.addColorStop(0.55, `rgba(18, 12, 14, ${0.54 * monsterAlpha})`);
         grad.addColorStop(1, 'rgba(3, 3, 5, 0)');
         ctx.fillStyle = grad;
         ctx.beginPath();
-        ctx.arc(mx, my, baseR * 1.4, 0, Math.PI * 2);
+        ctx.arc(mx, my, baseR * 1.42, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.save();
         ctx.lineCap = 'round';
-        for (let t = 0; t < 14; t++) {
-          const baseAng = (t / 14) * Math.PI * 2;
+        for (let t = 0; t < 15; t++) {
+          const baseAng = (t / 15) * Math.PI * 2;
           const sway = Math.sin(now * 0.0014 + t * 1.3) * 0.26;
-          const len = baseR * (0.72 + (t % 3) * 0.3);
-          ctx.strokeStyle = `rgba(28, 14, 16, ${0.92 * monsterAlpha})`;
-          ctx.lineWidth = 2.4 + (t % 4) * 1.7;
+          const len = baseR * (0.74 + (t % 3) * 0.3);
+          ctx.strokeStyle = `rgba(28, 13, 15, ${0.94 * monsterAlpha})`;
+          ctx.lineWidth = 2.5 + (t % 4) * 1.7;
           ctx.beginPath();
           ctx.moveTo(mx, my);
           ctx.quadraticCurveTo(
@@ -2056,7 +2494,7 @@
           );
           ctx.stroke();
 
-          ctx.strokeStyle = `rgba(120, 82, 74, ${0.22 * monsterAlpha})`;
+          ctx.strokeStyle = `rgba(128, 82, 74, ${0.24 * monsterAlpha})`;
           ctx.lineWidth = 0.8;
           ctx.stroke();
         }
@@ -2068,7 +2506,7 @@
           ctx.save();
           ctx.translate(eye.x, eye.y);
           ctx.scale(1, open);
-          ctx.fillStyle = `rgba(188, 178, 158, ${0.64 * monsterAlpha})`;
+          ctx.fillStyle = `rgba(190, 180, 160, ${0.68 * monsterAlpha})`;
           ctx.beginPath();
           ctx.arc(0, 0, eye.r, 0, Math.PI * 2);
           ctx.fill();
@@ -2076,7 +2514,7 @@
           ctx.beginPath();
           ctx.arc(Math.sin(now * 0.0008 + eye.blinkOffset) * 1.1, 0, eye.r * 0.45, 0, Math.PI * 2);
           ctx.fill();
-          ctx.fillStyle = `rgba(255, 250, 240, ${0.72 * monsterAlpha})`;
+          ctx.fillStyle = `rgba(255, 250, 240, ${0.75 * monsterAlpha})`;
           ctx.beginPath();
           ctx.arc(-eye.r * 0.28, -eye.r * 0.25, eye.r * 0.18, 0, Math.PI * 2);
           ctx.fill();
@@ -2084,14 +2522,14 @@
         });
       }
 
-      // 解ける黒い糸・神経繊維
+      // 有機的な黒い糸
       fibers.forEach((f) => {
         const curX = f.sx + (f.tx - f.sx) * ease;
         const curY = f.sy + (f.ty - f.sy) * ease;
         const wave = Math.sin(now * 0.002 + f.phase) * f.amp * (1 - ease * 0.55);
-        const alpha = f.toMonster ? 0.58 : (0.55 - ease * 0.2);
+        const alpha = f.toMonster ? 0.6 : (0.55 - ease * 0.2);
 
-        ctx.strokeStyle = `rgba(15, 13, 15, ${alpha})`;
+        ctx.strokeStyle = `rgba(14, 12, 14, ${alpha})`;
         ctx.lineWidth = f.width;
         ctx.beginPath();
         ctx.moveTo(curX, curY);
@@ -2104,13 +2542,13 @@
         ctx.stroke();
 
         if (p < 0.92) {
-          ctx.strokeStyle = `rgba(150, 140, 130, ${(1 - p) * 0.36})`;
+          ctx.strokeStyle = `rgba(155, 145, 135, ${(1 - p) * 0.36})`;
           ctx.lineWidth = 0.7;
           ctx.stroke();
         }
       });
 
-      // 右側の歪んだ明朝体タイトルロゴ『深淵の胎動』
+      // 右側：歪んだ明朝体タイトルロゴ『深淵の胎動』
       const titleAlpha = Math.max(0, (p - 0.45) / 0.55);
       if (titleAlpha > 0) {
         ctx.save();
@@ -2124,7 +2562,7 @@
         const jitterX = (Math.random() - 0.5) * (p < 1 ? 3 : 0.4);
         const jitterY = (Math.random() - 0.5) * (p < 1 ? 2 : 0.3);
 
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.96)';
         ctx.shadowBlur = 18;
         ctx.fillStyle = `rgba(232, 226, 218, ${titleAlpha})`;
         ctx.fillText('深淵の胎動', lx + jitterX, ly + jitterY);
@@ -2135,8 +2573,7 @@
         ctx.restore();
       }
 
-      // 全体の暗闇ビネット
-      const vig = ctx.createRadialGradient(w * 0.5, h * 0.5, Math.min(w, h) * 0.22, w * 0.5, h * 0.5, Math.max(w, h) * 0.75);
+      const vig = ctx.createRadialGradient(w * 0.5, h * 0.5, Math.min(w, h) * 0.22, w * 0.5, h * 0.5, Math.max(w, h) * 0.76);
       vig.addColorStop(0, 'rgba(0,0,0,0)');
       vig.addColorStop(1, 'rgba(0,0,0,0.88)');
       ctx.fillStyle = vig;
@@ -2165,7 +2602,7 @@
   })();
 
   /* ============================================================================
-     SECTION 4: SceneRenderer（廃療養所背景 ＆ 段階3クレヨン画背景）
+     SECTION 4: SceneRenderer（廃療養所シーン ＆ 段階3クレヨン画）
      ============================================================================ */
   const SceneRenderer = (() => {
     const canvas = document.getElementById('scene-canvas');
@@ -2208,7 +2645,7 @@
 
       ctx.save();
       if (currentBg === 'entrance') {
-        ctx.strokeStyle = 'rgba(130, 138, 145, 0.15)';
+        ctx.strokeStyle = 'rgba(130, 138, 145, 0.16)';
         ctx.lineWidth = 2;
         ctx.strokeRect(w * 0.14, h * 0.16, w * 0.24, h * 0.36);
         ctx.beginPath();
@@ -2255,10 +2692,10 @@
         }
         ctx.fillStyle = 'rgba(30, 22, 22, 0.65)';
         ctx.fillRect(w * 0.48, h * 0.46, w * 0.36, h * 0.12);
-      } else if (currentBg === 'basement') {
+      } else {
         for (let s = 0; s < 8; s++) {
           const y = h * 0.2 + s * (h * 0.065);
-          ctx.fillStyle = `rgba(22, 18, 20, ${0.42 + s * 0.06})`;
+          ctx.fillStyle = `rgba(26, 16, 18, ${0.44 + s * 0.06})`;
           ctx.fillRect(w * 0.2 + s * 10, y, w * 0.6 - s * 20, h * 0.05);
         }
       }
@@ -2355,10 +2792,16 @@
   })();
 
   /* ============================================================================
-     SECTION 5: MadnessFX（狂気段階1〜3の視覚変質・文字化け・赤文字侵食）
+     SECTION 5: MadnessFX（本物のShift_JIS/UTF-8文字化け 約20%混入 ＆ 段階1〜3視覚変質）
      ============================================================================ */
   const MadnessFX = (() => {
-    const glitchChars = '▓▒░█■□◆◇※†‡§¶＠＃＆￥？≠≒∞∴∵';
+    const MOJIBAKE_POOL = [
+      '縺', '繝', '繧', '纉', '蜿', '螟', '蜈', '譌',
+      'ｻ', 'ｽ', 'ｧ', 'ｭ', '\uFFFD', '□', '◆', '※',
+      '励', '勸', '蟆', '蛻', 'ｮ', 'ｬ', 'ｱ', 'ｲ', 'ｳ', 'ｴ', 'ｵ'
+    ];
+    const SKIP_CHARS = new Set(['\n', '。', '、', '「', '」', '！', '？', '…', '―', '　', ' ']);
+
     const stainsEl = document.getElementById('madness-stains');
     const sanGroupEl = document.getElementById('san-bar-group');
     const novelTextWrap = document.getElementById('novel-text-wrap');
@@ -2374,19 +2817,55 @@
 
     function applyVisuals(madness, thresholds, bgType) {
       const stage = getStage(madness, thresholds);
-      stainsEl.style.opacity = stage >= 1 ? (stage >= 2 ? '0.92' : '0.58') : '0';
+      stainsEl.style.opacity = stage >= 1 ? (stage >= 2 ? '0.94' : '0.6') : '0';
       novelTextWrap.classList.toggle('text-jitter', stage >= 1 && stage < 3);
       sanGroupEl.classList.toggle('bar-glitch', stage >= 2);
       SceneRenderer.setScene(bgType, stage >= 3);
     }
 
-    function corruptText(text, stage) {
-      if (stage < 2) return text;
-      const ratio = stage === 2 ? 0.08 : 0.04;
-      return text.split('').map((ch) => {
-        if (ch === '\n' || ch === '。' || ch === '、' || ch === '「' || ch === '」') return ch;
-        return Math.random() < ratio ? glitchChars[Math.floor(Math.random() * glitchChars.length)] : ch;
-      }).join('');
+    /* 文章の約20%(18〜22%)だけをエンコード崩れ文字化けに変換し、トークン配列を返す */
+    function buildTokens(text, stage) {
+      const chars = Array.from(text);
+      if (stage < 2) {
+        return chars.map((ch) => ({ ch, corrupted: false }));
+      }
+
+      const eligibleIndices = [];
+      chars.forEach((ch, idx) => {
+        if (!SKIP_CHARS.has(ch)) eligibleIndices.push(idx);
+      });
+
+      const targetCount = Math.max(1, Math.round(eligibleIndices.length * (0.18 + Math.random() * 0.04)));
+      for (let i = eligibleIndices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [eligibleIndices[i], eligibleIndices[j]] = [eligibleIndices[j], eligibleIndices[i]];
+      }
+      const chosen = new Set(eligibleIndices.slice(0, targetCount));
+
+      return chars.map((ch, idx) => {
+        if (chosen.has(idx)) {
+          return {
+            ch: MOJIBAKE_POOL[Math.floor(Math.random() * MOJIBAKE_POOL.length)],
+            corrupted: true
+          };
+        }
+        return { ch, corrupted: false };
+      });
+    }
+
+    function tokensToHtml(tokens, limit) {
+      const count = limit === undefined ? tokens.length : Math.min(limit, tokens.length);
+      let html = '';
+      for (let i = 0; i < count; i++) {
+        const t = tokens[i];
+        const safe = t.ch === '<' ? '&lt;' : (t.ch === '>' ? '&gt;' : (t.ch === '&' ? '&amp;' : t.ch));
+        if (t.corrupted) {
+          html += `<span class="mojibake-char">${safe}</span>`;
+        } else {
+          html += safe;
+        }
+      }
+      return html;
     }
 
     function triggerRedFlash(message) {
@@ -2404,7 +2883,7 @@
       setTimeout(() => gameScreenEl.classList.remove('shake-heavy'), 500);
     }
 
-    return { getStage, applyVisuals, corruptText, triggerRedFlash, triggerHeavyShake };
+    return { getStage, applyVisuals, buildTokens, tokensToHtml, triggerRedFlash, triggerHeavyShake };
   })();
 
   /* ============================================================================
@@ -2441,16 +2920,16 @@
         const { x, y, w, h } = r.rect;
         if (!isVisited) {
           html += `
-            <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="#090808" stroke="#2c2620" stroke-width="1.5" />
+            <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="#080707" stroke="#2c2620" stroke-width="1.5" />
             <text x="${x + w / 2}" y="${y + h / 2 + 4}" fill="#3d362e" font-size="13" text-anchor="middle" font-family="serif">？？？</text>
           `;
         } else {
           html += `
-            <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="${isCurrent ? '#2f231e' : '#241f19'}" stroke="${isCurrent ? '#b53a3a' : '#85745d'}" stroke-width="${isCurrent ? 2.5 : 1.5}" />
-            <text x="${x + w / 2}" y="${y + h / 2 + 5}" fill="${isCurrent ? '#f0e6d8' : '#b8ab98'}" font-size="14" text-anchor="middle" font-family="serif">${r.name}</text>
+            <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="${isCurrent ? '#32221d' : '#241f19'}" stroke="${isCurrent ? '#be3434' : '#85745d'}" stroke-width="${isCurrent ? 2.5 : 1.5}" />
+            <text x="${x + w / 2}" y="${y + h / 2 + 5}" fill="${isCurrent ? '#f2e8da' : '#b8ab98'}" font-size="13" text-anchor="middle" font-family="serif">${r.name}</text>
           `;
           if (isCurrent) {
-            html += `<circle cx="${x + w - 16}" cy="${y + 16}" r="6" fill="#d43535" stroke="#1a0808" stroke-width="2" />`;
+            html += `<circle cx="${x + w - 14}" cy="${y + 14}" r="5.5" fill="#dc3232" stroke="#1a0808" stroke-width="2" />`;
           }
         }
       });
@@ -2464,44 +2943,301 @@
   })();
 
   /* ============================================================================
-     SECTION 7: DiceSystem（1d100危機脱出ダイス演出）
+     SECTION 7: DiceSystem（禍々しい2つの10面ダイスが物理的に転がり跳ねる1d100演出）
      ============================================================================ */
   const DiceSystem = (() => {
-    const modal = document.getElementById('modal-dice');
+    const overlay = document.getElementById('dice-overlay');
+    const canvas = document.getElementById('dice-canvas');
+    const ctx = canvas.getContext('2d');
     const skillLabel = document.getElementById('dice-skill-label');
-    const numEl = document.getElementById('dice-number-display');
-    const resEl = document.getElementById('dice-result-label');
+    const resultPanel = document.getElementById('dice-result-panel');
+    const resultLabel = document.getElementById('dice-result-label');
     const proceedBtn = document.getElementById('btn-dice-proceed');
+
+    let animId = null;
+    let smokeParticles = [];
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = canvas.clientWidth || window.innerWidth;
+      const h = canvas.clientHeight || window.innerHeight;
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    /* 禍々しいカイト型10面ダイス（黒曜石・骨の質感＋亀裂＋血のように光る数字）を描画 */
+    function drawSinisterD10(die, now) {
+      const { x, y, r, angle, displayText, settled } = die;
+      ctx.save();
+      ctx.translate(x, y);
+
+      ctx.save();
+      ctx.translate(4, r * 0.24 + 8);
+      ctx.scale(1.15, 0.42);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.95, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      const auraPulse = settled ? (0.42 + Math.sin(now * 0.005) * 0.14) : 0.28;
+      const aura = ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r * 1.55);
+      aura.addColorStop(0, `rgba(140, 12, 18, ${auraPulse})`);
+      aura.addColorStop(0.55, `rgba(42, 6, 10, ${auraPulse * 0.6})`);
+      aura.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = aura;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 1.55, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.rotate(angle);
+
+      const pts = [
+        [0, -r * 1.12],
+        [r * 0.92, -r * 0.22],
+        [r * 0.66, r * 0.76],
+        [0, r * 1.12],
+        [-r * 0.66, r * 0.76],
+        [-r * 0.92, -r * 0.22]
+      ];
+
+      ctx.beginPath();
+      pts.forEach(([px, py], i) => (i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)));
+      ctx.closePath();
+
+      const bodyGrad = ctx.createLinearGradient(-r, -r, r, r);
+      bodyGrad.addColorStop(0, '#2a2425');
+      bodyGrad.addColorStop(0.45, '#131012');
+      bodyGrad.addColorStop(1, '#070507');
+      ctx.fillStyle = bodyGrad;
+      ctx.fill();
+
+      ctx.lineWidth = 2.2;
+      ctx.strokeStyle = '#5a4442';
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(0, -r * 1.12);
+      ctx.lineTo(r * 0.56, r * 0.08);
+      ctx.lineTo(0, r * 0.72);
+      ctx.lineTo(-r * 0.56, r * 0.08);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(34, 24, 26, 0.75)';
+      ctx.fill();
+      ctx.lineWidth = 1.3;
+      ctx.strokeStyle = 'rgba(135, 92, 86, 0.55)';
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(r * 0.56, r * 0.08);
+      ctx.lineTo(r * 0.92, -r * 0.22);
+      ctx.moveTo(r * 0.56, r * 0.08);
+      ctx.lineTo(r * 0.66, r * 0.76);
+      ctx.moveTo(-r * 0.56, r * 0.08);
+      ctx.lineTo(-r * 0.92, -r * 0.22);
+      ctx.moveTo(-r * 0.56, r * 0.08);
+      ctx.lineTo(-r * 0.66, r * 0.76);
+      ctx.moveTo(0, r * 0.72);
+      ctx.lineTo(0, r * 1.12);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(170, 22, 22, 0.52)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.42, -r * 0.48);
+      ctx.lineTo(-r * 0.18, -r * 0.26);
+      ctx.lineTo(-r * 0.28, -r * 0.08);
+      ctx.moveTo(r * 0.44, r * 0.36);
+      ctx.lineTo(r * 0.22, r * 0.24);
+      ctx.lineTo(r * 0.3, r * 0.56);
+      ctx.stroke();
+
+      ctx.font = `700 ${Math.round(r * 0.64)}px 'Shippori Mincho', serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(235, 24, 24, 0.95)';
+      ctx.shadowBlur = settled ? 16 : 8;
+      ctx.fillStyle = settled ? '#ff3b3b' : '#d62a2a';
+      ctx.fillText(displayText, 0, -r * 0.02);
+
+      ctx.shadowBlur = 0;
+      ctx.font = `600 ${Math.max(9, Math.round(r * 0.2))}px 'Shippori Mincho', serif`;
+      ctx.fillStyle = 'rgba(190, 168, 158, 0.62)';
+      ctx.fillText(die.roleLabel, 0, r * 0.52);
+
+      ctx.restore();
+    }
 
     function roll(check, onComplete) {
       skillLabel.textContent = `危機脱出判定：${check.skill}（目標値 ${check.target} 以下）`;
-      resEl.textContent = '';
-      resEl.className = 'dice-result';
-      proceedBtn.style.display = 'none';
-      modal.classList.add('active');
-      AudioEngine.playSfx({ type: 'paper' });
+      resultPanel.classList.remove('show');
+      overlay.classList.add('active');
+      resize();
+
+      const w = canvas.clientWidth || window.innerWidth;
+      const h = canvas.clientHeight || window.innerHeight;
+      const dieRadius = Math.max(36, Math.min(w * 0.08, h * 0.16, 62));
 
       const finalRoll = Math.floor(Math.random() * 100) + 1;
-      let ticks = 0;
-      const timer = setInterval(() => {
-        ticks++;
-        numEl.textContent = String(Math.floor(Math.random() * 100) + 1).padStart(2, '0');
-        if (ticks >= 15) {
-          clearInterval(timer);
-          numEl.textContent = String(finalRoll).padStart(2, '0');
+      const tensVal = finalRoll === 100 ? 0 : Math.floor(finalRoll / 10) * 10;
+      const onesVal = finalRoll === 100 ? 0 : finalRoll % 10;
+      const tensStr = String(tensVal).padStart(2, '0');
+      const onesStr = String(onesVal);
+
+      const floorY = h * 0.56;
+      const targetX1 = w * 0.37;
+      const targetX2 = w * 0.63;
+
+      const dice = [
+        {
+          roleLabel: '十の位',
+          x: -dieRadius * 1.2,
+          y: h * 0.28,
+          vx: (targetX1 + dieRadius * 1.2) / 52,
+          vy: -3.2,
+          r: dieRadius,
+          angle: Math.random() * Math.PI * 2,
+          vAngle: 0.34,
+          displayText: '00',
+          finalText: tensStr,
+          settled: false,
+          bounces: 0,
+          pan: -0.38
+        },
+        {
+          roleLabel: '一の位',
+          x: w + dieRadius * 1.2,
+          y: h * 0.24,
+          vx: -(w + dieRadius * 1.2 - targetX2) / 56,
+          vy: -2.4,
+          r: dieRadius,
+          angle: Math.random() * Math.PI * 2,
+          vAngle: -0.38,
+          displayText: '0',
+          finalText: onesStr,
+          settled: false,
+          bounces: 0,
+          pan: 0.38
+        }
+      ];
+
+      smokeParticles = [];
+      let frame = 0;
+      let finished = false;
+      const gravity = 0.58;
+
+      AudioEngine.playSfx({ type: 'dice_clatter', pan: 0, intensity: 0.85 });
+
+      if (animId) cancelAnimationFrame(animId);
+
+      function step() {
+        const now = performance.now();
+        frame++;
+        ctx.clearRect(0, 0, w, h);
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        ctx.fillRect(0, floorY + dieRadius * 0.65, w, h - floorY);
+
+        let allSettled = true;
+
+        dice.forEach((d, idx) => {
+          if (!d.settled) {
+            allSettled = false;
+            d.x += d.vx;
+            d.vy += gravity;
+            d.y += d.vy;
+            d.angle += d.vAngle;
+
+            if (frame % 3 === 0) {
+              d.displayText = idx === 0
+                ? String(Math.floor(Math.random() * 10) * 10).padStart(2, '0')
+                : String(Math.floor(Math.random() * 10));
+            }
+
+            if (frame % 2 === 0) {
+              smokeParticles.push({
+                x: d.x + (Math.random() - 0.5) * 18,
+                y: d.y + (Math.random() - 0.5) * 18,
+                r: 8 + Math.random() * 14,
+                alpha: 0.35,
+                vy: -0.4 - Math.random() * 0.6
+              });
+            }
+
+            if (d.y >= floorY) {
+              d.y = floorY;
+              d.bounces++;
+              const intensity = Math.max(0.25, 0.95 - d.bounces * 0.2);
+              AudioEngine.playSfx({ type: 'dice_clatter', pan: d.pan, intensity });
+
+              for (let k = 0; k < 5; k++) {
+                smokeParticles.push({
+                  x: d.x + (Math.random() - 0.5) * 24,
+                  y: floorY + d.r * 0.5,
+                  r: 10 + Math.random() * 14,
+                  alpha: 0.45,
+                  vy: -0.7 - Math.random() * 1.1
+                });
+              }
+
+              d.vy = -Math.abs(d.vy) * 0.52;
+              d.vx *= 0.68;
+              d.vAngle *= 0.64;
+
+              if (d.bounces >= 4 || Math.abs(d.vy) < 1.6) {
+                d.settled = true;
+                d.y = floorY;
+                d.vx = 0;
+                d.vy = 0;
+                d.angle = (Math.random() - 0.5) * 0.12;
+                d.displayText = d.finalText;
+                AudioEngine.playSfx({ type: 'dice_clatter', pan: d.pan, intensity: 0.55 });
+              }
+            }
+          }
+        });
+
+        smokeParticles = smokeParticles.filter((p) => p.alpha > 0.01);
+        smokeParticles.forEach((p) => {
+          p.y += p.vy;
+          p.r += 0.35;
+          p.alpha *= 0.94;
+          ctx.fillStyle = `rgba(38, 12, 16, ${p.alpha})`;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        dice.forEach((d) => drawSinisterD10(d, now));
+
+        if (allSettled && !finished) {
+          finished = true;
           const isSuccess = finalRoll <= check.target;
-          resEl.textContent = isSuccess ? '成功 — 危機を脱した' : '失敗 — 逃れられない';
-          resEl.className = `dice-result ${isSuccess ? 'success' : 'fail'}`;
-          if (!isSuccess) AudioEngine.playSfx({ type: 'footstep_stop', pan: 0 });
-          proceedBtn.style.display = 'inline-block';
+          resultLabel.textContent = `出目：${finalRoll}（目標 ${check.target}） — ${isSuccess ? '成功：危機を脱した' : '失敗：逃れられない'}`;
+          resultLabel.className = `dice-total-line ${isSuccess ? 'success' : 'fail'}`;
+          if (!isSuccess) {
+            AudioEngine.playSfx({ type: 'footstep_stop', pan: 0 });
+          }
+          resultPanel.classList.add('show');
           proceedBtn.onclick = (e) => {
             e.stopPropagation();
-            modal.classList.remove('active');
+            if (animId) cancelAnimationFrame(animId);
+            animId = null;
+            overlay.classList.remove('active');
             onComplete(isSuccess ? check.success : check.fail);
           };
         }
-      }, 55);
+
+        animId = requestAnimationFrame(step);
+      }
+
+      animId = requestAnimationFrame(step);
     }
+
+    window.addEventListener('resize', () => {
+      if (overlay.classList.contains('active')) resize();
+    });
 
     return { roll };
   })();
@@ -2510,15 +3246,23 @@
      SECTION 8: SaveSystem（localStorage連動：オート1枠＋手動3枠＋設定）
      ============================================================================ */
   const SaveSystem = (() => {
-    const KEY_PREFIX = 'cthulhu_novel_save_v2_';
-    const SETTINGS_KEY = 'cthulhu_novel_settings_v2';
+    const KEY_PREFIX = 'cthulhu_novel_save_v3_';
+    const SETTINGS_KEY = 'cthulhu_novel_settings_v3';
+    const LEGACY_KEY_PREFIX = 'cthulhu_novel_save_v2_';
+    const LEGACY_SETTINGS_KEY = 'cthulhu_novel_settings_v2';
+
+    function readStoredObject(key) {
+      try {
+        const value = JSON.parse(localStorage.getItem(key));
+        return value && typeof value === 'object' && !Array.isArray(value) ? value : null;
+      } catch (_) {
+        return null;
+      }
+    }
 
     function loadSettings() {
-      try {
-        const raw = localStorage.getItem(SETTINGS_KEY);
-        if (raw) return JSON.parse(raw);
-      } catch (_) {}
-      return { volMaster: 80, volBgm: 75, volSe: 90, textSpeed: 30, apiKey: '' };
+      return readStoredObject(SETTINGS_KEY) ?? readStoredObject(LEGACY_SETTINGS_KEY) ??
+        { volMaster: 80, volBgm: 75, volSe: 90, textSpeed: 30, apiKey: '' };
     }
 
     function saveSettings(s) {
@@ -2536,10 +3280,7 @@
     }
 
     function getSlot(slotId) {
-      try {
-        const raw = localStorage.getItem(KEY_PREFIX + slotId);
-        return raw ? JSON.parse(raw) : null;
-      } catch (_) { return null; }
+      return readStoredObject(KEY_PREFIX + slotId) ?? readStoredObject(LEGACY_KEY_PREFIX + slotId);
     }
 
     function hasAnySave() {
@@ -2550,14 +3291,14 @@
   })();
 
   /* ============================================================================
-     SECTION 9: GameCore（フルスクリーン・縦向き監視・進行・【銀の鍵】・UI結合）
+     SECTION 9: GameCore（バージョン情報モーダル・フルスクリーン・縦向きガード・進行・UI結合）
      ============================================================================ */
   const GameCore = (() => {
     let settings = SaveSystem.loadSettings();
     let state = null;
     let typingTimer = null;
     let isTyping = false;
-    let fullCurrentText = '';
+    let currentTokens = [];
     let isWaitingSilence = false;
     let activeSilverKeyContext = null;
 
@@ -2567,6 +3308,7 @@
       game: document.getElementById('screen-game'),
       ending: document.getElementById('screen-ending')
     };
+    const changelogModal = document.getElementById('version-changelog-modal');
     const portraitGuard = document.getElementById('portrait-guard');
     const fadeCurtain = document.getElementById('fade-curtain');
     const toastEl = document.getElementById('toast-msg');
@@ -2586,22 +3328,42 @@
       toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2300);
     }
 
-    /* --- 縦向き（ポートレート）二重監視ガード --- */
+    /* 起動時バージョン情報・変更点オーバーレイの初期化 */
+    function initVersionChangelog() {
+      document.getElementById('changelog-version-badge').textContent = APP_VERSION;
+      document.getElementById('title-version-corner').textContent = APP_VERSION;
+
+      const listEl = document.getElementById('changelog-list');
+      listEl.innerHTML = '';
+      CHANGELOG.forEach((item) => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        listEl.appendChild(li);
+      });
+
+      // 背景やパネルを押しても閉じないよう伝播のみ遮断
+      changelogModal.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+
+      // ×ボタンが押されたときだけ完全に display: none で閉じる
+      document.getElementById('btn-close-changelog').addEventListener('click', (e) => {
+        e.stopPropagation();
+        changelogModal.classList.add('dismissed');
+      });
+    }
+
     function checkOrientationGuard() {
       const isPortrait = window.innerHeight > window.innerWidth;
       portraitGuard.classList.toggle('force-portrait', isPortrait);
     }
 
-    /* --- フルスクリーン & 横向きロック制御 --- */
     async function requestLandscapeFullscreen() {
       const el = document.documentElement;
       try {
         if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-          if (el.requestFullscreen) {
-            await el.requestFullscreen();
-          } else if (el.webkitRequestFullscreen) {
-            el.webkitRequestFullscreen();
-          }
+          if (el.requestFullscreen) await el.requestFullscreen();
+          else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
         }
       } catch (_) {}
 
@@ -2659,9 +3421,10 @@
       document.getElementById('btn-continue').disabled = !SaveSystem.hasAnySave();
     }
 
-    /* --- 起動警告タップ：音響有効化＋フルスクリーン＋横向きロック＋遷移アニメ --- */
     function handleWarningTap(e) {
       if (e) e.stopPropagation();
+      // バージョン情報オーバーレイ表示中は反応させない
+      if (!changelogModal.classList.contains('dismissed')) return;
       if (!screens.warning.classList.contains('active')) return;
 
       AudioEngine.init();
@@ -2669,7 +3432,6 @@
       requestLandscapeFullscreen();
       AudioEngine.playIntroHorror();
 
-      // 警告画面を確実に非表示(display:none)にし、タイトル画面へ即切替して糸解け演出を開始
       screens.warning.classList.remove('active');
       screens.title.classList.add('active');
       document.getElementById('title-ui-overlay').classList.remove('visible');
@@ -2704,12 +3466,23 @@
 
     function loadFromSnapshot(snap) {
       if (!snap || !SCENARIO_DATA[snap.scenarioId]) return;
+      let eventId = snap.eventId;
+      let stepIndex = snap.stepIndex || 0;
+      if (snap.scenarioId === 'ep01_sanatorium' && eventId === 'evt_basement_01') {
+        // v0.3.0 splits the old basement scene into the stairs and the abyss.
+        eventId = stepIndex < 3 ? 'evt_stairs_01' : 'evt_abyss_01';
+        if (eventId === 'evt_abyss_01') stepIndex -= 2;
+      }
+      const event = SCENARIO_DATA[snap.scenarioId].events[eventId];
+      if (!event) return;
+
       state = {
         scenarioId: snap.scenarioId,
-        eventId: snap.eventId,
-        stepIndex: snap.stepIndex || 0,
-        roomId: snap.roomId,
-        visitedRooms: snap.visitedRooms || [snap.roomId],
+        eventId,
+        stepIndex,
+        roomId: event.room,
+        visitedRooms: [...new Set((snap.visitedRooms || [snap.roomId])
+          .map((roomId) => roomId === 'room_basement' ? 'room_stairs' : roomId))],
         hp: snap.hp ?? 100,
         madness: snap.madness ?? 0,
         items: snap.items || [],
@@ -2790,11 +3563,11 @@
 
       const stage = MadnessFX.getStage(state.madness, scenario.madnessThresholds);
       speakerNameEl.textContent = step.speaker || '';
-      fullCurrentText = MadnessFX.corruptText(step.text, stage);
+      currentTokens = MadnessFX.buildTokens(step.text, stage);
 
       if (step.silenceWait) {
         isWaitingSilence = true;
-        novelTextBody.textContent = fullCurrentText;
+        novelTextBody.innerHTML = MadnessFX.tokensToHtml(currentTokens);
         nextIndicator.classList.remove('show');
         setTimeout(() => {
           isWaitingSilence = false;
@@ -2804,28 +3577,28 @@
         return;
       }
 
-      startTypewriter(fullCurrentText);
+      startTypewriter(currentTokens);
     }
 
-    function startTypewriter(text) {
+    function startTypewriter(tokens) {
       if (typingTimer) clearInterval(typingTimer);
       nextIndicator.classList.remove('show');
       const speed = Number(settings.textSpeed);
 
       if (speed <= 0) {
-        novelTextBody.textContent = text;
+        novelTextBody.innerHTML = MadnessFX.tokensToHtml(tokens);
         isTyping = false;
         nextIndicator.classList.add('show');
         return;
       }
 
       isTyping = true;
-      novelTextBody.textContent = '';
+      novelTextBody.innerHTML = '';
       let i = 0;
       typingTimer = setInterval(() => {
         i++;
-        novelTextBody.textContent = text.slice(0, i);
-        if (i >= text.length) {
+        novelTextBody.innerHTML = MadnessFX.tokensToHtml(tokens, i);
+        if (i >= tokens.length) {
           clearInterval(typingTimer);
           isTyping = false;
           nextIndicator.classList.add('show');
@@ -2837,7 +3610,7 @@
       if (!state || isWaitingSilence || choicesContainer.classList.contains('active')) return;
       if (isTyping) {
         clearInterval(typingTimer);
-        novelTextBody.textContent = fullCurrentText;
+        novelTextBody.innerHTML = MadnessFX.tokensToHtml(currentTokens);
         isTyping = false;
         nextIndicator.classList.add('show');
         return;
@@ -2855,11 +3628,13 @@
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'choice-btn' + (ch.useSilverKey ? ' silver-key' : '');
-        const labelText = ch.useSilverKey ? ch.label : MadnessFX.corruptText(ch.label, stage);
+        const labelHtml = ch.useSilverKey
+          ? ch.label
+          : MadnessFX.tokensToHtml(MadnessFX.buildTokens(ch.label, stage));
         const tagHtml = ch.useSilverKey
           ? `<span class="choice-tag">残 ${state.silverKeysLeft} 回</span>`
           : (ch.tag ? `<span class="choice-tag">${ch.tag}</span>` : '');
-        btn.innerHTML = `<span>${labelText}</span>${tagHtml}`;
+        btn.innerHTML = `<span>${labelHtml}</span>${tagHtml}`;
 
         if (ch.useSilverKey && state.silverKeysLeft <= 0) {
           btn.disabled = true;
@@ -2885,7 +3660,6 @@
       choicesContainer.classList.add('active');
     }
 
-    /* --- 【銀の鍵】自由入力（APIキー設定時はGemini API送信構造あり／未設定時はオフライン判定） --- */
     function openSilverKeyModal(context) {
       activeSilverKeyContext = context;
       document.getElementById('silver-key-remain').textContent = state.silverKeysLeft;
@@ -2901,12 +3675,12 @@
       const scenario = SCENARIO_DATA[state.scenarioId];
       const ownedItems = state.items.map((id) => scenario.itemsCatalog[id]?.name || id).join('、') || 'なし';
       const prompt = [
-        `あなたはクトゥルフ神話ホラーノベルのGMです。`,
+        'あなたはクトゥルフ神話ホラーノベルのGMです。',
         `裏設定：${scenario.meta.aiWorldTruth}`,
         `現在地：${scenario.rooms[state.roomId]?.name || ''}`,
         `所持品：${ownedItems} / 内部狂気度：${state.madness}`,
         `プレイヤーの自由行動：「${userAction}」`,
-        `結果をJSONのみ（{"outcome":"burn|escape|madness","narration":"2文以内の日本語ホラー描写"}）で返してください。`
+        '結果をJSONのみ（{"outcome":"burn|escape|madness","narration":"2文以内の日本語ホラー描写"}）で返してください。'
       ].join('\n');
 
       try {
@@ -2956,13 +3730,12 @@
         return;
       }
 
-      // オフライン専用分岐
       const hasOil = state.items.includes('oil_can');
       const hasKey = state.items.includes('rusty_key');
       const mentionsFire = /火|燃|油|焼|炎|ライター/.test(input);
       const mentionsLock = /鍵|施錠|閉|封/.test(input);
 
-      if (activeSilverKeyContext === 'basement' && ((hasOil && mentionsFire) || (hasKey && mentionsLock))) {
+      if (activeSilverKeyContext === 'abyss' && ((hasOil && mentionsFire) || (hasKey && mentionsLock))) {
         showToast('【銀の鍵】が運命を書き換えた……');
         enterEvent('evt_end_burn', 0);
       } else if (activeSilverKeyContext === 'corridor') {
@@ -3071,8 +3844,34 @@
       document.getElementById('val-vol-se').textContent = `${settings.volSe}%`;
       document.getElementById('opt-text-speed').value = String(settings.textSpeed);
       document.getElementById('opt-api-key').value = settings.apiKey || '';
+      document.getElementById('api-status-label').textContent = settings.apiKey ? '設定済（BYOK有効）' : '未設定（オフライン完結可）';
       document.getElementById('btn-back-title-from-game').style.display = inGame ? 'inline-flex' : 'none';
       document.getElementById('modal-settings').classList.add('active');
+    }
+
+    async function testApiKeyConnection(e) {
+      if (e) e.stopPropagation();
+      const key = document.getElementById('opt-api-key').value.trim();
+      const label = document.getElementById('api-status-label');
+      if (!key) {
+        label.textContent = '未設定（オフライン完結可）';
+        showToast('APIキーが空です（オフライン動作）');
+        return;
+      }
+      label.textContent = '接続確認中…';
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`);
+        if (res.ok) {
+          label.textContent = '接続成功（BYOK有効）';
+          showToast('APIキーの接続を確認しました');
+        } else {
+          label.textContent = '接続失敗（キーを確認）';
+          showToast('APIキーが無効か制限されています');
+        }
+      } catch (_) {
+        label.textContent = '通信エラー';
+        showToast('ネットワーク接続を確認してください');
+      }
     }
 
     function openMapModal() {
@@ -3113,24 +3912,22 @@
     }
 
     function init() {
+      initVersionChangelog();
       checkOrientationGuard();
       window.addEventListener('resize', checkOrientationGuard);
       window.addEventListener('orientationchange', () => setTimeout(checkOrientationGuard, 80));
       document.addEventListener('fullscreenchange', updateFullscreenLabels);
       document.addEventListener('webkitfullscreenchange', updateFullscreenLabels);
 
-      // 警告画面タップ（全体＆ボタン）
       screens.warning.addEventListener('click', handleWarningTap);
       document.getElementById('btn-warning-start').addEventListener('click', handleWarningTap);
       screens.warning.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') handleWarningTap(e);
       });
 
-      // 全画面トグル
       document.getElementById('btn-title-fullscreen').addEventListener('click', toggleFullscreen);
       document.getElementById('btn-game-fullscreen').addEventListener('click', toggleFullscreen);
 
-      // タイトルメニュー
       document.getElementById('btn-new-game').addEventListener('click', (e) => {
         e.stopPropagation();
         AudioEngine.playSfx({ type: 'paper' });
@@ -3147,7 +3944,6 @@
         openSettingsModal(false);
       });
 
-      // 本編HUDボタン（すべて stopPropagation でテキスト送り誤発火を完全防止）
       document.getElementById('btn-open-map').addEventListener('click', (e) => {
         e.stopPropagation();
         openMapModal();
@@ -3168,10 +3964,8 @@
         openSettingsModal(true);
       });
 
-      // 下部テキスト送りタップ領域
       document.getElementById('novel-tap-area').addEventListener('click', handleNovelTap);
 
-      // 設定スライダー
       ['master', 'bgm', 'se'].forEach((k) => {
         const input = document.getElementById(`opt-vol-${k}`);
         const val = document.getElementById(`val-vol-${k}`);
@@ -3187,9 +3981,11 @@
 
       document.getElementById('btn-audio-test').addEventListener('click', (e) => {
         e.stopPropagation();
-        AudioEngine.playSfx({ type: 'paper', pan: 0 });
-        showToast('テスト音を再生しました');
+        AudioEngine.playSfx({ type: 'footstep_drag', pan: 0.4, distance: 'near' });
+        showToast('テスト音（重低音足音）を再生しました');
       });
+
+      document.getElementById('btn-api-test').addEventListener('click', testApiKeyConnection);
 
       document.getElementById('btn-save-settings').addEventListener('click', (e) => {
         e.stopPropagation();
