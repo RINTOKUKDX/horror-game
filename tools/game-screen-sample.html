@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ゲーム画面 見本 v1.2</title>
+<title>ゲーム画面 見本 v1.3</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* ゲーム画面の動く見本。ゲーム本体（index.html）には影響しない */
@@ -163,6 +163,37 @@
   .tune span{width:5em;text-align:right;font-variant-numeric:tabular-nums}
   .small{font-size:clamp(11px,3dvh,14px);color:var(--dim);margin-top:1dvh}
 
+
+  /* ---- 古いフィルム演出 ---- */
+  #film{position:absolute;inset:0;pointer-events:none;z-index:25;display:none;overflow:hidden}
+  body.film #film{display:block}
+  body.film #bg{filter:sepia(.95) contrast(1.2) brightness(.8) !important}
+  body.film #text{color:#e9dcc0}
+  #film .grain{position:absolute;inset:-50%;opacity:.1;animation:grain .5s steps(5) infinite;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  @keyframes grain{0%{transform:translate(0,0)}20%{transform:translate(-7%,4%)}40%{transform:translate(5%,-6%)}60%{transform:translate(-3%,8%)}80%{transform:translate(8%,2%)}}
+  #film .flick{position:absolute;inset:0;background:#000;animation:fflick .18s steps(2) infinite}
+  @keyframes fflick{0%{opacity:.04}50%{opacity:.13}}
+  #film .fvig{position:absolute;inset:0;background:radial-gradient(ellipse 70% 65% at 50% 50%,transparent 50%,rgba(20,10,0,.75) 100%)}
+  #film .scr{position:absolute;top:0;bottom:0;width:1px;background:rgba(240,230,210,.55);opacity:0}
+  #film .dust{position:absolute;border-radius:50%;background:rgba(15,10,5,.8)}
+  #film .hair{position:absolute;width:6vw;height:3dvh;border:1px solid rgba(20,12,5,.7);border-color:rgba(20,12,5,.7) transparent transparent transparent;border-radius:50%}
+  body.film #stage{animation:weave .25s steps(3) infinite}
+  @keyframes weave{0%{transform:translateY(0)}33%{transform:translateY(.25dvh)}66%{transform:translateY(-.15dvh)}}
+  #burn{position:absolute;inset:0;pointer-events:none;z-index:26;opacity:0;
+    background:radial-gradient(circle at 60% 40%,#fff6d0 0%,#ffb040 25%,#7a2a00 55%,#000 80%)}
+  #burn.on{animation:burn .7s ease-out}
+  @keyframes burn{0%{opacity:0}15%{opacity:1}30%{opacity:.2}40%{opacity:.9}100%{opacity:0}}
+
+  /* ---- 軽いムービーシーン ---- */
+  .lb{position:absolute;left:0;right:0;height:0;background:#000;z-index:24;transition:height .9s ease}
+  #lbT{top:0} #lbB{bottom:0}
+  body.movie .lb{height:13dvh}
+  body.movie #text{top:auto;bottom:15dvh;text-align:center;left:12vw;right:12vw}
+  body.movie #shade{background:rgba(0,0,0,.25)}
+  body.movie #menuBtn,body.movie #floatResist,body.movie #next{opacity:0 !important;pointer-events:none !important}
+  #skipHint{position:absolute;right:calc(3vw + env(safe-area-inset-right,0px));bottom:4dvh;z-index:27;font-size:2.8dvh;color:rgba(232,226,218,.45);display:none}
+  body.movie #skipHint{display:block}
   #start{position:fixed;inset:0;z-index:90;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2dvh;text-align:center}
   #start b{font-size:6dvh;font-weight:600}
   #start span{font-size:3.4dvh;color:var(--dim)}
@@ -183,7 +214,11 @@
   <button type="button" id="menuBtn" aria-label="メニュー">≡</button>
   <svg id="circle" viewBox="0 0 100 100" aria-hidden="true"></svg>
   <div id="flash"></div>
+  <div class="lb" id="lbT"></div><div class="lb" id="lbB"></div>
+  <div id="skipHint">長押しでスキップ</div>
 </div>
+<div id="film"><div class="grain"></div><div class="flick"></div><div class="fvig"></div></div>
+<div id="burn"></div>
 <div id="vig"></div>
 <svg id="eat" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
 
@@ -201,7 +236,7 @@
     <button type="button" class="item" data-open="pTune">見本の調整</button>
     <button type="button" class="item" data-open="pAssets">素材を見る</button>
   </div>
-  <p class="small">ゲーム画面 見本 v1.2</p>
+  <p class="small">ゲーム画面 見本 v1.3</p>
 </div>
 <div class="panel" id="pStatus"><button type="button" class="close" data-back>戻る</button><h2>ステータス</h2><div class="sub" id="statusBody"></div></div>
 <div class="panel" id="pSheet"><button type="button" class="close" data-back>戻る</button><h2>探索者シート</h2>
@@ -227,7 +262,7 @@
   <div class="row"><input type="text" id="free" placeholder="技能名や行動を入力（例：目星）" autocomplete="off"><button type="button" class="item" id="freeGo">決定</button></div>
 </div>
 
-<div id="start" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプでログ／長押しで絵だけ</span><span class="ver">ゲーム画面 見本 v1.2</span></div>
+<div id="start" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプでログ／長押しで絵だけ</span><span class="ver">ゲーム画面 見本 v1.3</span></div>
 <div id="portrait">スマホを横向きにしてください</div>
 
 <script src="../assets/manifest.js"></script>
@@ -255,11 +290,19 @@
     old:{ bg:'corridor', cam:'pan', amb:'雨が降る1', pages:[[{who:'老人',t:'「賢明なご判断です」'},'老人は満足そうに微笑んだ。その笑みは、どこか作り物めいていた。']], choice:'c2' },
     back:{ bg:'door', cam:'still', se:'開かないドア1', pages:[['玄関の扉は、外から押さえつけられているかのように動かない。','背後で、老人がくすりと笑った気がした。']], choice:'c1' },
     alley:{ bg:'dark_street32', cam:'pullback', amb:'雨で濡れた道路を歩く', pages:[['気がつくと、貴方は見知らぬ裏路地に立っていた。','洋館は、どこにも見当たらない。']], choice:'c2' },
+    memory:{ bg:'house2', cam:'pullback', film:true, se:'テープ巻き戻し', pages:[
+      ['——あれは、まだ貴方が幼かった頃の記憶だ。','祖父の家。軋む床。閉ざされたままの、奥の部屋。'],
+      {cam:'zoomin', paras:[{who:'祖父',t:'「あの部屋には、決して入ってはいけないよ」'},'祖父はそう言って、少しだけ笑った。その笑い方を、貴方はどこかで見た気がする。']}
+    ], choice:'c2' },
+    movie:{ bg:'dark_street5', cam:'pan', movie:true, amb:'雨で濡れた道路を歩く', pages:[
+      ['雨の夜。','誰かが、路地の奥へ走っていく。','その手には、血に濡れた古い本が握られていた。'],
+      {bg:'mansion6', cam:'zoomin', film:true, paras:['——同じ夜。丘の上の洋館に、灯りがともった。']}
+    ], choice:'c2' },
     school:{ bg:'empty_school33', cam:'zoomin', se:'時計の針1', pages:[['誰もいない教室。時計の針だけが、やけに大きく響いている。']], choice:'c2' }
   };
   var CHOICES = {
     c1:[['音のした部屋へ向かう','room'],['老人について行く','old'],['玄関へ引き返す','back']],
-    c2:[['最初に戻る','start'],['もう一度、部屋を見る','room'],['裏路地（背景テスト）','alley'],['教室（背景テスト）','school']]
+    c2:[['最初に戻る','start'],['もう一度、部屋を見る','room'],['裏路地（背景テスト）','alley'],['教室（背景テスト）','school'],['回想（フィルム演出）','memory'],['ムービーシーン','movie']]
   };
   var RESULTS = {
     '目星':['床に、乾いた血の跡が点々と続いている。廊下の奥へ。','特に変わったものは見つからない。'],
@@ -331,6 +374,30 @@
   $('tabSfx').addEventListener('click',function(){ $('bgGrid').style.display='none'; $('sfxList').style.display=''; });
   $('assetQ').addEventListener('input',filterAssets);
 
+  // ---- フィルム・ムービー ----
+  var dustT=null;
+  function setFx(film,movie){
+    var b=document.body, wasFilm=b.classList.contains('film');
+    if(film!==wasFilm){ var bu=$('burn'); bu.classList.remove('on'); void bu.offsetWidth; bu.classList.add('on'); }
+    b.classList.toggle('film',!!film); b.classList.toggle('movie',!!movie);
+    clearInterval(dustT);
+    if(film) dustT=setInterval(filmSpecks,160);
+  }
+  function filmSpecks(){
+    var f=$('film');
+    if(Math.random()<.35){ var d=document.createElement('div'); d.className=Math.random()<.15?'hair':'dust';
+      if(d.className==='dust'){ var z=2+Math.random()*5; d.style.width=z+'px'; d.style.height=(z*(0.6+Math.random()))+'px'; }
+      else d.style.transform='rotate('+(Math.random()*360)+'deg)';
+      d.style.left=Math.random()*100+'%'; d.style.top=Math.random()*100+'%'; f.appendChild(d); setTimeout(function(){ d.remove(); },120+Math.random()*120); }
+    if(Math.random()<.3){ var sc=document.createElement('div'); sc.className='scr'; sc.style.left=Math.random()*100+'%'; sc.style.opacity=.3+Math.random()*.5;
+      f.appendChild(sc); setTimeout(function(){ sc.remove(); },200+Math.random()*500); }
+  }
+  function pageFx(pg){ setFx(pg.film!=null?pg.film:!!cur.film, pg.movie!=null?pg.movie:!!cur.movie); }
+  var autoT=null;
+  function movieAuto(){ clearTimeout(autoT); if(!document.body.classList.contains('movie')) return;
+    var p=para(); var t=typeof p==='string'?p:p.t; autoT=setTimeout(function(){ if(mode==='text' && !typing) advance(); },1600+t.length*45); }
+  function skipMovie(){ clearTimeout(autoT); if(typing){ clearInterval(typing.timer); typing=null; } textEl.innerHTML=''; showChoices(cur.choice); }
+
   // ---- 進行 ----
   function go(key){
     cur=SCRIPT[key]; pageI=0; paraI=0;
@@ -338,6 +405,7 @@
     setBg(cur.pages[0].bg||cur.bg, cur.pages[0].cam||cur.cam);
     if(cur.amb) amb(cur.amb); if(cur.se) se(cur.se); if(cur.pages[0].se) se(cur.pages[0].se);
     hideChoices(); textEl.innerHTML=''; shade.classList.remove('on'); nextEl.classList.remove('on');
+    clearTimeout(autoT); pageFx(cur.pages[0]);
     newHide(); refreshEat();
     mode='wait';
     // 先に絵を見せて、それから文章
@@ -347,6 +415,7 @@
   function showPara(){
     var p=para(); if(typeof p==='string') p={t:p};
     if(p.mark){ $('floatResist').classList.add('on'); resistLabel($('floatResist')); }
+    if(document.body.classList.contains('movie')) textEl.innerHTML='';
     var el=document.createElement('p');
     if(p.who){ var w=document.createElement('span'); w.className='who'+(p.who==='貴方'?' me':''); w.textContent=p.who; el.appendChild(w); }
     var body=document.createElement('span'); el.appendChild(body); textEl.appendChild(el);
@@ -366,7 +435,7 @@
     var p=typing.p; typing.el.textContent=typing.t; typing=null;
     if(p.cut){ interrupt(); return; }
     if(p.san){ loseSan(p.san); }
-    nextEl.classList.add('on');
+    nextEl.classList.add('on'); movieAuto();
   }
   function interrupt(){
     mode='wait';
@@ -387,7 +456,7 @@
       pageI++; paraI=0; textEl.innerHTML='';
       $('floatResist').classList.remove('on');
       if(pageI>=cur.pages.length){ showChoices(cur.choice); return; }
-      var pg=cur.pages[pageI];
+      var pg=cur.pages[pageI]; pageFx(pg);
       if(pg.bg||pg.cam){ setBg(pg.bg||curBg, pg.cam||'still'); if(pg.bg && pg.bg!==curBg){ /* 絵が変わったら、少し見せてから文章 */ } }
       if(pg.se) se(pg.se);
       newHide(); refreshEat();
@@ -395,6 +464,7 @@
     showPara();
   }
   function showChoices(key){
+    clearTimeout(autoT); setFx(false,false);
     mode='choice'; newHide(); refreshEat();
     textEl.style.opacity=0; nextEl.classList.remove('on');
     var box=$('choices'); box.innerHTML='';
@@ -577,7 +647,7 @@
   function setPicture(on){ pictureOnly=on; shade.style.opacity=on?'0':''; textEl.style.visibility=on?'hidden':'';
     $('choices').style.visibility=on?'hidden':''; nextEl.style.visibility=on?'hidden':''; }
   $('stage').addEventListener('pointerdown',function(e){ sy=e.clientY; sx=e.clientX;
-    clearTimeout(lp); lp=setTimeout(function(){ if(sy!==null) setPicture(true); },450); });
+    clearTimeout(lp); lp=setTimeout(function(){ if(sy===null) return; if(document.body.classList.contains('movie')){ sy=null; skipMovie(); return; } setPicture(true); },450); });
   $('stage').addEventListener('pointermove',function(e){ if(sy!==null && Math.hypot(e.clientY-sy,e.clientX-sx)>15) clearTimeout(lp); });
   $('stage').addEventListener('pointercancel',function(){ clearTimeout(lp); sy=null; if(pictureOnly) setPicture(false); });
   $('stage').addEventListener('pointerup',function(e){
