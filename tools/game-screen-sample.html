@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ゲーム画面 見本 v1.0</title>
+<title>ゲーム画面 見本 v1.1</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* ゲーム画面の動く見本。ゲーム本体（index.html）には影響しない */
@@ -87,14 +87,27 @@
 
   /* 右上の血の魔法陣 */
   #circle{position:absolute;right:calc(3vw + env(safe-area-inset-right,0px));top:calc(3dvh + env(safe-area-inset-top,0px));
-    width:24dvh;height:24dvh;opacity:0;transition:opacity 1s;pointer-events:none;z-index:15;filter:drop-shadow(0 0 4px #300)}
+    width:28dvh;height:28dvh;opacity:0;transition:opacity 1s;pointer-events:none;z-index:15;overflow:visible}
   #circle.on{opacity:1}
-  #circle path,#circle circle{fill:none;stroke:#7a0c0c;stroke-width:2.4;stroke-linecap:round;opacity:0}
-  #circle .done{opacity:1}
-  #circle .drawing{opacity:1;animation:draw 1.6s ease-out forwards}
-  @keyframes draw{from{stroke-dashoffset:var(--len)}to{stroke-dashoffset:0}}
-  #circle.glow path.done,#circle.glow circle.done{stroke:#b01818;animation:glow 1.8s ease-in-out infinite}
-  @keyframes glow{50%{stroke:#ff3b3b;filter:drop-shadow(0 0 3px #f00)}}
+  #circle path{fill:none;stroke-linecap:round;stroke-linejoin:round}
+  #circle .st{display:none}
+  #circle .st.done{display:inline}
+  #circle .st.done path{stroke:#3d0507}
+  #circle .st.done .drip{stroke:#3d0507;fill:none}
+  #circle .st.done .drop{fill:#3d0507}
+  #circle .st.fresh path{stroke:#9a0d15}
+  #circle .st.fresh .drop{fill:#9a0d15}
+  #circle .st.fresh{filter:drop-shadow(0 0 1.2px rgba(255,60,60,.55))}
+  #circle .st.drawing .seg{opacity:0;animation:seg .14s forwards;animation-delay:calc(var(--i) * .11s)}
+  @keyframes seg{to{opacity:var(--o)}}
+  #circle .seg{opacity:var(--o)}
+  #circle .drip{stroke-dasharray:var(--len);stroke-dashoffset:0}
+  #circle .st.drawing .drip{stroke-dashoffset:var(--len);animation:drip 2.4s ease-in forwards;animation-delay:1.3s}
+  #circle .st.drawing .drop{opacity:0;animation:drop .3s forwards;animation-delay:3.5s}
+  @keyframes drip{to{stroke-dashoffset:0}}
+  @keyframes drop{to{opacity:1}}
+  #circle.glow .st.done path{animation:glow 1.8s ease-in-out infinite}
+  @keyframes glow{50%{stroke:#c0141c}}
 
   /* 正気度：ビネット */
   #vig{position:absolute;inset:0;pointer-events:none;z-index:30;
@@ -176,7 +189,7 @@
     <button type="button" class="item" data-open="pSave">セーブ・ロード</button>
     <button type="button" class="item" data-open="pTune">見本の調整</button>
   </div>
-  <p class="small">ゲーム画面 見本 v1.0</p>
+  <p class="small">ゲーム画面 見本 v1.1</p>
 </div>
 <div class="panel" id="pStatus"><button type="button" class="close" data-back>戻る</button><h2>ステータス</h2><div class="sub" id="statusBody"></div></div>
 <div class="panel" id="pSheet"><button type="button" class="close" data-back>戻る</button><h2>探索者シート</h2>
@@ -196,7 +209,7 @@
   <div class="row"><input type="text" id="free" placeholder="技能名や行動を入力（例：目星）" autocomplete="off"><button type="button" class="item" id="freeGo">決定</button></div>
 </div>
 
-<div id="start" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプで絵だけ／上スワイプでログ</span><span class="ver">ゲーム画面 見本 v1.0</span></div>
+<div id="start" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプでログ／長押しで絵だけ</span><span class="ver">ゲーム画面 見本 v1.1</span></div>
 <div id="portrait">スマホを横向きにしてください</div>
 
 <script>
@@ -376,26 +389,58 @@
     }},55);
   }
 
-  // ---- 血の魔法陣（時間経過） ----
-  var C=[
-    '<circle cx="50" cy="50" r="46"/>','<circle cx="50" cy="50" r="38"/>',
-    '<path d="M50 12 L72 80"/>','<path d="M72 80 L14 38"/>','<path d="M14 38 L86 38"/>','<path d="M86 38 L28 80"/>','<path d="M28 80 L50 12"/>',
-    '<circle cx="50" cy="50" r="6"/>'
-  ];
-  $('circle').innerHTML=C.join('');
-  var parts=[].slice.call($('circle').children);
-  parts.forEach(function(p){ var L=p.getTotalLength?p.getTotalLength():300; p.style.setProperty('--len',L); p.style.strokeDasharray=L; });
+  // ---- 血の魔法陣（時間経過）：血のついた指で書いたような線 ----
+  var seed=7; function rnd(){ seed=(seed*16807)%2147483647; return (seed-1)/2147483646; }
+  function ringPts(r,cx,cy){ var a0=rnd()*6.28, sweep=6.0+rnd()*0.5, n=40, pts=[];
+    for(var i=0;i<=n;i++){ var a=a0+sweep*i/n, rr=r+(rnd()-.5)*2.2; pts.push([cx+Math.cos(a)*rr, cy+Math.sin(a)*rr]); } return pts; }
+  function linePts(x1,y1,x2,y2){ var n=14, pts=[];
+    for(var i=0;i<=n;i++){ var t=i/n; pts.push([x1+(x2-x1)*t+(rnd()-.5)*1.6, y1+(y2-y1)*t+(rnd()-.5)*1.6]); } return pts; }
+  function runePts(){ var pts=[], all=[];
+    for(var k=0;k<9;k++){ var a=k/9*6.28+.3, r=43, cx=50+Math.cos(a)*r, cy=50+Math.sin(a)*r, g=[];
+      for(var j=0;j<4;j++) g.push([cx+(rnd()-.5)*6, cy+(rnd()-.5)*6]); all.push(g); } return all; }
+  function strokeSvg(pts,w){
+    // 指でなぞった線：書き始めは太く濃く、終わりに向かって細く、かすれる
+    var out='', n=Math.max(4,Math.floor(pts.length/3)), per=Math.ceil((pts.length-1)/n);
+    for(var k=0;k<n;k++){
+      var seg=pts.slice(k*per, k*per+per+1); if(seg.length<2) break;
+      var t=k/n, sw=(w*(1-.6*t)*(.8+rnd()*.4)).toFixed(2), o=(1-.55*t).toFixed(2);
+      var d='M'+seg.map(function(p){ return p[0].toFixed(1)+' '+p[1].toFixed(1); }).join(' L');
+      out+='<path class="seg" d="'+d+'" style="--i:'+k+';--o:'+o+';stroke-width:'+sw+(t>.75?';stroke-dasharray:2 1.4':'')+'"/>';
+    }
+    return out;
+  }
+  function dripSvg(pts){
+    // 血が垂れて下に流れる
+    var out='', c=1+Math.floor(rnd()*2);
+    for(var i=0;i<c;i++){ var p=pts[Math.floor(rnd()*pts.length*.6)], L=4+rnd()*9;
+      out+='<path class="drip" d="M'+p[0].toFixed(1)+' '+p[1].toFixed(1)+' q'+((rnd()-.5)*1.5).toFixed(1)+' '+(L/2).toFixed(1)+' 0 '+L.toFixed(1)+'" style="--len:'+(L+2).toFixed(1)+';stroke-width:1.1"/>'+
+             '<circle class="drop" cx="'+p[0].toFixed(1)+'" cy="'+(p[1]+L+.6).toFixed(1)+'" r="'+(0.9+rnd()*.5).toFixed(2)+'"/>'; }
+    return out;
+  }
+  var star=[[50,10],[74,82],[12,36],[88,36],[26,82]];
+  var STROKES=[ ringPts(46,50,50) ];
+  for(var i=0;i<5;i++){ var a=star[i], b=star[(i+1)%5]; STROKES.push(linePts(a[0],a[1],b[0],b[1])); }
+  STROKES.push(ringPts(30,50,50));
+  var html='<defs><filter id="rough" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="1.8"/></filter></defs><g filter="url(#rough)">';
+  STROKES.forEach(function(pts,i){ html+='<g class="st">'+strokeSvg(pts,i===0?3.2:2.6)+dripSvg(pts)+'</g>'; });
+  // 8画目：円の周りに指で書いた歪んだ文字
+  var runes=runePts(), rh='', ri=0;
+  runes.forEach(function(g){ rh+=strokeSvg(g,1.6).replace(/--i:\d+/g,function(){ return '--i:'+(ri++); }); });
+  html+='<g class="st">'+rh+'</g></g>';
+  $('circle').innerHTML=html;
+  var parts=[].slice.call($('circle').querySelectorAll('.st'));
   var circleHide=null;
   function drawCircle(anim){
-    parts.forEach(function(p,i){ p.classList.remove('drawing'); p.classList.toggle('done',i<S.strokes); });
-    if(anim && S.strokes>0){ var p=parts[S.strokes-1]; p.classList.remove('done'); void p.offsetWidth; p.classList.add('drawing'); }
+    parts.forEach(function(p,i){ p.classList.remove('drawing','fresh'); p.classList.toggle('done',i<S.strokes); });
+    if(S.strokes>0){ var p=parts[S.strokes-1]; p.classList.add('fresh');
+      if(anim){ void p.getBoundingClientRect(); p.classList.add('drawing'); } }
     $('circle').classList.toggle('glow',S.strokes>=S.maxStrokes-2);
   }
   function tick(){
     if(S.strokes>=S.maxStrokes) return;
     S.strokes++; drawCircle(true);
     var c=$('circle'); c.classList.add('on'); clearTimeout(circleHide);
-    circleHide=setTimeout(function(){ c.classList.remove('on'); },3200);
+    circleHide=setTimeout(function(){ c.classList.remove('on'); },5200);
     if(S.strokes>=S.maxStrokes){
       setTimeout(function(){ $('stage').style.filter='sepia(1) saturate(4) hue-rotate(-30deg) brightness(.5)'; resultText('魔法陣が完成した。——邪神が目を覚ます。（見本：ここでクリア不可エンドへ）'); },1800);
     }
@@ -463,20 +508,21 @@
     $('tSan').value=80; $('tHp').value=12; $('tMy').value=0; $('vSan').textContent='80/80'; $('vHp').textContent='12/12'; $('vMy').textContent='0';
     drawCircle(false); $('stage').style.filter=''; applyState(); closePanels(); go('start'); });
 
-  // ---- タップ・スワイプ ----
-  var sy=null, sx=null;
-  $('stage').addEventListener('pointerdown',function(e){ sy=e.clientY; sx=e.clientX; });
+  // ---- タップ・スワイプ・長押し ----
+  // 上から下へスワイプ＝ログ／長押し＝押している間だけ文章を消して絵を見る
+  var sy=null, sx=null, lp=null, pictureOnly=false;
+  function setPicture(on){ pictureOnly=on; shade.style.opacity=on?'0':''; textEl.style.visibility=on?'hidden':'';
+    $('choices').style.visibility=on?'hidden':''; nextEl.style.visibility=on?'hidden':''; }
+  $('stage').addEventListener('pointerdown',function(e){ sy=e.clientY; sx=e.clientX;
+    clearTimeout(lp); lp=setTimeout(function(){ if(sy!==null) setPicture(true); },450); });
+  $('stage').addEventListener('pointermove',function(e){ if(sy!==null && Math.hypot(e.clientY-sy,e.clientX-sx)>15) clearTimeout(lp); });
+  $('stage').addEventListener('pointercancel',function(){ clearTimeout(lp); sy=null; if(pictureOnly) setPicture(false); });
   $('stage').addEventListener('pointerup',function(e){
+    clearTimeout(lp);
+    if(pictureOnly){ setPicture(false); sy=null; return; }
     if(sy===null) return; var dy=e.clientY-sy, dx=e.clientX-sx; sy=null;
     if(e.target.closest('button')) return;
-    if(Math.abs(dy)>50 && Math.abs(dy)>Math.abs(dx)){
-      if(dy>0){ // 下スワイプ：文章を消して絵だけ
-        var hidden=shade.dataset.hide==='1'; shade.dataset.hide=hidden?'':'1';
-        shade.style.opacity=hidden?'':'0'; textEl.style.visibility=hidden?'':'hidden'; $('choices').style.visibility=hidden?'':'hidden';
-      } else openPanel('pLog');
-      return;
-    }
-    if(shade.dataset.hide==='1'){ shade.dataset.hide=''; shade.style.opacity=''; textEl.style.visibility=''; $('choices').style.visibility=''; return; }
+    if(Math.abs(dy)>50 && Math.abs(dy)>Math.abs(dx)){ if(dy>0) openPanel('pLog'); return; }
     if(mode==='result'){ mode=resultBack; nextEl.classList.remove('on');
       if(S.strokes>=S.maxStrokes) return;
       if(resultBack==='choice'){ showChoices(cur.choice); } else { textEl.innerHTML=''; mode='text'; advance(); }
