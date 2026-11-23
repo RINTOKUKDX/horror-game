@@ -6,7 +6,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>深淵の胎動（仮） v0.3.1 - Cthulhu Horror Novel Engine</title>
+  <title>深淵の胎動（仮） v0.3.2 - Cthulhu Horror Novel Engine</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Shippori+Mincho:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1008,6 +1008,35 @@
       display: flex;
     }
 
+    #dice-ready {
+      position: absolute;
+      z-index: 3;
+      inset: 3.6rem 1rem 1rem;
+      display: grid;
+      grid-template-columns: minmax(6.5rem, 24%) 1fr;
+      gap: 0.8rem;
+    }
+
+    #dice-ready[hidden] { display: none; }
+    #dice-skill-options { overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem; }
+    #dice-skill-options button[aria-pressed="true"] { border-color: #d28c81; background: #562729; }
+    #dice-throw-area {
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 0.45rem;
+      touch-action: none;
+      user-select: none;
+      background: #13090c;
+      border: 1px solid #76464a;
+      border-radius: 0.5rem;
+      text-align: center;
+    }
+    #dice-throw-area span { font-size: clamp(1.4rem, 6vh, 2.8rem); color: #e4a297; }
+    #dice-risk { font-size: 0.85rem; }
+    .dice-total-line.critical { color: #f7e19b; text-shadow: 0 0 15px #aa702b; }
+    .dice-total-line.fumble { color: #ff6464; text-shadow: 0 0 18px #ed2020; }
+
     #dice-canvas {
       position: absolute;
       inset: 0;
@@ -1312,6 +1341,14 @@
     <div class="dice-hud-top">
       <div class="dice-skill-banner" id="dice-skill-label">危機脱出判定：隠密（目標値 65 以下）</div>
     </div>
+    <div id="dice-ready" hidden>
+      <div id="dice-skill-options" aria-label="技能"></div>
+      <button type="button" id="dice-throw-area">
+        <span aria-hidden="true">⬟  ⬟</span>
+        <strong>スワイプして振る</strong>
+        <small id="dice-risk"></small>
+      </button>
+    </div>
     <div class="dice-hud-bottom">
       <div class="dice-result-panel" id="dice-result-panel">
         <div class="dice-total-line" id="dice-result-label"></div>
@@ -1460,8 +1497,9 @@
   /* ============================================================================
      SECTION 0: バージョン・変更履歴定義（更新時にここを編集）
      ============================================================================ */
-  const APP_VERSION = 'v0.3.1';
+  const APP_VERSION = 'v0.3.2';
   const CHANGELOG = [
+    '技能を選んでスワイプで投げるダイス、判定前の心音・振動、旧診察室の扉の分岐を追加',
     '第壱話に雨、扉、廊下の気配、引きずる音、怪物の効果音を追加',
     '起動時のバージョン情報・変更点表示（×ボタンで閉じるまで表示維持）を追加',
     '音響の重厚化（40〜60Hzサブベース・ダーク歪み・地下残響リバーブを強化）',
@@ -1489,6 +1527,62 @@
       synopsis: 'エンジンを変更せず、シナリオデータとアセットの追加のみで続編・DLCを配信できるデータ駆動型構造のプレースホルダーです。'
     }
   ];
+
+  function createClinicDoorEvents() {
+    const open = { label: '扉を開いて進む', next: 'evt_clinic_01' };
+    const inspect = { label: '扉を調べる', next: 'evt_clinic_inspect' };
+    const stairs = { label: '地下階段へ向かう', next: 'evt_stairs_01' };
+    const listen = { skill: '聞き耳', target: 65, risk: '室内の音を探る。判定を誤ると扉に体重を掛けてしまう。',
+      critical: 'evt_door_listen_critical', success: 'evt_door_listen_ok', fail: 'evt_door_listen_fail', fumble: 'evt_door_listen_fumble' };
+    const sneak = { skill: '隠密', target: 60, risk: '音を抑えて開ける。失敗すると蝶番が鳴る。',
+      success: 'evt_clinic_01', fail: 'evt_door_noise' };
+    const attacks = [
+      { skill: '拳', target: 65, risk: '扉が開いても廊下に物音が響く。',
+        success: 'evt_door_punch', fail: 'evt_door_break_fail', fumble: 'evt_door_break_fumble' },
+      { skill: '武器（古い斧）', item: 'rescue_axe', target: 78, risk: '板を割れるが、破壊音で気づかれる。',
+        success: 'evt_door_axe', fail: 'evt_door_break_fail', fumble: 'evt_door_break_fumble' },
+      { skill: '武器（鉄棒）', item: 'iron_bar', target: 78, risk: '腐った板を砕けるが、破壊音で気づかれる。',
+        success: 'evt_door_bar', fail: 'evt_door_break_fail', fumble: 'evt_door_break_fumble' }
+    ];
+    const roll = { label: 'ダイスを振る', diceChecks: [listen, sneak] };
+    const breakDoor = { label: '扉をぶち壊す', diceChecks: attacks };
+    const approach = [open, inspect, roll, breakDoor, stairs];
+    const proceed = [open, stairs];
+    const scene = (text, choices = proceed, step = {}, room = 'room_corridor', bg = 'corridor') =>
+      ({ room, bg, steps: [{ text, ...step }], choices });
+    const impact = { shake: 'heavy', sfx: { type: 'door_slam_jumpscare', level: 0.67, sample: 'iron-door' } };
+    const aftermath = scene('扉の破片が床を打った。廊下の奥で引きずる音が止まり、向きが変わる。こちらへ来る。',
+      [{ label: '音が迫る前に診察室の奥へ', next: 'evt_clinic_01' }, stairs],
+      { madnessAdd: 8, sfx: { type: 'footstep_drag', sample: 'drag', level: 0.6, pan: 0.6 } });
+    const broken = (text, effect = impact) => scene(text, [
+      { label: '破片を越えて進む', next: 'evt_door_aftermath' }
+    ], effect);
+    return {
+      evt_clinic_door: scene('診察室の木戸が半開きになっている。脇には壊れた防災箱と、鉄棒が外れかけた医療棚がある。', approach),
+      evt_clinic_inspect: scene('錠は掛かっていない。木戸の下半分は湿気で腐り、床には内側から伸びた引っかき傷がある。', [
+        ...approach.filter(choice => choice !== inspect),
+        { label: '防災箱の斧を取る', unlessItem: 'rescue_axe', next: 'evt_door_take_axe' },
+        { label: '医療棚から鉄棒を外す', unlessItem: 'iron_bar', next: 'evt_door_take_bar' }
+      ]),
+      evt_door_take_axe: scene('防災箱の奥に、手斧が残っていた。', approach, { addItem: 'rescue_axe' }),
+      evt_door_take_bar: scene('ぐらつく鉄棒を、棚からそっと外した。', approach, { addItem: 'iron_bar' }),
+      evt_door_listen_critical: scene('小さな引きずり音は、扉のすぐ右から室内の奥へ遠ざかっている。今なら左へ抜けられそうだ。', [open, breakDoor, stairs]),
+      evt_door_listen_ok: scene('室内で、湿った布を床に擦りつけるような音がする。何かいる。', [open, breakDoor, stairs]),
+      evt_door_listen_fail: scene('何も聞き取れない。中に何がいるかは分からない。', [open, breakDoor, stairs]),
+      evt_door_listen_fumble: scene('耳を当てた拍子に扉が開き、診察室の床に倒れ込んだ。奥の物音がぴたりと止まる。', proceed,
+        { ...impact, hpAdd: -5, madnessAdd: 5 }, 'room_clinic', 'clinic'),
+      evt_door_noise: scene('蝶番が鳴った。奥で何かが振り返り、こちらへ近づく。', proceed, { madnessAdd: 5 }),
+      evt_door_punch: broken('拳が当たった場所から板が陥没する。腐った木が裂け、扉が奥に倒れた。'),
+      evt_door_axe: broken('斧がめり込んだ。板が真っ二つに裂け、折れた木戸の隙間から診察室が見える。',
+        { ...impact, sfx: { type: 'door_slam_jumpscare', sample: 'door-split', level: 0.74 } }),
+      evt_door_bar: broken('鉄棒が腐った板を貫き、木片が砕け散った。床を跳ねる破片の音が廊下の奥まで響く。',
+        { ...impact, sfx: { type: 'door_slam_jumpscare', sample: 'door-shatter', level: 0.74 } }),
+      evt_door_aftermath: aftermath,
+      evt_door_break_fail: scene('鈍い衝撃が廊下に響いた。扉は開かず、奥から足音が近づく。'),
+      evt_door_break_fumble: scene('衝撃で手を痛めた。扉は開かず、暗がりで引きずる音がこちらを向く。', proceed,
+        { ...impact, hpAdd: -10, madnessAdd: 8 })
+    };
+  }
 
   const SCENARIO_DATA = {
     ep01_sanatorium: {
@@ -1541,6 +1635,8 @@
           name: '錆びた鍵',
           desc: '旧診察室の机から見つけた重い鉄鍵。「焼却・地下防火扉」と刻まれている。'
         },
+        rescue_axe: { id: 'rescue_axe', name: '古い斧', desc: '廊下の防災箱に残っていた斧。' },
+        iron_bar: { id: 'iron_bar', name: '鉄棒', desc: '壊れた医療棚から外れた鉄棒。' },
         oil_can: {
           id: 'oil_can',
           name: '油缶',
@@ -1646,7 +1742,7 @@
             }
           ],
           choices: [
-            { label: '「旧診察室」を調べて手がかりを探す', next: 'evt_clinic_01' },
+            { label: '「旧診察室」を調べて手がかりを探す', next: 'evt_clinic_door' },
             { label: 'そのまま「地下階段」へ降りる', next: 'evt_stairs_01' }
           ]
         },
@@ -1664,7 +1760,7 @@
             }
           ],
           choices: [
-            { label: '「旧診察室」へ飛び込む', next: 'evt_clinic_01' },
+            { label: '「旧診察室」へ飛び込む', next: 'evt_clinic_door' },
             { label: 'そのまま「地下階段」へ降りる', next: 'evt_stairs_01' }
           ]
         },
@@ -1686,10 +1782,12 @@
             }
           ],
           choices: [
-            { label: '「旧診察室」に逃げ込んで調べる', next: 'evt_clinic_01' },
+            { label: '「旧診察室」に逃げ込んで調べる', next: 'evt_clinic_door' },
             { label: '強引に「地下階段」へ進む', next: 'evt_stairs_01' }
           ]
         },
+
+        ...createClinicDoorEvents(),
 
         evt_clinic_01: {
           room: 'room_clinic',
@@ -1874,7 +1972,29 @@
     let ambience = null;
     let sceneSample = null;
     const samples = new Map();
-    const sampleNames = ['rain', 'old-door', 'corridor', 'drag', 'iron-door', 'creature'];
+    const sampleNames = ['rain', 'old-door', 'corridor', 'drag', 'iron-door', 'creature', 'door-split', 'door-shatter'];
+
+    function playDiceHeartbeat(period) {
+      if (!ctx || ctx.state !== 'running') return () => {};
+      const now = ctx.currentTime;
+      const nodes = [0, period * 0.22].map((offset, index) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const start = now + offset;
+        osc.frequency.setValueAtTime(index === 0 ? 82 : 66, start);
+        osc.frequency.exponentialRampToValueAtTime(35, start + 0.075);
+        gain.gain.setValueAtTime(0.001, start);
+        gain.gain.linearRampToValueAtTime(index === 0 ? 0.27 : 0.18, start + 0.013);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.09);
+        osc.connect(gain);
+        gain.connect(seGain);
+        osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+        osc.start(start);
+        osc.stop(start + 0.1);
+        return osc;
+      });
+      return () => nodes.forEach(osc => osc.stop());
+    }
 
     function preloadSamples() {
       if (!ctx) return;
@@ -2428,7 +2548,7 @@
       }
     }
 
-    return { init, setVolumes, playBgm, stopBgm, playIntroHorror, playSfx, preloadSamples, setSceneAmbience, stopSceneSample };
+    return { init, setVolumes, playBgm, stopBgm, playIntroHorror, playSfx, preloadSamples, setSceneAmbience, stopSceneSample, playDiceHeartbeat };
   })();
 
   /* ============================================================================
@@ -3139,7 +3259,99 @@
       ctx.restore();
     }
 
-    function roll(check, onComplete) {
+    const ready = document.getElementById('dice-ready');
+    const options = document.getElementById('dice-skill-options');
+    const throwArea = document.getElementById('dice-throw-area');
+    const risk = document.getElementById('dice-risk');
+
+    function choose(checks, bpm, onComplete, onCancel) {
+      let selected = checks[0];
+      let pointer = null;
+      let stopPulse = () => {};
+      let finished = false;
+      resultPanel.classList.remove('show');
+      overlay.classList.add('active');
+      ready.hidden = false;
+      resize();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const period = 60 / bpm;
+      const vibrate = pattern => navigator.vibrate?.(pattern);
+      const beat = () => {
+        if (document.hidden) return;
+        stopPulse = AudioEngine.playDiceHeartbeat(period);
+        vibrate([23, Math.round(period * 220) - 23, 31]);
+      };
+      beat();
+      const timer = setInterval(beat, period * 1000);
+      const silence = () => { stopPulse(); vibrate(0); };
+      const onEscape = event => { if (event.key === 'Escape') cancel(); };
+
+      function finish() {
+        if (finished) return false;
+        finished = true;
+        ready.hidden = true;
+        clearInterval(timer);
+        silence();
+        document.removeEventListener('visibilitychange', silence);
+        document.removeEventListener('keydown', onEscape);
+        throwArea.onpointerdown = null;
+        throwArea.onpointerup = null;
+        throwArea.onpointercancel = null;
+        throwArea.onclick = null;
+        return true;
+      }
+
+      function cancel() {
+        if (!finish()) return;
+        overlay.classList.remove('active');
+        onCancel();
+      }
+
+      function update() {
+        skillLabel.textContent = `${selected.skill}  ◆  クリティカル 1 ／ 成功 2〜${selected.target} ／ 失敗 ${selected.target + 1}〜99 ／ ファンブル 100`;
+        risk.textContent = selected.risk || '判定の結果で次の展開が変わる。';
+        for (const button of options.querySelectorAll('[data-skill]')) {
+          button.setAttribute('aria-pressed', String(checks[Number(button.dataset.skill)] === selected));
+        }
+      }
+
+      options.replaceChildren();
+      checks.forEach((check, index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'hud-btn';
+        button.dataset.skill = index;
+        button.textContent = `${check.skill} ${check.target}`;
+        button.onclick = () => { selected = check; update(); };
+        options.appendChild(button);
+      });
+      const back = document.createElement('button');
+      back.type = 'button';
+      back.className = 'hud-btn';
+      back.textContent = '振らずに戻る';
+      back.onclick = cancel;
+      options.appendChild(back);
+      update();
+      document.addEventListener('visibilitychange', silence);
+      document.addEventListener('keydown', onEscape);
+      throwArea.onpointerdown = event => {
+        if (!event.isPrimary || event.button !== 0) return;
+        pointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
+        throwArea.setPointerCapture(event.pointerId);
+      };
+      throwArea.onpointercancel = () => { pointer = null; };
+      throwArea.onpointerup = event => {
+        if (pointer?.id !== event.pointerId) return;
+        const dx = event.clientX - pointer.x;
+        const dy = event.clientY - pointer.y;
+        pointer = null;
+        if (Math.hypot(dx, dy) >= 24 && finish()) roll(selected, onComplete, { dx, dy });
+      };
+      // A keyboard or assistive-technology activation has no pointer gesture.
+      throwArea.onclick = event => { if (event.detail === 0 && finish()) roll(selected, onComplete); };
+    }
+
+    function roll(check, onComplete, gesture) {
       skillLabel.textContent = `危機脱出判定：${check.skill}（目標値 ${check.target} 以下）`;
       resultPanel.classList.remove('show');
       overlay.classList.add('active');
@@ -3192,6 +3404,15 @@
         }
       ];
 
+      if (gesture) {
+        dice.forEach((die, index) => {
+          die.x = w * (index ? 0.64 : 0.36);
+          die.y = Math.min(h * 0.36, floorY - dieRadius);
+          die.vx = Math.max(-28, Math.min(28, gesture.dx / 7 + (index ? 3 : -3)));
+          die.vy = -Math.max(4, Math.min(14, Math.hypot(gesture.dx, gesture.dy) / 14));
+          die.vAngle = die.vx * 0.055;
+        });
+      }
       smokeParticles = [];
       let frame = 0;
       let finished = false;
@@ -3218,6 +3439,14 @@
             d.vy += gravity;
             d.y += d.vy;
             d.angle += d.vAngle;
+            if (gesture && (d.x < d.r || d.x > w - d.r)) {
+              d.x = Math.max(d.r, Math.min(w - d.r, d.x));
+              d.vx *= -0.74;
+            }
+            if (gesture && d.y < d.r) {
+              d.y = d.r;
+              d.vy = Math.abs(d.vy) * 0.65;
+            }
 
             if (frame % 3 === 0) {
               d.displayText = idx === 0
@@ -3284,8 +3513,11 @@
         if (allSettled && !finished) {
           finished = true;
           const isSuccess = finalRoll <= check.target;
-          resultLabel.textContent = `出目：${finalRoll}（目標 ${check.target}） — ${isSuccess ? '成功：危機を脱した' : '失敗：逃れられない'}`;
-          resultLabel.className = `dice-total-line ${isSuccess ? 'success' : 'fail'}`;
+          const outcome = finalRoll === 1 ? 'critical' : finalRoll === 100 ? 'fumble' : isSuccess ? 'success' : 'fail';
+          const labels = { critical: 'クリティカル', success: '成功', fail: '失敗', fumble: 'ファンブル' };
+          resultLabel.textContent = `出目：${finalRoll}（目標 ${check.target}） — ${labels[outcome]}`;
+          resultLabel.className = `dice-total-line ${outcome}`;
+          if (isSuccess) AudioEngine.playSfx({ type: 'dice_clatter', intensity: 0.32 });
           if (!isSuccess) {
             AudioEngine.playSfx({ type: 'footstep_stop', pan: 0 });
           }
@@ -3295,11 +3527,11 @@
             if (animId) cancelAnimationFrame(animId);
             animId = null;
             overlay.classList.remove('active');
-            onComplete(isSuccess ? check.success : check.fail);
+            onComplete(check[outcome] ?? (isSuccess ? check.success : check.fail));
           };
         }
 
-        animId = requestAnimationFrame(step);
+        if (!finished) animId = requestAnimationFrame(step);
       }
 
       animId = requestAnimationFrame(step);
@@ -3309,7 +3541,7 @@
       if (overlay.classList.contains('active')) resize();
     });
 
-    return { roll };
+    return { roll, choose };
   })();
 
   /* ============================================================================
@@ -3701,7 +3933,7 @@
       const stage = MadnessFX.getStage(state.madness, scenario.madnessThresholds);
       choicesContainer.innerHTML = '';
 
-      choices.forEach((ch) => {
+      choices.filter(ch => !ch.unlessItem || !state.items.includes(ch.unlessItem)).forEach((ch) => {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'choice-btn' + (ch.useSilverKey ? ' silver-key' : '');
@@ -3723,9 +3955,14 @@
           AudioEngine.playSfx({ type: 'paper' });
           if (ch.useSilverKey) {
             openSilverKeyModal(ch.useSilverKey.context);
-          } else if (ch.diceCheck) {
+          } else if (ch.diceCheck || ch.diceChecks) {
+            const checks = (ch.diceChecks ?? [ch.diceCheck]).filter(check => !check.item || state.items.includes(check.item));
+            const fatal = checks.some(check => check.fail === 'evt_end_devoured');
+            const pressured = state.madness >= 50 || state.hp <= 40;
+            const bpm = state.madness >= scenario.madnessThresholds.stage3 ? 45 : (fatal || (pressured && state.eventId === 'evt_corridor_01')) ? 165 : 60;
             choicesContainer.classList.remove('active');
-            DiceSystem.roll(ch.diceCheck, (nextEventId) => enterEvent(nextEventId, 0));
+            DiceSystem.choose(checks, bpm, nextEventId => enterEvent(nextEventId, 0),
+              () => choicesContainer.classList.add('active'));
           } else if (ch.next) {
             choicesContainer.classList.remove('active');
             enterEvent(ch.next, 0);
