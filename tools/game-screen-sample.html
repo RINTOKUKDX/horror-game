@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ゲーム画面 見本 v1.3</title>
+<title>ゲーム画面 見本 v1.4</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* ゲーム画面の動く見本。ゲーム本体（index.html）には影響しない */
@@ -47,6 +47,12 @@
     left:calc(9vw + env(safe-area-inset-left,0px));right:calc(9vw + env(safe-area-inset-right,0px));
     font-size:clamp(14px,4.6dvh,22px);line-height:1.95;overflow:hidden;transition:opacity .6s;pointer-events:none}
   #text p{margin-bottom:.4em;text-shadow:0 0 6px #000}
+  /* 回想などの「ふわっと」表示：ど真ん中に1文ずつ */
+  body.fadetext #text{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;top:12dvh;bottom:12dvh}
+  #text p.fin{opacity:0;animation:fin 1.8s ease forwards}
+  #text p.fout{animation:fout 1s ease forwards}
+  @keyframes fin{from{opacity:0;filter:blur(3px)}to{opacity:1;filter:none}}
+  @keyframes fout{from{opacity:1}to{opacity:0;filter:blur(3px)}}
   #text .who{color:var(--gold);margin-right:.4em}
   #text .me{color:#b9c7d8}
   #next{position:absolute;right:calc(5vw + env(safe-area-inset-right,0px));bottom:4dvh;color:var(--dim);font-size:3dvh;
@@ -236,7 +242,7 @@
     <button type="button" class="item" data-open="pTune">見本の調整</button>
     <button type="button" class="item" data-open="pAssets">素材を見る</button>
   </div>
-  <p class="small">ゲーム画面 見本 v1.3</p>
+  <p class="small">ゲーム画面 見本 v1.4</p>
 </div>
 <div class="panel" id="pStatus"><button type="button" class="close" data-back>戻る</button><h2>ステータス</h2><div class="sub" id="statusBody"></div></div>
 <div class="panel" id="pSheet"><button type="button" class="close" data-back>戻る</button><h2>探索者シート</h2>
@@ -262,7 +268,7 @@
   <div class="row"><input type="text" id="free" placeholder="技能名や行動を入力（例：目星）" autocomplete="off"><button type="button" class="item" id="freeGo">決定</button></div>
 </div>
 
-<div id="start" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプでログ／長押しで絵だけ</span><span class="ver">ゲーム画面 見本 v1.3</span></div>
+<div id="start" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプでログ／長押しで絵だけ</span><span class="ver">ゲーム画面 見本 v1.4</span></div>
 <div id="portrait">スマホを横向きにしてください</div>
 
 <script src="../assets/manifest.js"></script>
@@ -290,7 +296,7 @@
     old:{ bg:'corridor', cam:'pan', amb:'雨が降る1', pages:[[{who:'老人',t:'「賢明なご判断です」'},'老人は満足そうに微笑んだ。その笑みは、どこか作り物めいていた。']], choice:'c2' },
     back:{ bg:'door', cam:'still', se:'開かないドア1', pages:[['玄関の扉は、外から押さえつけられているかのように動かない。','背後で、老人がくすりと笑った気がした。']], choice:'c1' },
     alley:{ bg:'dark_street32', cam:'pullback', amb:'雨で濡れた道路を歩く', pages:[['気がつくと、貴方は見知らぬ裏路地に立っていた。','洋館は、どこにも見当たらない。']], choice:'c2' },
-    memory:{ bg:'house2', cam:'pullback', film:true, se:'テープ巻き戻し', pages:[
+    memory:{ bg:'house2', cam:'pullback', film:true, fade:true, se:'テープ巻き戻し', pages:[
       ['——あれは、まだ貴方が幼かった頃の記憶だ。','祖父の家。軋む床。閉ざされたままの、奥の部屋。'],
       {cam:'zoomin', paras:[{who:'祖父',t:'「あの部屋には、決して入ってはいけないよ」'},'祖父はそう言って、少しだけ笑った。その笑い方を、貴方はどこかで見た気がする。']}
     ], choice:'c2' },
@@ -392,11 +398,22 @@
     if(Math.random()<.3){ var sc=document.createElement('div'); sc.className='scr'; sc.style.left=Math.random()*100+'%'; sc.style.opacity=.3+Math.random()*.5;
       f.appendChild(sc); setTimeout(function(){ sc.remove(); },200+Math.random()*500); }
   }
-  function pageFx(pg){ setFx(pg.film!=null?pg.film:!!cur.film, pg.movie!=null?pg.movie:!!cur.movie); }
+  function pageFx(pg){ document.body.classList.toggle('fadetext', !!(pg.fade!=null?pg.fade:cur.fade)); setFx(pg.film!=null?pg.film:!!cur.film, pg.movie!=null?pg.movie:!!cur.movie); }
   var autoT=null;
   function movieAuto(){ clearTimeout(autoT); if(!document.body.classList.contains('movie')) return;
     var p=para(); var t=typeof p==='string'?p:p.t; autoT=setTimeout(function(){ if(mode==='text' && !typing) advance(); },1600+t.length*45); }
   function skipMovie(){ clearTimeout(autoT); if(typing){ clearInterval(typing.timer); typing=null; } textEl.innerHTML=''; showChoices(cur.choice); }
+
+  // ---- 絵を先にしっかり見せる（タップで飛ばせる） ----
+  var waitSkip=null;
+  function showPicture(then){
+    mode='wait'; shade.classList.remove('on'); nextEl.classList.remove('on');
+    var done=false, t1=null, t2=null;
+    function finish(){ if(done) return; done=true; waitSkip=null; clearTimeout(t1); clearTimeout(t2);
+      shade.classList.add('on'); t2=setTimeout(function(){ mode='text'; then(); },600); }
+    waitSkip=finish; t1=setTimeout(finish,2800);
+  }
+  function isFade(){ return document.body.classList.contains('fadetext'); }
 
   // ---- 進行 ----
   function go(key){
@@ -409,17 +426,19 @@
     newHide(); refreshEat();
     mode='wait';
     // 先に絵を見せて、それから文章
-    setTimeout(function(){ shade.classList.add('on'); setTimeout(function(){ mode='text'; showPara(); },700); },1300);
+    showPicture(showPara);
   }
   function para(){ return cur.pages[pageI].paras[paraI]; }
   function showPara(){
     var p=para(); if(typeof p==='string') p={t:p};
     if(p.mark){ $('floatResist').classList.add('on'); resistLabel($('floatResist')); }
-    if(document.body.classList.contains('movie')) textEl.innerHTML='';
+    if(document.body.classList.contains('movie')||isFade()) textEl.innerHTML='';
     var el=document.createElement('p');
     if(p.who){ var w=document.createElement('span'); w.className='who'+(p.who==='貴方'?' me':''); w.textContent=p.who; el.appendChild(w); }
     var body=document.createElement('span'); el.appendChild(body); textEl.appendChild(el);
     log.push((p.who?p.who+' ':'')+p.t);
+    if(isFade()){ body.textContent=p.t; el.classList.add('fin'); mode='wait';
+      setTimeout(function(){ mode='text'; nextEl.classList.add('on'); },1300); return; }
     typeText(body,p.t,p);
   }
   function typeText(el,t,p){
@@ -451,15 +470,20 @@
   function advance(){
     if(mode!=='text') return;
     if(typing){ finishType(); return; }
+    if(isFade() && !advance.fading){ var last=textEl.lastElementChild;
+      if(last){ advance.fading=true; mode='wait'; nextEl.classList.remove('on'); last.classList.remove('fin'); last.classList.add('fout');
+        setTimeout(function(){ mode='text'; advance(); advance.fading=false; },950); return; } }
     paraI++;
     if(paraI>=cur.pages[pageI].paras.length){
       pageI++; paraI=0; textEl.innerHTML='';
       $('floatResist').classList.remove('on');
       if(pageI>=cur.pages.length){ showChoices(cur.choice); return; }
       var pg=cur.pages[pageI]; pageFx(pg);
-      if(pg.bg||pg.cam){ setBg(pg.bg||curBg, pg.cam||'still'); if(pg.bg && pg.bg!==curBg){ /* 絵が変わったら、少し見せてから文章 */ } }
+      var prevBg=curBg;
+      if(pg.bg||pg.cam) setBg(pg.bg||curBg, pg.cam||'still');
       if(pg.se) se(pg.se);
       newHide(); refreshEat();
+      if(pg.bg && pg.bg!==prevBg){ showPicture(showPara); return; }
     }
     showPara();
   }
@@ -660,6 +684,7 @@
       if(S.strokes>=S.maxStrokes) return;
       if(resultBack==='choice'){ showChoices(cur.choice); } else { textEl.innerHTML=''; mode='text'; advance(); }
       return; }
+    if(waitSkip){ waitSkip(); return; }
     advance();
   });
 
