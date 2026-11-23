@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>プレイ画面の配置決め</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
+<style>
+  /* 配置決め専用ページ。ゲーム本体（index.html）には影響しない */
+  :root{
+    --bg:#020204; --panel:#14110f; --line:#3a3530; --fg:#e8e2da; --dim:#928b82;
+    --gold:#c7b07c; --blood:#8c1414;
+    --serif:'Shippori Mincho','Noto Serif JP','Hiragino Mincho ProN',serif;
+    color-scheme:dark;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
+  html,body{width:100vw;height:100dvh;overflow:hidden;background:var(--bg);color:var(--fg);
+    font-family:var(--serif);letter-spacing:.05em;touch-action:none}
+  #stage{position:fixed;inset:0;overflow:hidden;
+    background:radial-gradient(ellipse at 30% 40%,#2a221c 0%,#120e0c 45%,#030305 100%)}
+  #stage.grid{background:
+    linear-gradient(rgba(199,176,124,.08) 1px,transparent 1px) 0 0/5% 10%,
+    linear-gradient(90deg,rgba(199,176,124,.08) 1px,transparent 1px) 0 0/5% 10%,
+    radial-gradient(ellipse at 30% 40%,#2a221c 0%,#120e0c 45%,#030305 100%)}
+  #bglabel{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);color:#4a423b;font-size:4dvh;pointer-events:none}
+
+  .box{position:absolute;border:1px dashed rgba(199,176,124,.5);background:rgba(2,2,4,.35);
+    border-radius:4px;overflow:hidden;display:flex;flex-direction:column;touch-action:none}
+  .box.sel{border:2px solid var(--gold);z-index:5}
+  .tag{position:absolute;right:3px;top:2px;font-size:2.6dvh;color:var(--gold);background:rgba(2,2,4,.85);
+    padding:0 .6dvh;border-radius:2px;pointer-events:none;white-space:nowrap}
+  .in{flex:1;min-height:0;padding:1dvh 1.4dvh;display:flex;gap:1dvh;pointer-events:none}
+  .handle{position:absolute;right:0;bottom:0;width:7dvh;height:7dvh;min-width:26px;min-height:26px;
+    background:var(--gold);clip-path:polygon(100% 0,100% 100%,0 100%);touch-action:none}
+
+  /* 中身の見本（文字の大きさは今のゲームと同じく画面の高さで決める） */
+  .loc{font-size:clamp(.78rem,3.4dvh,1rem)}
+  .bars{display:flex;flex-direction:column;gap:.8dvh;font-size:clamp(.6rem,2.6dvh,.8rem);color:var(--dim)}
+  .bars span{display:flex;align-items:center;gap:1dvh}
+  .bar{width:18dvh;height:.9dvh;background:#2a2622;border-radius:2px;overflow:hidden}
+  .bar i{display:block;height:100%}
+  .hudbtn{font-size:clamp(.66rem,2.8dvh,.86rem);border:1px solid rgba(255,255,255,.25);border-radius:3px;
+    padding:.6dvh 1.6dvh;background:rgba(10,8,8,.6);white-space:nowrap}
+  .choice{display:flex;justify-content:space-between;align-items:center;gap:2dvh;
+    font-size:clamp(.82rem,3.9dvh,1.08rem);padding:1.6dvh 2.4dvh;border:1px solid rgba(199,176,124,.45);
+    border-radius:4px;background:rgba(14,11,10,.88);white-space:nowrap}
+  .choice b{font-weight:400;color:var(--gold)}
+  .choice.free{color:var(--dim);border-style:dashed}
+  .btnlike{font-size:clamp(.78rem,3.6dvh,1rem);padding:1.4dvh 2.4dvh;border-radius:4px;white-space:nowrap}
+  .speaker{font-size:clamp(.78rem,2.2dvh,.92rem);color:#b0a698;letter-spacing:.16em}
+  .novel{font-size:clamp(.92rem,4.4dvh,1.25rem);line-height:1.75}
+
+  /* メニュー */
+  #menuBtn{position:fixed;z-index:50;right:calc(8px + env(safe-area-inset-right,0px));bottom:calc(8px + env(safe-area-inset-bottom,0px));
+    min-width:44px;min-height:44px;padding:0 12px;font-family:inherit;font-size:14px;color:var(--fg);
+    background:rgba(140,20,20,.9);border:none;border-radius:4px}
+  #menu{position:fixed;z-index:60;inset:0;background:rgba(2,2,4,.92);display:none;
+    padding:max(12px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px));
+    overflow:auto;touch-action:auto}
+  #menu.open{display:flex;flex-direction:column;gap:10px}
+  #menu p{font-size:13px;color:var(--dim);line-height:1.6}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .mbtn{font-family:inherit;font-size:14px;min-height:44px;padding:0 14px;border-radius:4px;
+    border:1px solid var(--gold);background:transparent;color:var(--fg)}
+  .mbtn.main{background:var(--blood);border-color:var(--blood);color:#f4efe8;font-weight:600}
+  #code{width:100%;height:72px;background:var(--panel);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;font-family:monospace;font-size:12px;padding:8px;user-select:text}
+  #msg{font-size:13px;color:var(--gold)}
+  #info{position:fixed;z-index:40;left:50%;transform:translateX(-50%);top:calc(16% + env(safe-area-inset-top,0px));
+    font-size:12px;color:var(--gold);background:rgba(2,2,4,.85);padding:4px 8px;border-radius:3px;
+    font-variant-numeric:tabular-nums;pointer-events:none}
+  #portrait{position:fixed;inset:0;z-index:100;background:var(--bg);display:none;align-items:center;justify-content:center;
+    text-align:center;padding:24px;font-size:16px;line-height:1.8}
+  @media (orientation:portrait){#portrait{display:flex}}
+</style>
+</head>
+<body>
+<div id="stage" class="grid"><span id="bglabel">背景の絵</span></div>
+<div id="info">箱をタップすると位置が出ます</div>
+<button type="button" id="menuBtn">メニュー</button>
+
+<div id="menu" role="dialog" aria-label="メニュー">
+  <p>箱を指で動かす。右下の金色の角で大きさを変える。決まったら「この配置を保存」→「コピー」で、Claudeに貼ってください。</p>
+  <div class="row">
+    <button type="button" class="mbtn" id="full">全画面にする</button>
+    <button type="button" class="mbtn" id="grid">マス目：オン</button>
+    <button type="button" class="mbtn" id="reset">最初の配置に戻す</button>
+  </div>
+  <div class="row">
+    <button type="button" class="mbtn main" id="save">この配置を保存</button>
+    <button type="button" class="mbtn" id="copy">コピー</button>
+    <span id="msg"></span>
+  </div>
+  <textarea id="code" readonly aria-label="配置の文字">（「この配置を保存」を押すとここに出ます）</textarea>
+  <div class="row"><button type="button" class="mbtn" id="close">閉じて配置に戻る</button></div>
+</div>
+
+<div id="portrait">スマホを横向きにしてください</div>
+
+<script>
+(function(){
+  // 位置と大きさは画面に対する％。どのスマホでも同じ比率で並ぶ
+  var DEFAULTS = {
+    hudLeft:  {name:'場所・体力・正気度', x:1, y:1, w:34, h:15},
+    hudRight: {name:'地図などのボタン', x:50, y:1, w:49, h:11},
+    choices:  {name:'選択肢', x:22, y:16, w:56, h:48},
+    skill:    {name:'技能ボタン', x:79, y:44, w:20, h:12},
+    go:       {name:'振る／このまま行う', x:79, y:58, w:20, h:12},
+    text:     {name:'本文の窓', x:0, y:70, w:100, h:30}
+  };
+  var KEY = 'layoutDraft_v1';
+  var stage = document.getElementById('stage');
+  var info = document.getElementById('info');
+  var layout = load() || clone(DEFAULTS);
+  var gridOn = true, els = {};
+
+  function clone(o){ return JSON.parse(JSON.stringify(o)); }
+  function load(){
+    try{ var o = JSON.parse(localStorage.getItem(KEY) || 'null'); if(!o) return null;
+      for (var k in DEFAULTS){ if(!o[k]) return null; o[k].name = DEFAULTS[k].name; } return o;
+    }catch(e){ return null; }
+  }
+  function store(){ try{ localStorage.setItem(KEY, JSON.stringify(layout)); }catch(e){} }
+
+  var INNER = {
+    hudLeft: '<div class="in" style="flex-direction:column;justify-content:center"><span class="loc">怨霊の家・門</span>'+
+      '<div class="bars"><span>体力<span class="bar"><i style="width:80%;background:#8c1414"></i></span></span>'+
+      '<span>精神<span class="bar"><i style="width:55%;background:#c7b07c"></i></span></span></div></div>',
+    hudRight: '<div class="in" style="align-items:center;justify-content:flex-end;flex-wrap:wrap">'+
+      ['地図','所持品','保存','全画面','設定'].map(function(t){return '<span class="hudbtn">'+t+'</span>';}).join('')+'</div>',
+    choices: '<div class="in" style="flex-direction:column;justify-content:center">'+
+      '<span class="choice">玄関から入る<b>??%</b></span><span class="choice">庭を見て回る<b>??%</b></span>'+
+      '<span class="choice free">自由に書く<span>銀の鍵 2</span></span></div>',
+    skill: '<div class="in" style="align-items:center;justify-content:center"><span class="btnlike" style="border:1px solid #c7b07c">技能（0）</span></div>',
+    go: '<div class="in" style="align-items:center;justify-content:center"><span class="btnlike" style="background:#8c1414">このまま行う</span></div>',
+    text: '<div class="in" style="flex-direction:column;justify-content:flex-end;background:linear-gradient(to top,rgba(2,2,4,.96) 0%,rgba(2,2,4,.88) 58%,rgba(2,2,4,.44) 85%,transparent 100%)">'+
+      '<span class="speaker">妹の声</span><span class="novel">門は錆びつき、半分開いている。玄関の奥で、何かが軋んだ。</span></div>'
+  };
+
+  function build(){
+    Object.keys(els).forEach(function(k){ els[k].remove(); }); els = {};
+    Object.keys(layout).forEach(function(k){
+      var d = document.createElement('div');
+      d.className = 'box';
+      d.innerHTML = INNER[k] + '<span class="tag">'+layout[k].name+'</span><span class="handle" aria-hidden="true"></span>';
+      stage.appendChild(d); els[k] = d; place(k); bind(d, k);
+    });
+  }
+  function place(k){ var b=layout[k], d=els[k];
+    d.style.left=b.x+'%'; d.style.top=b.y+'%'; d.style.width=b.w+'%'; d.style.height=b.h+'%'; }
+  function select(k){
+    Object.keys(els).forEach(function(n){ els[n].classList.toggle('sel', n===k); });
+    var b=layout[k]; info.textContent = b.name+'　横'+b.x+'% 縦'+b.y+'% 幅'+b.w+'% 高さ'+b.h+'%';
+  }
+  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+  function snap(v){ return gridOn ? Math.round(v) : Math.round(v*10)/10; }
+
+  function bind(d,k){
+    d.addEventListener('pointerdown', function(e){
+      e.preventDefault();
+      var resize = e.target.classList.contains('handle');
+      var sx=e.clientX, sy=e.clientY, b=clone(layout[k]);
+      var W=window.innerWidth, H=window.innerHeight;
+      select(k);
+      try{ d.setPointerCapture(e.pointerId); }catch(_){}
+      function move(ev){
+        var dx=(ev.clientX-sx)/W*100, dy=(ev.clientY-sy)/H*100, t=layout[k];
+        if(resize){ t.w=snap(clamp(b.w+dx,6,100-b.x)); t.h=snap(clamp(b.h+dy,6,100-b.y)); }
+        else { t.x=snap(clamp(b.x+dx,0,100-b.w)); t.y=snap(clamp(b.y+dy,0,100-b.h)); }
+        place(k); select(k);
+      }
+      function up(){
+        d.removeEventListener('pointermove',move); d.removeEventListener('pointerup',up); d.removeEventListener('pointercancel',up);
+        store();
+      }
+      d.addEventListener('pointermove',move); d.addEventListener('pointerup',up); d.addEventListener('pointercancel',up);
+    });
+  }
+
+  var menu = document.getElementById('menu');
+  document.getElementById('menuBtn').addEventListener('click', function(){ menu.classList.add('open'); });
+  document.getElementById('close').addEventListener('click', function(){ menu.classList.remove('open'); });
+  document.getElementById('full').addEventListener('click', async function(){
+    try{
+      if(!document.fullscreenElement && document.documentElement.requestFullscreen){ await document.documentElement.requestFullscreen(); }
+      if(screen.orientation && screen.orientation.lock){ await screen.orientation.lock('landscape'); }
+    }catch(e){}
+    menu.classList.remove('open');
+  });
+  document.getElementById('grid').addEventListener('click', function(){
+    gridOn=!gridOn; this.textContent='マス目：'+(gridOn?'オン':'オフ'); stage.classList.toggle('grid', gridOn);
+  });
+  document.getElementById('reset').addEventListener('click', function(){
+    layout=clone(DEFAULTS); store(); build(); info.textContent='最初の配置に戻しました'; menu.classList.remove('open');
+  });
+  document.getElementById('save').addEventListener('click', function(){
+    var o={layoutVersion:1};
+    Object.keys(layout).forEach(function(k){ var b=layout[k]; o[k]={x:b.x,y:b.y,w:b.w,h:b.h}; });
+    document.getElementById('code').value='プレイ画面の配置 '+JSON.stringify(o);
+    document.getElementById('msg').textContent='保存しました。コピーを押してください';
+    store();
+  });
+  document.getElementById('copy').addEventListener('click', function(){
+    var ta=document.getElementById('code'), msg=document.getElementById('msg');
+    function fallback(){ ta.focus(); ta.select(); msg.textContent='文字を選びました。長押しでコピーしてください'; }
+    try{ navigator.clipboard.writeText(ta.value).then(function(){ msg.textContent='コピーしました'; }, fallback); }
+    catch(e){ fallback(); }
+  });
+
+  build();
+})();
+</script>
+</body>
+</html>
