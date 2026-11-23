@@ -6,7 +6,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>深淵の胎動（仮） v0.3.0 - Cthulhu Horror Novel Engine</title>
+  <title>深淵の胎動（仮） v0.3.1 - Cthulhu Horror Novel Engine</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Shippori+Mincho:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1460,8 +1460,9 @@
   /* ============================================================================
      SECTION 0: バージョン・変更履歴定義（更新時にここを編集）
      ============================================================================ */
-  const APP_VERSION = 'v0.3.0';
+  const APP_VERSION = 'v0.3.1';
   const CHANGELOG = [
+    '第壱話に雨、扉、廊下の気配、引きずる音、怪物の効果音を追加',
     '起動時のバージョン情報・変更点表示（×ボタンで閉じるまで表示維持）を追加',
     '音響の重厚化（40〜60Hzサブベース・ダーク歪み・地下残響リバーブを強化）',
     '狂気時の文字化けをエンコード崩れ系（縺・繝・繧・半角カナ等）に変更し、本文の約2割に混入',
@@ -1554,6 +1555,7 @@
           steps: [
             {
               bgm: 'drone_low',
+              sfx: { type: 'door_creak', sample: 'old-door', level: 0.58 },
               text: '朽ちた木扉を押し開けると、カビと湿った鉄の臭いが肺の奥まで流れ込んできた。'
             },
             {
@@ -1578,7 +1580,7 @@
           bg: 'corridor',
           steps: [
             {
-              sfx: { type: 'footstep_drag', pan: 0.88, distance: 'far' },
+              sfx: { type: 'footstep_drag', sample: 'drag', level: 0.62, pan: 0.72, distance: 'far' },
               madnessAdd: 16,
               text: '廊下に足を踏み入れた瞬間――右側の暗い奥から、何か重たく湿ったものを引きずる音が聞こえた。'
             },
@@ -1600,7 +1602,7 @@
               text: '…………。'
             },
             {
-              sfx: { type: 'door_slam_jumpscare', pan: -0.15 },
+              sfx: { type: 'door_slam_jumpscare', sample: 'iron-door', level: 0.72, pan: -0.15 },
               madnessAdd: 22,
               redFlash: 'ミテイル ミテイル ウシロニイル ニゲロ ニゲロ ミテイル',
               shake: 'heavy',
@@ -1751,7 +1753,7 @@
               text: '目の前の「お城の門」に見えるそれは、無数の眼球と口が脈打つ巨大な肉の壁だった。'
             },
             {
-              sfx: { type: 'footstep_stop', pan: 0.2 },
+              sfx: { type: 'footstep_stop', sample: 'creature', level: 0.54, pan: 0.2 },
               text: '肉の壁が裂け、こちらを丸呑みにしようと大きく開く。これが最後の選択だ――！'
             }
           ],
@@ -1869,6 +1871,69 @@
     let bgmNodes = [];
     let bgmTimer = null;
     let currentBgm = null;
+    let ambience = null;
+    let sceneSample = null;
+    const samples = new Map();
+    const sampleNames = ['rain', 'old-door', 'corridor', 'drag', 'iron-door', 'creature'];
+
+    function preloadSamples() {
+      if (!ctx) return;
+      for (const name of sampleNames) {
+        if (samples.has(name)) continue;
+        samples.set(name, null);
+        fetch(`assets/se/${name}.mp3`).then((response) => {
+          if (!response.ok) throw new Error('Sound unavailable');
+          return response.arrayBuffer();
+        }).then((data) => ctx.decodeAudioData(data))
+          .then((buffer) => samples.set(name, buffer))
+          .catch(() => samples.delete(name));
+      }
+    }
+
+    function fadeSample(sound, duration = 0.12) {
+      if (!sound) return;
+      const now = ctx.currentTime;
+      const gain = sound.gain.gain;
+      if (gain.cancelAndHoldAtTime) gain.cancelAndHoldAtTime(now);
+      else gain.cancelScheduledValues(now);
+      gain.linearRampToValueAtTime(0, now + duration);
+      sound.source.stop(now + duration);
+    }
+
+    function startSample(name, level, pan = 0, loop = false) {
+      const buffer = samples.get(name);
+      if (!buffer) return null;
+      const source = ctx.createBufferSource();
+      const gain = ctx.createGain();
+      const panner = createPanner(pan);
+      source.buffer = buffer;
+      source.loop = loop;
+      source.connect(gain);
+      gain.connect(panner);
+      panner.connect(seGain);
+      source.onended = () => {
+        source.disconnect();
+        gain.disconnect();
+        panner.disconnect();
+        if (sceneSample?.source === source) sceneSample = null;
+      };
+      const now = ctx.currentTime;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(level, now + (loop ? 0.45 : 0.018));
+      source.start(now);
+      return { name, source, gain };
+    }
+
+    function setSceneAmbience(name, quiet = false) {
+      if (ambience?.name === name) return;
+      fadeSample(ambience, quiet ? 0.04 : 0.45);
+      ambience = name ? startSample(name, name === 'rain' ? 0.28 : 0.16, 0, true) : null;
+    }
+
+    function stopSceneSample(quiet = false) {
+      fadeSample(sceneSample, quiet ? 0.04 : 0.12);
+      sceneSample = null;
+    }
     const volumes = { master: 0.8, bgm: 0.75, se: 0.9 };
 
     /* ダークサチュレーション用の歪みカーブ生成 */
@@ -2167,6 +2232,11 @@
     function playSfx(spec) {
       init();
       if (!ctx) return;
+      if (spec.sample) {
+        stopSceneSample();
+        sceneSample = startSample(spec.sample, spec.level, spec.pan);
+        if (sceneSample) return;
+      }
       const now = ctx.currentTime;
       const panner = createPanner(spec.pan || 0);
       panner.connect(seGain);
@@ -2358,7 +2428,7 @@
       }
     }
 
-    return { init, setVolumes, playBgm, stopBgm, playIntroHorror, playSfx };
+    return { init, setVolumes, playBgm, stopBgm, playIntroHorror, playSfx, preloadSamples, setSceneAmbience, stopSceneSample };
   })();
 
   /* ============================================================================
@@ -3428,6 +3498,7 @@
       if (!screens.warning.classList.contains('active')) return;
 
       AudioEngine.init();
+      AudioEngine.preloadSamples();
       AudioEngine.setVolumes(settings.volMaster / 100, settings.volBgm / 100, settings.volSe / 100);
       requestLandscapeFullscreen();
       AudioEngine.playIntroHorror();
@@ -3520,6 +3591,7 @@
       const evt = scenario.events[eventId];
       if (!evt) return;
 
+      AudioEngine.stopSceneSample();
       state.eventId = eventId;
       state.stepIndex = stepIdx;
       state.roomId = evt.room;
@@ -3545,6 +3617,11 @@
         return;
       }
 
+      const quiet = Boolean(step.silenceWait);
+      const roomAmbience = state.roomId === 'room_entrance' ? 'rain'
+        : state.roomId === 'room_corridor' && (state.eventId !== 'evt_corridor_01' || state.stepIndex < 4) ? 'corridor' : null;
+      AudioEngine.setSceneAmbience(quiet ? null : roomAmbience, quiet);
+      if (quiet) AudioEngine.stopSceneSample(true);
       if (step.bgm) AudioEngine.playBgm(step.bgm);
       if (step.sfx) AudioEngine.playSfx(step.sfx);
       if (step.madnessAdd) state.madness = Math.min(100, state.madness + step.madnessAdd);
@@ -3749,6 +3826,8 @@
 
     function showEnding(ending) {
       AudioEngine.stopBgm();
+      AudioEngine.setSceneAmbience(null);
+      AudioEngine.stopSceneSample();
       document.getElementById('ending-type').textContent = ending.type;
       document.getElementById('ending-title').textContent = ending.title;
       document.getElementById('ending-desc').textContent = ending.desc;
@@ -3905,6 +3984,8 @@
       if (e) e.stopPropagation();
       closeAllModals();
       state = null;
+      AudioEngine.setSceneAmbience(null);
+      AudioEngine.stopSceneSample();
       AudioEngine.playBgm('title_drone');
       document.getElementById('title-ui-overlay').classList.add('visible');
       TitleCanvas.startTitleLoop();
