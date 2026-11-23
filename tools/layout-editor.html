@@ -74,6 +74,11 @@
   #portrait{position:fixed;inset:0;z-index:100;background:var(--bg);display:none;align-items:center;justify-content:center;
     text-align:center;padding:24px;font-size:16px;line-height:1.8}
   @media (orientation:portrait){#portrait{display:flex}}
+  #start{position:fixed;inset:0;z-index:90;background:rgba(2,2,4,.94);display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:12px;text-align:center;padding:24px;cursor:pointer}
+  #start.hide{display:none}
+  #start b{font-size:clamp(1rem,6dvh,1.5rem);font-weight:600}
+  #start span{font-size:clamp(.75rem,3.4dvh,.95rem);color:var(--dim)}
 </style>
 </head>
 <body>
@@ -97,6 +102,7 @@
   <div class="row"><button type="button" class="mbtn" id="close">閉じて配置に戻る</button></div>
 </div>
 
+<div id="start" role="button" tabindex="0" aria-label="タップして全画面で始める"><b>タップして始める</b><span>全画面・横向きになります</span></div>
 <div id="portrait">スマホを横向きにしてください</div>
 
 <script>
@@ -182,13 +188,7 @@
   var menu = document.getElementById('menu');
   document.getElementById('menuBtn').addEventListener('click', function(){ menu.classList.add('open'); });
   document.getElementById('close').addEventListener('click', function(){ menu.classList.remove('open'); });
-  document.getElementById('full').addEventListener('click', async function(){
-    try{
-      if(!document.fullscreenElement && document.documentElement.requestFullscreen){ await document.documentElement.requestFullscreen(); }
-      if(screen.orientation && screen.orientation.lock){ await screen.orientation.lock('landscape'); }
-    }catch(e){}
-    menu.classList.remove('open');
-  });
+  document.getElementById('full').addEventListener('click', function(){ menu.classList.remove('open'); goFull(); });
   document.getElementById('grid').addEventListener('click', function(){
     gridOn=!gridOn; this.textContent='マス目：'+(gridOn?'オン':'オフ'); stage.classList.toggle('grid', gridOn);
   });
@@ -208,6 +208,27 @@
     try{ navigator.clipboard.writeText(ta.value).then(function(){ msg.textContent='コピーしました'; }, fallback); }
     catch(e){ fallback(); }
   });
+
+  // ゲーム本体と同じく、最初のタップで全画面＋横向き固定にする（ブラウザの決まりでタップが必要）
+  var start = document.getElementById('start');
+  function isFull(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+  async function goFull(){
+    var el = document.documentElement;
+    try{
+      if(!isFull()){
+        if(el.requestFullscreen) await el.requestFullscreen();
+        else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      }
+    }catch(_){}
+    try{ if(screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape'); }catch(_){}
+    start.classList.add('hide');
+  }
+  start.addEventListener('click', goFull);
+  function onFsChange(){
+    if(!isFull()){ start.querySelector('b').textContent='タップして全画面に戻る'; start.classList.remove('hide'); }
+  }
+  document.addEventListener('fullscreenchange', onFsChange);
+  document.addEventListener('webkitfullscreenchange', onFsChange);
 
   build();
 })();
