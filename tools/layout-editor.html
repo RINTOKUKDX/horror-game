@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>プレイ画面の配置決め</title>
+<title>プレイ画面の配置決め v1.2</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* 配置決め専用ページ。ゲーム本体（index.html）には影響しない */
@@ -87,6 +87,7 @@
 <button type="button" id="menuBtn">メニュー</button>
 
 <div id="menu" role="dialog" aria-label="メニュー">
+  <p style="color:var(--gold)">配置決めツール v1.2</p>
   <p>箱を指で動かす。右下の金色の角で大きさを変える。決まったら「この配置を保存」→「コピー」で、Claudeに貼ってください。</p>
   <div class="row">
     <button type="button" class="mbtn" id="full">全画面にする</button>
@@ -102,7 +103,7 @@
   <div class="row"><button type="button" class="mbtn" id="close">閉じて配置に戻る</button></div>
 </div>
 
-<div id="start" role="button" tabindex="0" aria-label="タップして全画面で始める"><b>タップして始める</b><span>全画面・横向きになります</span></div>
+<div id="start" role="button" tabindex="0" aria-label="タップして全画面で始める"><b>タップして始める</b><span>全画面・横向きになります</span><span class="ver">配置決めツール v1.2</span></div>
 <div id="portrait">スマホを横向きにしてください</div>
 
 <script>
