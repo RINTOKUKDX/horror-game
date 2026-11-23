@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ゲーム画面 見本 v1.1</title>
+<title>ゲーム画面 見本 v1.2</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* ゲーム画面の動く見本。ゲーム本体（index.html）には影響しない */
@@ -20,14 +20,25 @@
 
   /* 背景（絵の代わり）：ゆっくり動く */
   #stage{position:fixed;inset:0;overflow:hidden;transition:filter 1.2s}
-  #bg{position:absolute;inset:-8%;background-size:cover;animation:drift 40s ease-in-out infinite alternate;transition:opacity 1s}
-  @keyframes drift{from{transform:scale(1) translate(0,0)}to{transform:scale(1.08) translate(-2%,-1%)}}
-  .bg-hall{background:
-    radial-gradient(ellipse 20% 35% at 50% 45%,#3b2f22 0%,transparent 70%),
-    linear-gradient(90deg,#070606 0%,#1b1511 30%,#2a2119 50%,#1b1511 70%,#070606 100%)}
-  .bg-room{background:
-    radial-gradient(ellipse 30% 30% at 35% 60%,#3a0d0d 0%,transparent 70%),
-    radial-gradient(ellipse at 50% 40%,#1f1612 0%,#070505 80%)}
+  #bg{position:absolute;inset:0;background:#000 center/cover no-repeat;transition:opacity .8s;transform-origin:50% 50%}
+  #bg.fade{opacity:0}
+  /* 見せ方（場面ごとに変える） */
+  .cam-still{transform:none}
+  .cam-zoomin{animation:zoomin 16s ease-out forwards}
+  @keyframes zoomin{from{transform:scale(1)}to{transform:scale(1.18)}}
+  .cam-pullback{animation:pullback 4.5s cubic-bezier(.2,.7,.2,1) forwards}
+  @keyframes pullback{from{transform:scale(1.7)}to{transform:scale(1)}}
+  .cam-closeup{transform:scale(1.9)}
+  .cam-pan{inset:0 -12% !important;animation:pan 26s ease-in-out infinite alternate}
+  @keyframes pan{from{transform:translateX(5%)}to{transform:translateX(-5%)}}
+  #assetTabs{display:flex;gap:1.4vw;margin-bottom:2dvh}
+  #bgGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:1vw}
+  #bgGrid button{border:1px solid #3a3027;background:#000;padding:0;border-radius:2px;overflow:hidden;position:relative}
+  #bgGrid img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
+  #bgGrid span{position:absolute;left:0;right:0;bottom:0;font-size:11px;background:rgba(0,0,0,.7);padding:2px}
+  #sfxList{display:grid;grid-template-columns:repeat(4,1fr);gap:.8dvh .8vw}
+  #sfxList button{padding:1.2dvh .6vw;font-size:12px;background:#110d0b;border:1px solid #3a3027;border-radius:3px;text-align:left}
+  #sfxList button.playing{border-color:var(--gold);color:var(--gold)}
   #shade{position:absolute;inset:0;background:rgba(0,0,0,.6);opacity:0;transition:opacity .9s}
   #shade.on{opacity:1}
 
@@ -163,7 +174,7 @@
 </head>
 <body>
 <div id="stage">
-  <div id="bg" class="bg-hall"></div>
+  <div id="bg"></div>
   <div id="shade"></div>
   <div id="text"></div>
   <div id="next">▼</div>
@@ -188,8 +199,9 @@
     <button type="button" class="item" data-open="pLog">ログ</button>
     <button type="button" class="item" data-open="pSave">セーブ・ロード</button>
     <button type="button" class="item" data-open="pTune">見本の調整</button>
+    <button type="button" class="item" data-open="pAssets">素材を見る</button>
   </div>
-  <p class="small">ゲーム画面 見本 v1.1</p>
+  <p class="small">ゲーム画面 見本 v1.2</p>
 </div>
 <div class="panel" id="pStatus"><button type="button" class="close" data-back>戻る</button><h2>ステータス</h2><div class="sub" id="statusBody"></div></div>
 <div class="panel" id="pSheet"><button type="button" class="close" data-back>戻る</button><h2>探索者シート</h2>
@@ -204,14 +216,21 @@
   <div class="row"><button type="button" class="item" id="tCircle">魔法陣を1画進める</button><button type="button" class="item" id="tReset">最初からやり直す</button></div>
   <p class="small">神話技能を30以上にすると、次に画面が切り替わったときにコッソリ読めるようになります。</p>
 </div>
+<div class="panel" id="pAssets"><button type="button" class="close" data-back>戻る</button><h2>素材を見る</h2>
+  <div id="assetTabs"><button type="button" class="item" id="tabBg">背景</button><button type="button" class="item" id="tabSfx">効果音</button>
+    <input type="text" id="assetQ" placeholder="名前で絞り込み" autocomplete="off"></div>
+  <div id="bgGrid"></div><div id="sfxList" style="display:none"></div>
+  <p class="small">背景はタップでその絵に切り替え（文章はそのまま）。効果音はタップで再生。</p>
+</div>
 <div class="panel" id="pResist"><button type="button" class="close" data-close>閉じる</button><h2 id="resistTitle"></h2>
   <div class="grid" id="skillList"></div>
   <div class="row"><input type="text" id="free" placeholder="技能名や行動を入力（例：目星）" autocomplete="off"><button type="button" class="item" id="freeGo">決定</button></div>
 </div>
 
-<div id="start" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプでログ／長押しで絵だけ</span><span class="ver">ゲーム画面 見本 v1.1</span></div>
+<div id="start" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプでログ／長押しで絵だけ</span><span class="ver">ゲーム画面 見本 v1.2</span></div>
 <div id="portrait">スマホを横向きにしてください</div>
 
+<script src="../assets/manifest.js"></script>
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
@@ -220,23 +239,27 @@
   var log = [];
 
   // ---- シナリオ（見本） ----
+  // 各ページに bg（背景）, cam（見せ方）, amb（環境音）, se（効果音）を付けられる
   var SCRIPT = {
-    start:{ bg:'bg-hall', pages:[
-      ['雨の音が、まだ耳の奥に残っている。','貴方は古い洋館の廊下に立っていた。湿った木の匂いに、どこか鉄錆に似た匂いが混じっている。'],
-      [{who:'老人',t:'「……ようこそ。お待ちしておりました」'},'振り返ると、燭台を持った老人が立っていた。いつからそこにいたのか、貴方には分からない。',{mark:true,t:'老人の足元に、何か黒い染みがある。'}],
-      [{who:'老人',t:'「お部屋へご案内いたします。ただし、廊下の奥の扉だけは決して——',cut:true}],
-      [{who:'貴方',t:'「今の音は……？」'},{who:'老人',t:'「……お気になさらず」'}]
+    start:{ bg:'mansion4', cam:'pullback', amb:'雨が降る1', se:'柱時計の鐘', pages:[
+      ['雨の音が、まだ耳の奥に残っている。','丘の上に、その洋館は建っていた。'],
+      {bg:'corridor3', cam:'still', se:'古びたドアを開ける', paras:['貴方は古い洋館の廊下に立っていた。湿った木の匂いに、どこか鉄錆に似た匂いが混じっている。']},
+      {cam:'zoomin', paras:[{who:'老人',t:'「……ようこそ。お待ちしておりました」'},'振り返ると、燭台を持った老人が立っていた。いつからそこにいたのか、貴方には分からない。',{mark:true,t:'老人の足元に、何か黒い染みがある。'}]},
+      {bg:'door4', cam:'closeup', paras:[{who:'老人',t:'「お部屋へご案内いたします。ただし、廊下の奥の扉だけは決して——',cut:true}]},
+      {bg:'corridor3', cam:'still', paras:[{who:'貴方',t:'「今の音は……？」'},{who:'老人',t:'「……お気になさらず」'}]}
     ], choice:'c1' },
-    room:{ bg:'bg-room', pages:[
+    room:{ bg:'bathroom3', cam:'zoomin', amb:'雨が降る2', se:'古びたドアを開ける', pages:[
       ['扉を開けた瞬間、むせ返るような臭いが鼻を突いた。','床一面に、赤黒い線が引かれている。それは、何かの図形のようにも見えた。'],
-      [{t:'——見てはいけないものを、見てしまった。',san:15}]
+      {cam:'closeup', se:'ゾンビの息遣い', paras:[{t:'——見てはいけないものを、見てしまった。',san:15}]}
     ], choice:'c2' },
-    old:{ bg:'bg-hall', pages:[[{who:'老人',t:'「賢明なご判断です」'},'老人は満足そうに微笑んだ。その笑みは、どこか作り物めいていた。']], choice:'c2' },
-    back:{ bg:'bg-hall', pages:[['玄関の扉は、外から押さえつけられているかのように動かない。','背後で、老人がくすりと笑った気がした。']], choice:'c1' }
+    old:{ bg:'corridor', cam:'pan', amb:'雨が降る1', pages:[[{who:'老人',t:'「賢明なご判断です」'},'老人は満足そうに微笑んだ。その笑みは、どこか作り物めいていた。']], choice:'c2' },
+    back:{ bg:'door', cam:'still', se:'開かないドア1', pages:[['玄関の扉は、外から押さえつけられているかのように動かない。','背後で、老人がくすりと笑った気がした。']], choice:'c1' },
+    alley:{ bg:'dark_street32', cam:'pullback', amb:'雨で濡れた道路を歩く', pages:[['気がつくと、貴方は見知らぬ裏路地に立っていた。','洋館は、どこにも見当たらない。']], choice:'c2' },
+    school:{ bg:'empty_school33', cam:'zoomin', se:'時計の針1', pages:[['誰もいない教室。時計の針だけが、やけに大きく響いている。']], choice:'c2' }
   };
   var CHOICES = {
     c1:[['音のした部屋へ向かう','room'],['老人について行く','old'],['玄関へ引き返す','back']],
-    c2:[['最初に戻る','start'],['もう一度、部屋を見る','room']]
+    c2:[['最初に戻る','start'],['もう一度、部屋を見る','room'],['裏路地（背景テスト）','alley'],['教室（背景テスト）','school']]
   };
   var RESULTS = {
     '目星':['床に、乾いた血の跡が点々と続いている。廊下の奥へ。','特に変わったものは見つからない。'],
@@ -275,17 +298,52 @@
     el.appendChild(g1); el.appendChild(g2); el.appendChild(document.createTextNode('抗う…'));
   }
 
+  // ---- 背景・音 ----
+  var curBg=null, ambEl=null;
+  function bgUrl(n){ return '../assets/bg/'+encodeURIComponent(n)+'.webp'; }
+  function setBg(name,cam){
+    var bg=$('bg'), apply=function(){ bg.style.backgroundImage='url("'+bgUrl(name)+'")'; bg.className=''; void bg.offsetWidth; bg.className='cam-'+(cam||'still'); };
+    if(name!==curBg && curBg){ bg.classList.add('fade'); setTimeout(apply,450); } else apply();
+    curBg=name;
+  }
+  function sfxUrl(n){ return '../assets/sfx/'+encodeURIComponent(n)+'.mp3'; }
+  function se(name,vol){ try{ var a=new Audio(sfxUrl(name)); a.volume=vol==null?.8:vol; a.play().catch(function(){}); return a; }catch(_){ } }
+  function amb(name){ try{ if(ambEl){ if(ambEl.dataset.n===name) return; ambEl.pause(); }
+    ambEl=new Audio(sfxUrl(name)); ambEl.dataset.n=name; ambEl.loop=true; ambEl.volume=.25; ambEl.play().catch(function(){}); }catch(_){ } }
+
+  // ---- 素材を見る ----
+  var assetsBuilt=false, playing=null;
+  function buildAssets(){
+    if(assetsBuilt||!window.ASSETS) return; assetsBuilt=true;
+    var g=$('bgGrid'), l=$('sfxList');
+    ASSETS.bg.forEach(function(n){ var b=document.createElement('button'); b.type='button'; b.dataset.n=n;
+      b.innerHTML='<img loading="lazy" alt="" src="'+bgUrl(n)+'"><span></span>'; b.querySelector('span').textContent=n;
+      b.addEventListener('click',function(){ setBg(n,'still'); closePanels(); }); g.appendChild(b); });
+    ASSETS.sfx.forEach(function(n){ var b=document.createElement('button'); b.type='button'; b.dataset.n=n; b.textContent=n;
+      b.addEventListener('click',function(){ if(playing){ playing.a.pause(); playing.b.classList.remove('playing'); }
+        var a=se(n,.9); if(a){ playing={a:a,b:b}; b.classList.add('playing'); a.onended=function(){ b.classList.remove('playing'); }; } });
+      l.appendChild(b); });
+  }
+  function filterAssets(){ var q=$('assetQ').value.trim();
+    document.querySelectorAll('#bgGrid button,#sfxList button').forEach(function(b){ b.style.display=(!q||b.dataset.n.indexOf(q)>=0)?'':'none'; }); }
+  document.addEventListener('DOMContentLoaded',function(){});
+  $('tabBg').addEventListener('click',function(){ $('bgGrid').style.display=''; $('sfxList').style.display='none'; });
+  $('tabSfx').addEventListener('click',function(){ $('bgGrid').style.display='none'; $('sfxList').style.display=''; });
+  $('assetQ').addEventListener('input',filterAssets);
+
   // ---- 進行 ----
   function go(key){
     cur=SCRIPT[key]; pageI=0; paraI=0;
-    var bg=$('bg'); bg.className=cur.bg;
+    cur.pages=cur.pages.map(function(pg){ return Array.isArray(pg)?{paras:pg}:pg; });
+    setBg(cur.pages[0].bg||cur.bg, cur.pages[0].cam||cur.cam);
+    if(cur.amb) amb(cur.amb); if(cur.se) se(cur.se); if(cur.pages[0].se) se(cur.pages[0].se);
     hideChoices(); textEl.innerHTML=''; shade.classList.remove('on'); nextEl.classList.remove('on');
     newHide(); refreshEat();
     mode='wait';
     // 先に絵を見せて、それから文章
     setTimeout(function(){ shade.classList.add('on'); setTimeout(function(){ mode='text'; showPara(); },700); },1300);
   }
-  function para(){ return cur.pages[pageI][paraI]; }
+  function para(){ return cur.pages[pageI].paras[paraI]; }
   function showPara(){
     var p=para(); if(typeof p==='string') p={t:p};
     if(p.mark){ $('floatResist').classList.add('on'); resistLabel($('floatResist')); }
@@ -315,6 +373,7 @@
     setTimeout(function(){
       $('flash').classList.remove('on'); void $('flash').offsetWidth; $('flash').classList.add('on');
       $('stage').classList.remove('shake'); void $('stage').offsetWidth; $('stage').classList.add('shake');
+      se('ドアをドンドン叩く',1);
       var el=document.createElement('p'); el.textContent='——ドンッ！！'; el.style.fontSize='1.6em'; el.style.color='#d9b0a0';
       textEl.appendChild(el); log.push('——ドンッ！！');
       setTimeout(function(){ mode='text'; nextEl.classList.add('on'); },600);
@@ -324,10 +383,13 @@
     if(mode!=='text') return;
     if(typing){ finishType(); return; }
     paraI++;
-    if(paraI>=cur.pages[pageI].length){
+    if(paraI>=cur.pages[pageI].paras.length){
       pageI++; paraI=0; textEl.innerHTML='';
       $('floatResist').classList.remove('on');
       if(pageI>=cur.pages.length){ showChoices(cur.choice); return; }
+      var pg=cur.pages[pageI];
+      if(pg.bg||pg.cam){ setBg(pg.bg||curBg, pg.cam||'still'); if(pg.bg && pg.bg!==curBg){ /* 絵が変わったら、少し見せてから文章 */ } }
+      if(pg.se) se(pg.se);
       newHide(); refreshEat();
     }
     showPara();
@@ -338,7 +400,7 @@
     var box=$('choices'); box.innerHTML='';
     CHOICES[key].forEach(function(c){
       var b=document.createElement('button'); b.type='button'; b.className='ch'; b.textContent=c[0];
-      b.addEventListener('click',function(e){ e.stopPropagation(); log.push('▶ '+c[0]); textEl.style.opacity=1; go(c[1]); });
+      b.addEventListener('click',function(e){ e.stopPropagation(); se('ページをめくる1',.6); log.push('▶ '+c[0]); textEl.style.opacity=1; go(c[1]); });
       box.appendChild(b);
     });
     var r=document.createElement('button'); r.type='button'; r.className='ch resist'; resistLabel(r);
@@ -438,7 +500,7 @@
   }
   function tick(){
     if(S.strokes>=S.maxStrokes) return;
-    S.strokes++; drawCircle(true);
+    S.strokes++; drawCircle(true); se('血がたれる1',.9);
     var c=$('circle'); c.classList.add('on'); clearTimeout(circleHide);
     circleHide=setTimeout(function(){ c.classList.remove('on'); },5200);
     if(S.strokes>=S.maxStrokes){
@@ -487,7 +549,8 @@
   var stack=[];
   function openPanel(id){ stack.forEach(function(p){ $(p).classList.remove('on'); }); stack.push(id); $(id).classList.add('on');
     if(id==='pLog') $('logBody').innerHTML=log.map(function(l){ return l.replace(/</g,'&lt;'); }).join('<br>');
-    if(id==='pStatus') applyState(); }
+    if(id==='pStatus') applyState();
+    if(id==='pAssets') buildAssets(); }
   function closePanels(){ stack.forEach(function(p){ $(p).classList.remove('on'); }); stack=[]; }
   function back(){ var p=stack.pop(); if(p) $(p).classList.remove('on'); var q=stack[stack.length-1]; if(q) $(q).classList.add('on'); }
   document.querySelectorAll('[data-close]').forEach(function(b){ b.addEventListener('click',closePanels); });
