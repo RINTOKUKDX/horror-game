@@ -24,9 +24,14 @@
   .unit img { width:100%; height:100%; display:block; }
   .unit.enemy img { filter:sepia(1) saturate(2.2) hue-rotate(-35deg) brightness(.75); }
   .unit .ring { position:absolute; left:10%; right:10%; bottom:-4%; height:8%; border-radius:50%; background:rgba(0,0,0,.5); }
-  .obs { border:2px solid #0006; }
-  .obs.box { background:linear-gradient(180deg,#8a6a45 0 18%,#5e4630 18% 100%); box-shadow:inset 0 0 0 2px #3a2a1a; }
-  .obs.pillar { background:linear-gradient(90deg,#4a4a52,#6a6a74 50%,#3c3c44); box-shadow:inset 0 0 0 2px #22222a; }
+  .blk { position:absolute; transform-style:preserve-3d; pointer-events:none; }
+  .blk .f { position:absolute; pointer-events:auto; backface-visibility:visible; }
+  .blk.wood .top   { background:linear-gradient(135deg,#a98557,#8a6a45); box-shadow:inset 0 0 0 2px #3a2a1a; }
+  .blk.wood .front { background:repeating-linear-gradient(90deg,#6e5236 0 9px,#5e4630 9px 11px); box-shadow:inset 0 0 0 2px #2c1f12; }
+  .blk.wood .side  { background:repeating-linear-gradient(0deg,#4d3926 0 9px,#3e2d1e 9px 11px); box-shadow:inset 0 0 0 2px #2c1f12; }
+  .blk.rock .top   { background:linear-gradient(135deg,#8a8a94,#6c6c76); box-shadow:inset 0 0 0 2px #22222a; }
+  .blk.rock .front { background:linear-gradient(180deg,#5c5c66,#4a4a52 60%,#3e3e46); box-shadow:inset 0 0 0 2px #1c1c22; }
+  .blk.rock .side  { background:linear-gradient(180deg,#46464e,#363640); box-shadow:inset 0 0 0 2px #1c1c22; }
   #ver { position:absolute; left:8px; top:6px; font-size:11px; color:var(--dim); z-index:3; }
   #win { position:absolute; left:2%; right:2%; bottom:2.5%; height:calc(var(--win) - 4%); z-index:5; background:rgba(4,6,30,.92);
     border:3px solid #eee; border-radius:8px; box-shadow:0 0 0 2px #000, inset 0 0 0 2px #000; padding:2% 3%; }
@@ -75,7 +80,7 @@
 <div id="app">
   <div id="stage">
     <div id="bgimg"></div><div id="bgshade"></div>
-    <div id="ver">戦闘盤 見本 v1.5</div>
+    <div id="ver">戦闘盤 見本 v1.6</div>
     <button id="bMenu">☰ 設定</button>
     <div id="field"><div id="board"><div id="grid"></div></div></div>
     <div id="params"></div>
@@ -168,7 +173,7 @@
     grid.style.gridTemplateRows = 'repeat('+S.rows+','+size+'px)';
     $('bgimg').style.backgroundImage = 'url(../assets/bg/'+BGS[S.bg]+'.webp)';
     // 以前の立体物を消す
-    Array.prototype.slice.call(board.querySelectorAll('.bb')).forEach(function(n){ n.remove(); });
+    Array.prototype.slice.call(board.querySelectorAll('.bb, .blk')).forEach(function(n){ n.remove(); });
     grid.innerHTML = '';
     for (var r=0;r<S.rows;r++) for (var c=0;c<S.cols;c++){
       var d = document.createElement('div');
@@ -191,10 +196,23 @@
     el.style.left = ((c+.5)*size)+'px'; el.style.top = ((r+.62)*size)+'px';
     el.style.transform = 'translate(-50%,-100%) rotateZ('+(-S.yaw)+'deg) rotateX(-'+TILT+'deg)';
   }
+  // 迫り上がるマス：1=低い木箱（半マス）、2=高い岩（1マス）
   function addObstacle(c,r,t){
-    var o = document.createElement('div'); o.className = 'bb obs ' + (t===1?'box':'pillar');
-    place(o, c, r, size*(t===1?0.78:0.8), size*(t===1?0.75:1.7));
-    board.appendChild(o);
+    var H = size*(t===1 ? 0.5 : 1.0), g = Math.max(1, Math.round(size*0.015));
+    var b = document.createElement('div'); b.className = 'blk ' + (t===1 ? 'wood' : 'rock');
+    b.style.left = (c*size)+'px'; b.style.top = (r*size)+'px'; b.style.width = size+'px'; b.style.height = size+'px';
+    function face(cls, css){
+      var f = document.createElement('div'); f.className = 'f ' + cls;
+      Object.keys(css).forEach(function(k){ f.style[k] = css[k]; });
+      f.onclick = function(){ cellTap(c, r); };
+      b.appendChild(f); return f;
+    }
+    var px = function(v){ return v+'px'; };
+    face('top',   { left:'0', top:'0', width:px(size), height:px(size), transform:'translateZ('+px(H)+')' });
+    face('front', { left:'0', top:px(size), width:px(size), height:px(H), transformOrigin:'50% 0', transform:'rotateX(90deg)' });
+    face('side',  { left:px(size), top:'0', width:px(H), height:px(size), transformOrigin:'0 50%', transform:'rotateY(-90deg)' });
+    face('side',  { left:px(-H), top:'0', width:px(H), height:px(size), transformOrigin:'100% 50%', transform:'rotateY(90deg)' });
+    board.appendChild(b);
   }
   // 一番近い敵（味方から見れば敵、敵から見れば味方）の方向を向く。画面の右なら反転。
   function flipOf(u){
@@ -225,8 +243,8 @@
     board.appendChild(el); u.el = el;
   }
 
-  function onCell(e){
-    var c = +this.dataset.c, r = +this.dataset.r;
+  function onCell(e){ cellTap(+this.dataset.c, +this.dataset.r); }
+  function cellTap(c, r){
     var u = unitAt(c,r);
     if (edit){
       if (u) return;
@@ -264,7 +282,7 @@
   }
 
   $('bEdit').onclick = function(){ edit = !edit; selected = null; render();
-    say(edit ? '編集モード。\nマスをタップすると、箱→柱→なし の順で置ける。' : '編集を終えた。\n味方をタップして動かそう。'); };
+    say(edit ? '編集モード。\nマスをタップすると、低い木箱→高い岩→なし の順で置ける。' : '編集を終えた。\n味方をタップして動かそう。'); };
   var tm = null;
   function say(t){
     clearInterval(tm); var i = 0, m = $('msg'); m.textContent = '';
