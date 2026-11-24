@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ゲーム画面 見本 v1.6</title>
+<title>ゲーム画面 見本 v1.7</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* ゲーム画面の動く見本。ゲーム本体（index.html）には影響しない */
@@ -172,7 +172,9 @@
 
 
   /* 探索者シート（古びた羊皮紙の見開き） */
-  #pSheet{background:rgba(4,3,3,.94);padding-top:2dvh;padding-bottom:1dvh}
+  #pSheet{background:rgba(4,3,3,.94);padding:2dvh 3vw}
+  #pSheet.on{display:flex;align-items:center;justify-content:center}
+  #pSheet #book{width:100%;margin:0}
   #book{position:relative;display:flex;height:80dvh;margin-top:1dvh;padding:1.6dvh 1.4vw;border-radius:5px;color:#2a1a08;overflow:hidden;
     background:
       radial-gradient(circle at 18% 22%,rgba(110,60,15,.28) 0,transparent 9%),
@@ -201,7 +203,7 @@
   #book .st small{display:block;font-weight:400}
   #book .sk{display:grid;grid-template-columns:repeat(3,1fr);gap:.2dvh 1vw}
   #book .sk div{display:flex;align-items:center;gap:.4vw;font-size:clamp(11px,3dvh,15px);border-bottom:1px solid rgba(50,28,6,.35);padding:.2dvh 0}
-  #book .sk i{width:1.1em;height:1.1em;border:1.5px solid #3a2410;flex:none}
+  #book .sk i{width:1.1em;height:1.1em;border:1.5px solid #3a2410;flex:none;font-style:normal;font-weight:700;color:#5a140a;line-height:1em;text-align:center;font-size:1.25em;text-shadow:0 0 1px rgba(90,20,10,.6)}
   #book .sk em{flex:1;font-style:normal;white-space:nowrap;letter-spacing:-.04em;font-size:.92em}
   #book .wp{width:100%;border-collapse:collapse;font-size:clamp(10px,2.8dvh,14px)}
   #book .wp td,#book .wp th{border-bottom:1px solid rgba(50,28,6,.5);padding:.2dvh .5vw;text-align:left;font-weight:500}
@@ -281,7 +283,7 @@
     <button type="button" class="item" data-open="pTune">見本の調整</button>
     <button type="button" class="item" data-open="pAssets">素材を見る</button>
   </div>
-  <p class="small">ゲーム画面 見本 v1.6</p>
+  <p class="small">ゲーム画面 見本 v1.7</p>
 </div>
 <div class="panel" id="pSheet"><button type="button" class="close" data-back>戻る</button>
   <div id="book">
@@ -297,6 +299,7 @@
   <label>HP <input type="range" id="tHp" min="1" max="12"><span id="vHp"></span></label>
   <label>クトゥルフ神話 <input type="range" id="tMy" min="0" max="40"><span id="vMy"></span></label>
   <div class="row"><button type="button" class="item" id="tCircle">魔法陣を1画進める</button><button type="button" class="item" id="tReset">最初からやり直す</button></div>
+  <div class="row"><button type="button" class="item" id="tGrow">話の終わり（成長判定）</button></div><p class="small" id="growOut"></p>
   <p class="small">神話技能を30以上にすると、次に画面が切り替わったときにコッソリ読めるようになります。</p>
 </div>
 <div class="panel" id="pAssets"><button type="button" class="close" data-back>戻る</button><h2>素材を見る</h2>
@@ -310,15 +313,16 @@
   <div class="row"><input type="text" id="free" placeholder="技能名や行動を入力（例：目星）" autocomplete="off"><button type="button" class="item" id="freeGo">決定</button></div>
 </div>
 
-<div id="start" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプでログ／長押しで絵だけ</span><span class="ver">ゲーム画面 見本 v1.6</span></div>
+<div id="start" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプでログ／長押しで絵だけ</span><span class="ver">ゲーム画面 見本 v1.7</span></div>
 <div id="portrait">スマホを横向きにしてください</div>
 
 <script src="../assets/manifest.js"></script>
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
-  var S = { san:80, sanMax:80, hp:12, hpMax:12, mythos:0, revealed:false, strokes:0, maxStrokes:8 };
-  var SKILLS = { '目星':60, '聞き耳':55, '図書館':70, '心理学':45, 'オカルト':40, '回避':35 };
+  var S = { checks:{}, san:80, sanMax:80, hp:12, hpMax:12, mythos:0, revealed:false, strokes:0, maxStrokes:8 };
+  var SKILLS = {'近接':50,'銃火器':20,'回避':60,'防御':50,'目星':60,'聞き耳':55,'隠密':10,'医学':30,'製作':20,'説得':15,'心理学':45,'クトゥルフ神話':0,'教養':70,'アイデア':65,'幸運':50};
+  var SKILLS0=JSON.parse(JSON.stringify(SKILLS)); var NOGROW={'クトゥルフ神話':1,'アイデア':1,'幸運':1}; 
   var log = [];
 
   // ---- シナリオ（見本） ----
@@ -560,6 +564,7 @@
     closePanels();
     if(!SKILLS[k]){ resultText('何も起きなかった。'); tick(); return; }
     rollDice(k,SKILLS[k],function(ok){
+      if(ok && !NOGROW[k]) S.checks[k]=true;
       var r=RESULTS[k]||['何も起きなかった。','何も起きなかった。'];
       resultText(r[ok?0:1]); tick();
     });
@@ -665,7 +670,6 @@
     renderSheet();
   }
   var sheetPage=0;
-  var SKILLS=[['近接',50],['銃火器',20],['回避',60],['防御',50],['目星',60],['聞き耳',55],['隠密',10],['医学',30],['製作',20],['説得',15],['心理学',45],['クトゥルフ神話','M'],['教養',70],['アイデア',65],['幸運',50]];
   var ITEMS=['懐中電灯','古い鍵','手帳'];
   function fl(a,b){ return '<div class="fl"><b>'+a+'</b><span>'+(b||'&nbsp;')+'</span></div>'; }
   function ab(n,v){ return '<div class="ab">'+n+'<span class="bx">'+v+'</span></div>'; }
@@ -677,7 +681,7 @@
         +'<div class="sec">能 力 値</div><div class="abil">'+ab('STR',9)+ab('DEX',12)+ab('INT',13)+ab('CON',11)+ab('APP',10)+ab('POW',16)+ab('SIZ',13)+ab('EDU',14)+'</div>'
         +'<div class="sec">状 態</div><div class="st"><div>体力<span class="bx">'+S.hp+'</span><small>最大 '+S.hpMax+'</small></div><div>正気度<span class="bx">'+S.san+'</span><small>最大 '+S.sanMax+'</small></div><div>MP<span class="bx">10</span><small>最大 16</small></div><div>幸運<span class="bx">50</span><small>&nbsp;</small></div></div>'
         +'<div class="fl" style="margin-top:1dvh"><b>魔法陣</b><span>'+S.strokes+' / '+S.maxStrokes+' 画</span></div>';
-      R='<h3>技 能</h3><div class="sk">'+SKILLS.map(function(k){ return '<div><i></i><em>'+k[0]+'</em><span class="bx">'+(k[1]==='M'?S.mythos:k[1])+'</span></div>'; }).join('')+'</div>'
+      R='<h3>技 能</h3><div class="sk">'+Object.keys(SKILLS).map(function(k){ return '<div><i'+(S.checks[k]?' class="on">✓':'>')+'</i><em>'+k+'</em><span class="bx">'+(k==='クトゥルフ神話'?S.mythos:SKILLS[k])+'</span></div>'; }).join('')+'</div>'
         +'<div class="sec">武 器</div><table class="wp"><tr><th>武器</th><th>ダメージ</th><th>回数</th></tr><tr><td>素手</td><td>1D3</td><td>1</td></tr><tr><td>&nbsp;</td><td></td><td></td></tr></table>';
     } else {
       L='<h3>装備と所持品</h3><div class="inv">'+ITEMS.concat(['','','','','','','','','']).map(function(i){ return '<div>'+i+'</div>'; }).join('')+'</div>';
@@ -726,7 +730,11 @@
   bindRange('tHp','vHp','hp',function(){ return S.hp+'/'+S.hpMax; });
   bindRange('tMy','vMy','mythos',function(){ return S.mythos; });
   $('tCircle').addEventListener('click',function(){ closePanels(); tick(); });
-  $('tReset').addEventListener('click',function(){ S.san=80; S.hp=12; S.mythos=0; S.revealed=false; S.strokes=0; log=[];
+  $('tGrow').addEventListener('click',function(){
+    var out=[]; Object.keys(S.checks).forEach(function(k){ var r=1+Math.floor(Math.random()*100);
+      if(r>SKILLS[k]||r>95){ var up=1+Math.floor(Math.random()*10); SKILLS[k]+=up; out.push(k+' +'+up+'（'+r+'）'); } else out.push(k+' 変化なし（'+r+'）'); });
+    S.checks={}; $('growOut').textContent=out.length?'成長：'+out.join('／'):'✓の付いた技能がありません'; });
+  $('tReset').addEventListener('click',function(){ S.san=80; S.hp=12; S.mythos=0; S.revealed=false; S.strokes=0; S.checks={}; Object.keys(SKILLS0).forEach(function(k){ SKILLS[k]=SKILLS0[k]; }); log=[];
     $('tSan').value=80; $('tHp').value=12; $('tMy').value=0; $('vSan').textContent='80/80'; $('vHp').textContent='12/12'; $('vMy').textContent='0';
     drawCircle(false); $('stage').style.filter=''; applyState(); closePanels(); go('start'); });
 
