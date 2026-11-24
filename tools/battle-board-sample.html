@@ -10,8 +10,8 @@
   html, body { margin:0; height:100%; background:var(--bg); color:var(--text); overflow:hidden;
     font-family:'Shippori Mincho','Noto Serif JP','Yu Mincho',serif; touch-action:manipulation; user-select:none; }
   #app { position:fixed; inset:0; display:flex; }
-  #stage { position:relative; flex:1; overflow:hidden; --win:27%; }
-  #field { position:absolute; left:0; right:0; top:0; bottom:var(--win); perspective:900px; perspective-origin:50% 25%; }
+  #stage { position:relative; flex:1; overflow:hidden; --win:27%; --pw:21%; }
+  #field { position:absolute; left:0; right:var(--pw); top:0; bottom:var(--win); perspective:900px; perspective-origin:50% 25%; }
   #bgimg { position:absolute; inset:0; background-size:cover; background-position:center; filter:brightness(.55) saturate(.8); }
   #bgshade { position:absolute; inset:0; background:radial-gradient(ellipse at 50% 55%, rgba(0,0,0,0) 30%, rgba(0,0,0,.65) 100%); pointer-events:none; }
   #board { position:absolute; left:50%; top:52%; transform-style:preserve-3d; transform-origin:50% 50%; }
@@ -35,8 +35,20 @@
   @keyframes bl { 50% { opacity:0; } }
   .sl { display:flex; align-items:center; gap:4px; font-size:clamp(11px,3vmin,14px); }
   .sl input { flex:1; min-width:0; }
-  #menu { width:21%; min-width:150px; max-width:220px; padding:6px; display:flex; flex-direction:column; gap:4px; overflow-y:auto;
-    background:var(--panel); border-left:1px solid var(--line); z-index:4; }
+  #menu { position:absolute; left:0; top:0; bottom:0; width:210px; padding:6px; display:none; flex-direction:column; gap:4px; overflow-y:auto;
+    background:var(--panel); border-right:1px solid var(--line); z-index:9; }
+  #menu.open { display:flex; }
+  #bMenu { position:absolute; left:6px; top:22px; z-index:8; background:rgba(18,15,14,.85); color:var(--text); border:1px solid var(--line); font:inherit; font-size:14px; padding:6px 10px; border-radius:2px; }
+  #params { position:absolute; right:0; top:0; bottom:var(--win); width:var(--pw); min-width:140px; z-index:4; padding:6px; display:flex; flex-direction:column; gap:6px; overflow:hidden;
+    background:rgba(18,15,14,.82); border-left:1px solid var(--line); }
+  .pc { border:1px solid var(--line); background:rgba(0,0,0,.35); padding:4px 6px; font-size:clamp(10px,2.8vmin,13px); flex:1; min-height:0; }
+  .pc.ally { border-left:3px solid #7aa87a; } .pc.enemy { border-left:3px solid #b05a4a; }
+  .pc.me { box-shadow:0 0 0 1px var(--gold); }
+  .pn { color:var(--gold); margin-bottom:2px; white-space:nowrap; }
+  .bar { display:flex; align-items:center; gap:4px; margin:1px 0; }
+  .bar i { width:2.2em; font-style:normal; color:var(--dim); font-size:.9em; }
+  .bar b { flex:1; height:6px; background:#2a2420; display:block; } .bar b u { display:block; height:100%; }
+  .bar span { width:3.6em; text-align:right; color:var(--text); font-size:.9em; }
   #menu button { flex:1; min-height:0; background:#120f0e; color:var(--text); border:1px solid var(--line); font:inherit; font-size:clamp(11px,3.2vmin,15px); border-radius:2px; cursor:pointer; padding:2px 4px; }
   #menu button.on, #menu button:active { border-color:var(--gold); color:var(--gold); }
   #menu .row2 { display:flex; gap:4px; flex:1; min-height:0; }
@@ -54,8 +66,10 @@
 <div id="app">
   <div id="stage">
     <div id="bgimg"></div><div id="bgshade"></div>
-    <div id="ver">戦闘盤 見本 v1.0</div>
+    <div id="ver">戦闘盤 見本 v1.1</div>
+    <button id="bMenu">☰ 設定</button>
     <div id="field"><div id="board"><div id="grid"></div></div></div>
+    <div id="params"></div>
     <div id="win"><div id="msg"></div><span id="caret">▼</span></div>
   </div>
   <div id="menu">
@@ -63,6 +77,7 @@
     <div class="row2"><button id="bCp">横＋</button><button id="bCm">横－</button></div>
     <div class="row2"><button id="bRp">縦＋</button><button id="bRm">縦－</button></div>
     <div class="sl">角度<input type="range" id="sTilt" min="20" max="80" step="1"></div>
+    <div class="sl">回転<input type="range" id="sYaw" min="-60" max="60" step="1"></div>
     <div class="sl">大きさ<input type="range" id="sScale" min="50" max="140" step="1"></div>
     <button id="bBg">背景を変える</button>
     <button id="bClear">障害物を全消去</button>
@@ -86,19 +101,23 @@
   var $ = function(id){ return document.getElementById(id); };
   var stage = $('stage'), field = $('field'), board = $('board'), grid = $('grid');
 
-  var S = { cols:8, rows:6, cells:[], bg:0, tilt:55, scale:100,
-    units:[ {id:'a1', side:'ally', c:2, r:5}, {id:'a2', side:'ally', c:5, r:5}, {id:'e1', side:'enemy', c:3, r:0}, {id:'e2', side:'enemy', c:6, r:0} ] };
+  var S = { cols:8, rows:6, cells:[], bg:0, tilt:55, yaw:0, scale:100,
+    units:[
+      {id:'a1', side:'ally', c:6, r:5, name:'探索者A', hp:12, mhp:12, mp:8, mmp:10, san:62, msan:70},
+      {id:'a2', side:'ally', c:7, r:3, name:'探索者B', hp:9, mhp:11, mp:5, mmp:6, san:48, msan:55},
+      {id:'e1', side:'enemy', c:1, r:0, name:'影の群れ', hp:20, mhp:20, mp:0, mmp:0},
+      {id:'e2', side:'enemy', c:0, r:2, name:'歪んだ者', hp:14, mhp:16, mp:3, mmp:3} ] };
   var edit = false, selected = null, size = 60;
 
   function key(c,r){ return r*100+c; }
   function cellAt(c,r){ return S.cells[key(c,r)] || 0; }
   function unitAt(c,r){ for (var i=0;i<S.units.length;i++){ var u=S.units[i]; if (u.c===c && u.r===r) return u; } return null; }
-  function save(){ try{ localStorage.setItem('battleBoardV1', JSON.stringify(S)); }catch(e){} }
-  function load(){ try{ var t = localStorage.getItem('battleBoardV1'); if (t) apply(JSON.parse(t)); }catch(e){} }
+  function save(){ try{ localStorage.setItem('battleBoardV2', JSON.stringify(S)); }catch(e){} }
+  function load(){ try{ var t = localStorage.getItem('battleBoardV2'); if (t) apply(JSON.parse(t)); }catch(e){} }
   function apply(o){
     if (!o || !o.cols || !o.rows) return;
     S.cols = Math.max(3, Math.min(14, o.cols|0)); S.rows = Math.max(3, Math.min(12, o.rows|0));
-    S.cells = o.cells || {}; S.bg = (o.bg|0) % BGS.length; S.tilt = o.tilt||55; S.scale = o.scale||100;
+    S.cells = o.cells || {}; S.bg = (o.bg|0) % BGS.length; S.tilt = o.tilt||55; S.yaw = o.yaw||0; S.scale = o.scale||100;
     if (o.units && o.units.length) S.units = o.units;
     clampUnits();
   }
@@ -112,8 +131,9 @@
   function fit(){
     TILT = S.tilt;
     var W = field.clientWidth, H = field.clientHeight;
-    var cos = Math.cos(TILT*Math.PI/180);
-    size = Math.min(W*0.88/S.cols, H*0.66/(S.rows*cos), 90) * S.scale/100;
+    var cos = Math.cos(TILT*Math.PI/180), y = Math.abs(S.yaw)*Math.PI/180;
+    var ex = S.cols*Math.cos(y) + S.rows*Math.sin(y), ey = (S.rows*Math.cos(y) + S.cols*Math.sin(y))*cos;
+    size = Math.min(W*0.88/ex, H*0.66/ey, 90) * S.scale/100;
     size = Math.max(Math.floor(size), 18);
   }
 
@@ -122,7 +142,7 @@
     var w = S.cols*size, h = S.rows*size;
     board.style.width = w+'px'; board.style.height = h+'px';
     board.style.marginLeft = (-w/2)+'px'; board.style.marginTop = (-h/2)+'px';
-    board.style.transform = 'rotateX('+TILT+'deg)';
+    board.style.transform = 'rotateX('+TILT+'deg) rotateZ('+S.yaw+'deg)';
     grid.style.width = w+'px'; grid.style.height = h+'px';
     grid.style.gridTemplateColumns = 'repeat('+S.cols+','+size+'px)';
     grid.style.gridTemplateRows = 'repeat('+S.rows+','+size+'px)';
@@ -141,6 +161,7 @@
       if (t) addObstacle(c,r,t);
     }
     S.units.forEach(addUnit);
+    renderParams();
     $('bEdit').textContent = edit ? '編集：ON' : '編集：OFF';
     $('bEdit').classList.toggle('on', edit);
   }
@@ -148,7 +169,7 @@
   function place(el, c, r, wpx, hpx){
     el.style.width = wpx+'px'; el.style.height = hpx+'px';
     el.style.left = ((c+.5)*size)+'px'; el.style.top = ((r+.62)*size)+'px';
-    el.style.transform = 'translate(-50%,-100%) rotateX(-'+TILT+'deg)';
+    el.style.transform = 'translate(-50%,-100%) rotateZ('+(-S.yaw)+'deg) rotateX(-'+TILT+'deg)';
   }
   function addObstacle(c,r,t){
     var o = document.createElement('div'); o.className = 'bb obs ' + (t===1?'box':'pillar');
@@ -184,7 +205,20 @@
     selected = null; render2();
   }
   // 選択の見た目だけ更新（作り直さない）
+  function bar(l, v, m, col){ var pct = m ? Math.max(0,Math.min(100,v/m*100)) : 0;
+    return '<div class="bar"><i>'+l+'</i><b><u style="width:'+pct+'%;background:'+col+'"></u></b><span>'+v+'/'+m+'</span></div>'; }
+  function renderParams(){
+    var h = '';
+    S.units.forEach(function(u){
+      if (!u.name) return;
+      h += '<div class="pc '+u.side+(selected===u?' me':'')+'"><div class="pn">'+u.name+'</div>'
+        + bar('HP', u.hp, u.mhp, '#c0554a') + (u.mmp ? bar('MP', u.mp, u.mmp, '#4a7ac0') : '')
+        + (u.msan ? bar('SAN', u.san, u.msan, '#9a6ac0') : '') + '</div>';
+    });
+    $('params').innerHTML = h;
+  }
   function render2(){
+    renderParams();
     Array.prototype.forEach.call(grid.children, function(d){
       d.classList.toggle('sel', !!selected && selected.c===+d.dataset.c && selected.r===+d.dataset.r);
     });
@@ -197,7 +231,9 @@
     clearInterval(tm); var i = 0, m = $('msg'); m.textContent = '';
     tm = setInterval(function(){ i++; m.textContent = t.slice(0,i); if (i>=t.length) clearInterval(tm); }, 28);
   }
-  $('sTilt').value = S.tilt; $('sScale').value = S.scale;
+  $('sTilt').value = S.tilt; $('sScale').value = S.scale; $('sYaw').value = S.yaw;
+  $('sYaw').oninput = function(){ S.yaw = +this.value; save(); render(); };
+  $('bMenu').onclick = function(){ $('menu').classList.toggle('open'); };
   $('sTilt').oninput = function(){ S.tilt = +this.value; save(); render(); };
   $('sScale').oninput = function(){ S.scale = +this.value; save(); render(); };
   function resize(dc, dr){
@@ -214,7 +250,7 @@
   $('bClear').onclick = function(){ S.cells = {}; save(); render(); };
 
   $('bIo').onclick = function(){
-    var o = { cols:S.cols, rows:S.rows, bg:S.bg, tilt:S.tilt, scale:S.scale, cells:S.cells, units:S.units.map(function(u){ return {id:u.id, side:u.side, c:u.c, r:u.r}; }) };
+    var o = { cols:S.cols, rows:S.rows, bg:S.bg, tilt:S.tilt, yaw:S.yaw, scale:S.scale, cells:S.cells, units:S.units.map(function(u){ var q={}; Object.keys(u).forEach(function(k){ if (k!=='el') q[k]=u[k]; }); return q; }) };
     $('ta').value = JSON.stringify(o);
     $('io').style.display = 'flex';
   };
@@ -232,7 +268,7 @@
   };
   window.addEventListener('resize', function(){ setTimeout(render, 100); });
 
-  load(); $('sTilt').value = S.tilt; $('sScale').value = S.scale; render();
+  load(); $('sTilt').value = S.tilt; $('sScale').value = S.scale; $('sYaw').value = S.yaw; render();
 })();
 </script>
 </body>
