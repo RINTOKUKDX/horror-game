@@ -102,6 +102,8 @@
   @keyframes flick { 0%,100%{opacity:1} 7%{opacity:.2} 9%{opacity:1} 41%{opacity:.85} 43%{opacity:.05} 46%{opacity:.9} 70%{opacity:1} 72%{opacity:.35} 74%{opacity:1} 88%{opacity:.6} 90%{opacity:1} }
   #bMode { position:absolute; left:6px; top:58px; z-index:10; display:none; background:rgba(18,15,14,.85); color:var(--gold); border:1px solid var(--gold); font:inherit; font-size:13px; padding:5px 9px; border-radius:2px; }
   #vLabel { font-size:12px; color:var(--gold); text-align:center; }
+  #stage.exp #field { right:0; bottom:0; }
+  #stage.exp #params, #stage.exp #win { display:none; }
   #ver { position:absolute; left:8px; top:6px; font-size:11px; color:var(--dim); z-index:3; }
   #win { position:absolute; left:2%; right:2%; bottom:2.5%; height:calc(var(--win) - 4%); z-index:5; background:rgba(4,6,30,.92);
     border:3px solid #eee; border-radius:8px; box-shadow:0 0 0 2px #000, inset 0 0 0 2px #000; padding:2% 3%; }
@@ -152,7 +154,7 @@
 <div id="app">
   <div id="stage">
     <div id="bgimg"></div><div id="bgshade"></div>
-    <div id="ver">戦闘盤 見本 v2.3</div>
+    <div id="ver">戦闘盤 見本 v2.4</div>
     <button id="bMenu">☰ 設定</button>
     <button id="bMode"></button>
     <div id="field"><div id="board"><div id="grid"></div></div></div>
@@ -200,7 +202,7 @@
 
 <script>
 (function(){
-  var VER = 'v2.3';
+  var VER = 'v2.4';
   Array.prototype.forEach.call(document.querySelectorAll('.vv'), function(e){ e.textContent = '戦闘盤 見本 ' + VER; });
   var BGS = ['corridor','factory','hospital','mansion','prison','sewage','lab','parking'];
   var TILT = 55, MAXC = 40;   // マスの上限（横・縦）
@@ -269,6 +271,7 @@
     var mb = $('bMode'); mb.style.display = explore ? 'block' : 'none'; mb.textContent = inBattle ? '探索へ戻る' : '戦闘へ';
   }
   function render(){
+    stage.classList.toggle('exp', camExplore());   // 探索中はパラメーターとテキスト窓を隠して盤を広く
     fit();
     var w = S.cols*size, h = S.rows*size;
     board.style.width = w+'px'; board.style.height = h+'px';
@@ -463,7 +466,7 @@
   function say(t){
     clearInterval(tm); var i = 0, m = $('msg'); m.textContent = '';
     tm = setInterval(function(){ i++; m.textContent = t.slice(0,i); if (i>=t.length) clearInterval(tm); }, 28);
-    if (edit) toast(t);
+    if (edit || camExplore()) toast(t);
   }
   $('sYaw').oninput = function(){ V().yaw = +this.value; save(); render(); };
   $('sOx').oninput = function(){ V().ox = +this.value; save(); render(); };
