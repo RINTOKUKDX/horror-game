@@ -52,6 +52,15 @@
   #menu button { flex:1; min-height:0; background:#120f0e; color:var(--text); border:1px solid var(--line); font:inherit; font-size:clamp(11px,3.2vmin,15px); border-radius:2px; cursor:pointer; padding:2px 4px; }
   #menu button.on, #menu button:active { border-color:var(--gold); color:var(--gold); }
   #menu .row2 { display:flex; gap:4px; flex:1; min-height:0; }
+  #st { position:fixed; inset:0; z-index:20; display:none; flex-direction:column; gap:6px; padding:10px; background:rgba(8,7,10,.97); font-size:14px; }
+  #st .r { display:flex; gap:6px; align-items:center; }
+  #st input[type=text] { flex:1; min-width:0; background:#120f0e; color:var(--text); border:1px solid var(--line); font:inherit; padding:8px; }
+  #st button { background:#120f0e; color:var(--text); border:1px solid var(--line); font:inherit; padding:8px 10px; }
+  #st button.warn { border-color:#b05a4a; color:#e08a7a; }
+  #stList { flex:1; min-height:0; overflow-y:auto; border:1px solid var(--line); }
+  #stList .it { display:flex; gap:6px; align-items:center; padding:6px 8px; border-bottom:1px solid #2a2420; }
+  #stList .it span { flex:1; } #stList .it small { color:var(--dim); }
+  #stTa { height:22%; background:#120f0e; color:var(--text); border:1px solid var(--line); font:12px monospace; padding:6px; }
   #io { position:fixed; inset:0; z-index:20; display:none; flex-direction:column; gap:8px; padding:12px; background:rgba(8,7,10,.97); }
   #io textarea { flex:1; background:#120f0e; color:var(--text); border:1px solid var(--line); font:12px monospace; padding:8px; }
   #io .btns { display:flex; gap:8px; }
@@ -66,7 +75,7 @@
 <div id="app">
   <div id="stage">
     <div id="bgimg"></div><div id="bgshade"></div>
-    <div id="ver">戦闘盤 見本 v1.3</div>
+    <div id="ver">戦闘盤 見本 v1.4</div>
     <button id="bMenu">☰ 設定</button>
     <div id="field"><div id="board"><div id="grid"></div></div></div>
     <div id="params"></div>
@@ -82,8 +91,16 @@
     <div class="sl">大きさ<input type="range" id="sScale" min="50" max="140" step="1"></div>
     <button id="bBg">背景を変える</button>
     <button id="bClear">障害物を全消去</button>
-    <button id="bIo">書き出し／読込</button>
+    <button id="bSt">戦闘の保存／一覧</button>
+    <button id="bIo">この盤だけ書き出し</button>
   </div>
+</div>
+
+<div id="st">
+  <div class="r"><input type="text" id="stName" placeholder="戦闘の名前（例：1章 廊下の戦い）"><button id="stSave">今の盤を保存</button></div>
+  <div id="stList"></div>
+  <textarea id="stTa" spellcheck="false" placeholder="まとめて書き出し／読込の文字がここに出ます"></textarea>
+  <div class="r"><button id="stExport">全部を書き出す</button><button id="stImport">この文字を読み込む</button><button id="stClose" style="margin-left:auto">閉じる</button></div>
 </div>
 
 <div id="io">
@@ -270,14 +287,57 @@
   $('bBg').onclick = function(){ S.bg = (S.bg+1)%BGS.length; save(); render(); };
   $('bClear').onclick = function(){ S.cells = {}; save(); render(); };
 
+  function stageObj(){
+    return { cols:S.cols, rows:S.rows, bg:S.bg, tilt:S.tilt, yaw:S.yaw, scale:S.scale, cells:JSON.parse(JSON.stringify(S.cells)),
+      units:S.units.map(function(u){ var q={}; Object.keys(u).forEach(function(k){ if (k!=='el') q[k]=u[k]; }); return q; }) };
+  }
+  function syncSliders(){ $('sTilt').value = S.tilt; $('sScale').value = S.scale; $('sYaw').value = S.yaw; }
+
+  // ---- 戦闘の保存（名前付き）----
+  var stages = {};
+  try { stages = JSON.parse(localStorage.getItem('battleStagesV1') || '{}') || {}; } catch(e){ stages = {}; }
+  function saveStages(){ try{ localStorage.setItem('battleStagesV1', JSON.stringify(stages)); }catch(e){} }
+  var delArm = null;
+  function renderStages(){
+    var box = $('stList'); box.innerHTML = '';
+    var names = Object.keys(stages);
+    if (!names.length){ box.innerHTML = '<div class="it"><span style="color:#928b82">まだ保存した戦闘はありません</span></div>'; return; }
+    names.forEach(function(n){
+      var g = stages[n], row = document.createElement('div'); row.className = 'it';
+      var sp = document.createElement('span'); sp.textContent = n; var sm = document.createElement('small'); sm.textContent = ' ' + g.cols + '×' + g.rows; sp.appendChild(sm);
+      var bl = document.createElement('button'); bl.textContent = '読込';
+      bl.onclick = function(){ apply(JSON.parse(JSON.stringify(g))); save(); syncSliders(); selected = null; render(); $('stName').value = n; $('st').style.display = 'none'; say('「' + n + '」を読み込んだ。'); };
+      var bd = document.createElement('button'); bd.textContent = (delArm === n) ? '本当に消す？' : '消す'; if (delArm === n) bd.className = 'warn';
+      bd.onclick = function(){ if (delArm === n){ delete stages[n]; saveStages(); delArm = null; } else { delArm = n; } renderStages(); };
+      row.appendChild(sp); row.appendChild(bl); row.appendChild(bd); box.appendChild(row);
+    });
+  }
+  $('bSt').onclick = function(){ $('menu').classList.remove('open'); delArm = null; renderStages(); $('st').style.display = 'flex'; };
+  $('stClose').onclick = function(){ $('st').style.display = 'none'; };
+  $('stSave').onclick = function(){
+    var n = $('stName').value.replace(/^\s+|\s+$/g, '');
+    if (!n){ $('stTa').value = '名前を入れてから保存してください。'; return; }
+    stages[n] = stageObj(); saveStages(); delArm = null; renderStages(); $('stTa').value = '「' + n + '」を保存しました。';
+  };
+  $('stExport').onclick = function(){ $('stTa').value = JSON.stringify({ version:1, stages:stages }); };
+  $('stImport').onclick = function(){
+    try {
+      var o = JSON.parse($('stTa').value), n = 0;
+      var src = (o && o.stages) ? o.stages : null;
+      if (!src) throw new Error('x');
+      Object.keys(src).forEach(function(k){ stages[k] = src[k]; n++; });
+      saveStages(); renderStages(); $('stTa').value = n + '件を読み込みました。';
+    } catch(e){ $('stTa').value = '読み込めませんでした。「全部を書き出す」で出た文字を、そのまま貼り付けてください。'; }
+  };
+
   $('bIo').onclick = function(){
-    var o = { cols:S.cols, rows:S.rows, bg:S.bg, tilt:S.tilt, yaw:S.yaw, scale:S.scale, cells:S.cells, units:S.units.map(function(u){ var q={}; Object.keys(u).forEach(function(k){ if (k!=='el') q[k]=u[k]; }); return q; }) };
+    var o = stageObj();
     $('ta').value = JSON.stringify(o);
     $('io').style.display = 'flex';
   };
   $('ioClose').onclick = function(){ $('io').style.display = 'none'; };
   $('ioLoad').onclick = function(){
-    try { apply(JSON.parse($('ta').value)); save(); $('io').style.display='none'; render(); } catch(e){ $('ta').value = '読み込めませんでした。コピーした文字を、そのまま貼り付けてください。'; }
+    try { apply(JSON.parse($('ta').value)); save(); syncSliders(); $('io').style.display='none'; render(); } catch(e){ $('ta').value = '読み込めませんでした。コピーした文字を、そのまま貼り付けてください。'; }
   };
 
   $('start').onclick = function(){
