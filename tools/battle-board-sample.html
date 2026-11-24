@@ -173,6 +173,43 @@
   body.mood .wall .side { background:repeating-linear-gradient(90deg, #343a2e 0 8px, #2a3026 8px 10px); box-shadow:inset 0 -10px 0 #1e150e; }
   body.mood .wall .top { background:linear-gradient(135deg,#3a3028,#241c16); }
   body.mood .unit img { filter:brightness(.82) contrast(1.08) saturate(.7); }
+  /* ===== メニューのタブ（v2.8） ===== */
+  #menu .tabs { display:flex; gap:4px; flex:0 0 auto; }
+  #menu .tabs button { flex:1; min-height:32px; }
+  #menu .grp { display:none; flex-direction:column; gap:5px; }
+  #menu .grp.on { display:flex; }
+  #menu .grp button, #menu #bMenuClose { flex:0 0 auto; min-height:34px; }
+  #menu .grp .row2 { flex:0 0 auto; }
+  /* ===== 遭遇の演出（v2.8） ===== */
+  .unit.haze img { filter:brightness(0) blur(4px) !important; opacity:.8; }
+  .unit.haze::after { content:''; position:absolute; left:-30%; right:-30%; top:10%; bottom:-10%; border-radius:50%;
+    background:radial-gradient(ellipse, rgba(0,0,0,.9) 0 30%, rgba(10,0,5,.55) 55%, rgba(0,0,0,0) 72%); animation:haze 3s ease-in-out infinite; }
+  @keyframes haze { 0%,100% { transform:scale(1,1) translateY(0); opacity:.85; } 50% { transform:scale(1.15,1.05) translateY(-4%); opacity:1; } }
+  #enc { position:fixed; inset:0; z-index:25; display:none; background:#000; opacity:0; transition:opacity 1.1s ease; overflow:hidden; }
+  #enc.on { opacity:1; }
+  #enc.shake { animation:shk .5s linear; }
+  @keyframes shk { 0%,100%{transform:none} 15%{transform:translate(-9px,4px)} 30%{transform:translate(8px,-5px)} 45%{transform:translate(-6px,-3px)} 60%{transform:translate(5px,5px)} 80%{transform:translate(-3px,1px)} }
+  #encView { position:absolute; left:0; right:0; top:0; bottom:30%; overflow:hidden;
+    background:radial-gradient(ellipse at 50% 60%, #1a0c0c 0, #000 70%); }
+  #encImg { position:absolute; left:50%; top:4%; height:92%; transform:translateX(-50%) scale(1); transform-origin:50% 50%;
+    transition:transform 2.4s ease-in-out, transform-origin 2.4s ease-in-out, filter 2.4s ease, opacity 1.4s ease;
+    filter:sepia(1) saturate(2.2) hue-rotate(-35deg) brightness(.15) blur(3px); opacity:0; }
+  #encImg.s1 { transform:translateX(-50%) scale(3); transform-origin:50% 96%; filter:sepia(1) saturate(2.2) hue-rotate(-35deg) brightness(.4) blur(1px); opacity:1; }
+  #encImg.s2 { transform:translateX(-50%) scale(2.1); transform-origin:50% 48%; filter:sepia(1) saturate(2.2) hue-rotate(-35deg) brightness(.55); opacity:1; }
+  #encImg.s3, #encImg.s4 { transform:translateX(-50%) scale(1); transform-origin:50% 50%; filter:sepia(1) saturate(2.4) hue-rotate(-40deg) brightness(.7) drop-shadow(0 0 18px rgba(170,0,30,.8)); opacity:1; }
+  #encView::after { content:''; position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0) 40%, rgba(0,0,0,.9) 100%); }
+  #encWin { position:absolute; left:2%; right:2%; bottom:2.5%; height:27%; background:rgba(4,6,30,.92); border:3px solid #eee; border-radius:8px;
+    box-shadow:0 0 0 2px #000, inset 0 0 0 2px #000; padding:2% 3%; visibility:hidden; }
+  #encMsg { font-size:clamp(14px,4.4vmin,22px); line-height:1.6; letter-spacing:.06em; color:#fff; white-space:pre-wrap; }
+  #encWin span { position:absolute; right:14px; bottom:6px; font-size:14px; color:#fff; animation:bl 1s steps(2) infinite; }
+  #cutin { position:absolute; inset:0; pointer-events:none; display:none; }
+  #cutin.go { display:block; }
+  #cutin .band { position:absolute; left:-10%; right:-10%; top:36%; height:28%; background:linear-gradient(180deg, #000, #5a0008 30%, #8a0010 50%, #5a0008 70%, #000);
+    transform:skewY(-6deg) scaleX(0); transform-origin:0 50%; animation:band 1.6s ease-out forwards; box-shadow:0 0 40px rgba(200,0,20,.7); }
+  #cutin .txt { position:absolute; left:0; right:0; top:50%; text-align:center; transform:translate(120%,-50%) skewY(-6deg); font-size:min(16vmin,90px); font-weight:bold;
+    color:#fff; letter-spacing:.3em; text-shadow:0 0 10px #f00, 0 0 30px #a00, 3px 3px 0 #000; animation:ctx 1.6s cubic-bezier(.2,.8,.2,1) forwards; }
+  @keyframes band { 0%{transform:skewY(-6deg) scaleX(0)} 25%{transform:skewY(-6deg) scaleX(1)} 85%{transform:skewY(-6deg) scaleX(1); opacity:1} 100%{transform:skewY(-6deg) scaleX(1); opacity:0} }
+  @keyframes ctx { 0%{transform:translate(120%,-50%) skewY(-6deg)} 30%{transform:translate(0,-50%) skewY(-6deg)} 75%{transform:translate(-4%,-50%) skewY(-6deg); opacity:1} 100%{transform:translate(-120%,-50%) skewY(-6deg); opacity:0} }
   @media (orientation:portrait) { #rot { display:flex; } }
 </style>
 </head>
@@ -180,7 +217,7 @@
 <div id="app">
   <div id="stage">
     <div id="bgimg"></div><div id="bgshade"></div>
-    <div id="ver">戦闘盤 見本 v2.7</div>
+    <div id="ver">戦闘盤 見本 v2.8</div>
     <button id="bMenu">☰ 設定</button>
     <button id="bMode"></button>
     <div id="field"><div id="board"><div id="grid"></div></div></div>
@@ -192,24 +229,31 @@
   </div>
   <div id="menu">
     <button id="bMenuClose">▲ 閉じる</button>
+    <div class="tabs"><button data-g="g1" class="on">盤</button><button data-g="g2">表示</button><button data-g="g3">保存</button></div>
+    <div class="grp on" id="g1">
     <button id="bEdit">編集：OFF</button>
     <div class="row2"><button id="bCp">横＋</button><button id="bCm">横－</button></div>
     <div class="row2"><button id="bRp">縦＋</button><button id="bRm">縦－</button></div>
+    <button id="bExp">探索モード：OFF</button>
+    <button id="bSeen">見た場所をリセット</button>
+    <button id="bSample2">見本の部屋（怨霊の家）</button>
+    <button id="bClear">障害物を全消去</button>
+    </div>
+    <div class="grp" id="g2">
     <div id="vLabel"></div>
     <div class="sl">角度<input type="range" id="sTilt" min="20" max="80" step="1"></div>
     <div class="sl">回転<input type="range" id="sYaw" min="-180" max="180" step="1"></div>
     <div class="sl">左右<input type="range" id="sOx" min="-300" max="300" step="2"></div>
     <div class="sl">上下<input type="range" id="sOy" min="-200" max="200" step="2"></div>
     <div class="sl">大きさ<input type="range" id="sScale" min="40" max="300" step="1"></div>
-    <button id="bExp">探索モード：OFF</button>
-    <button id="bSeen">見た場所をリセット</button>
-    <button id="bSample2">見本の部屋（怨霊の家）</button>
+    <button id="bBg">背景を変える</button>
     <button id="bMood"></button>
     <button id="bSnd"></button>
-    <button id="bBg">背景を変える</button>
-    <button id="bClear">障害物を全消去</button>
+    </div>
+    <div class="grp" id="g3">
     <button id="bSt">戦闘の保存／一覧</button>
     <button id="bIo">この盤だけ書き出し</button>
+    </div>
   </div>
 </div>
 
@@ -226,13 +270,14 @@
   <div class="btns"><button id="ioLoad">読み込む</button><button id="ioClose">閉じる</button></div>
 </div>
 
+<div id="enc"><div id="encView"><img id="encImg" alt=""></div><div id="encWin"><div id="encMsg"></div><span>▼</span></div><div id="cutin"><div class="band"></div><div class="txt">戦闘開始</div></div></div>
 <div id="ghost"></div>
 <div id="start"><div>タップして開始<br>（全画面・横向きになります）<br><button id="bSample" style="margin:10px 0;background:#120f0e;color:#c7b07c;border:1px solid #c7b07c;font:inherit;font-size:16px;padding:10px 16px;border-radius:4px">見本の部屋（怨霊の家）で始める<br><small style="font-size:12px;color:#928b82">音が出ます／今の盤は自動保存されます</small></button><br><small class="vv"></small></div></div>
 <div id="rot"><div>スマホを横向きにしてください<br><small class="vv"></small></div></div>
 
 <script>
 (function(){
-  var VER = 'v2.7';
+  var VER = 'v2.8';
   Array.prototype.forEach.call(document.querySelectorAll('.vv'), function(e){ e.textContent = '戦闘盤 見本 ' + VER; });
   var BGS = ['corridor','factory','hospital','mansion','prison','sewage','lab','parking'];
   var TILT = 55, MAXC = 40;   // マスの上限（横・縦）
@@ -498,8 +543,9 @@
   function onCell(e){ cellTap(+this.dataset.c, +this.dataset.r); }
   function cellTap(c, r){
     var u = unitAt(c,r);
-    if (edit || noClick) return;   // 編集中の操作は下の「指の操作」で扱う／スワイプ直後は無視
+    if (edit || noClick || walking || ENC) return;   // 編集中の操作は下の「指の操作」で扱う／スワイプ直後は無視
     if (u && u.side==='ally'){ selected = (selected===u) ? null : u; if (explore && selected && S.lead!==u.id){ S.lead = u.id; panX = panY = 0; camera(); } render2(); say(selected ? '味方を選んだ。\nどこへ動く？' : '選びなおした。'); return; }
+    if (selected && !u && !blockedAt(c,r) && camExplore()){ walkTo(selected, c, r); return; }
     if (selected && !u && !blockedAt(c,r)){
       var m = selected;
       var ddc = c-(m.c), ddr = r-(m.r); if (ddc||ddr) m.dir = Math.round(Math.atan2(ddr,ddc)*180/Math.PI/45)*45; sfxSteps(Math.min(6, Math.max(2, Math.round(Math.sqrt(ddc*ddc+ddr*ddr)*1.5)))); m.c = c; m.r = r; updateFacing(); selected = null; if (explore){ S.lead = m.id; panX = panY = 0; camera(); } save(); render2(); say('味方は 素早く移動した。');
@@ -733,10 +779,10 @@
   }
   function tickAudio(){
     if (!AC) return;
-    var want = !SND ? 'off' : (camExplore() ? 'amb' : 'bat'), t = AC.currentTime;
+    var want = !SND ? 'off' : ENC ? 'enc' : (camExplore() ? 'amb' : 'bat'), t = AC.currentTime;
     if (want !== mstate){
       if (want === 'bat' && mstate === 'amb') sting();
-      amb.gain.setTargetAtTime(want==='amb' ? 1 : 0, t, want==='amb' ? 1.2 : .15);
+      amb.gain.setTargetAtTime(want==='amb' ? 1 : want==='enc' ? .3 : 0, t, want==='amb' ? 1.2 : .4);
       bat.gain.setTargetAtTime(want==='bat' ? 1 : 0, t, want==='bat' ? .3 : .8);
       mstate = want; nextBeat = t + .3;
     }
@@ -791,6 +837,103 @@
   var wantSample = false;
   $('bSample').onclick = function(){ wantSample = true; };
   $('bSample2').onclick = function(){ $('menu').classList.remove('open'); loadSample(); initAudio(); render(); say(SAMPLE_MSG); };
+  Array.prototype.forEach.call(document.querySelectorAll('#menu .tabs button'), function(b){ b.onclick = function(){
+    Array.prototype.forEach.call(document.querySelectorAll('#menu .tabs button, #menu .grp'), function(x){ x.classList.remove('on'); });
+    b.classList.add('on'); $(b.dataset.g).classList.add('on'); }; });
+
+  // ===== 遭遇の演出（v2.8）：歩いて移動 → モヤ → フェード → 足元・胴・全身＋文章 → SANチェック → カットイン → 戦闘 =====
+  var walking = false, ENC = null;
+  var INTRO = {
+    '怨霊': ['床板の上に、濡れた素足が見えた。\n指先が、ありえない方向に曲がっている。',
+             '白い着物の裾から、黒い水が滴り落ちている。\nぽた……ぽた……と。',
+             '長い髪の隙間から、こちらを見ている。\n――怨霊だ。'],
+    '這う者': ['床を擦る、湿った音がする。\n闇の中で、何本もの指が蠢いた。',
+             '関節の多すぎる腕が、床板を掴んで\n身体を引きずってくる。',
+             '人の形を、途中でやめたような何か。\n――這う者が、こちらに気づいた。']
+  };
+  function introOf(u){ return u.intro || INTRO[u.name] || ['闇の奥で、何かが動いた。', 'それは、ゆっくりと身を起こす。', (u.name||'何か')+'が現れた。']; }
+  // 通れるマスだけで道を探す（斜めも可）
+  function findPath(m, c, r){
+    var C = S.cols, R = S.rows, prev = {}, q = [[m.c,m.r]], k0 = key(m.c,m.r); prev[k0] = -1;
+    while (q.length){
+      var p = q.shift(); if (p[0]===c && p[1]===r) break;
+      for (var dy=-1;dy<=1;dy++) for (var dx=-1;dx<=1;dx++){
+        if (!dx && !dy) continue; var x = p[0]+dx, y = p[1]+dy, k = key(x,y);
+        if (x<0||y<0||x>=C||y>=R||prev[k]!=null||blockedAt(x,y)) continue;
+        var o = unitAt(x,y); if (o && o!==m) continue;
+        if (dx && dy && (blockedAt(p[0]+dx,p[1]) || blockedAt(p[0],p[1]+dy))) continue;   // 角はすり抜けない
+        prev[k] = key(p[0],p[1]); q.push([x,y]);
+      }
+    }
+    if (prev[key(c,r)]==null) return null;
+    var path = [], k1 = key(c,r);
+    while (k1 !== k0){ path.unshift([k1%100, Math.floor(k1/100)]); k1 = prev[k1]; }
+    return path;
+  }
+  function walkTo(m, c, r){
+    var path = findPath(m, c, r);
+    if (!path){ say('そこへは行けない。'); return; }
+    walking = true; selected = null; S.lead = m.id; render2();
+    (function step(i){
+      if (i>=path.length || ENC){ walking = false; save(); if (!ENC) render2(); return; }
+      var ddc = path[i][0]-m.c, ddr = path[i][1]-m.r;
+      m.dir = Math.round(Math.atan2(ddr,ddc)*180/Math.PI/45)*45; m.c = path[i][0]; m.r = path[i][1];
+      sfxSteps(1); panX = panY = 0; render();
+      setTimeout(function(){ step(i+1); }, 300);
+    })(0);
+  }
+  function startEncounter(list){
+    var u = list[0], T = introOf(u).slice();
+    if (list.length>1) T[2] += '\n' + list.slice(1).map(function(x){ return x.name||'何か'; }).join('、') + 'の気配もする。';
+    ENC = { u:u, list:list, T:T, i:-1, busy:false, typing:null };
+    var e = $('enc'), img = $('encImg');
+    img.src = '../assets/chara/sample_front.webp'; img.className = 's0';
+    $('encMsg').textContent = ''; $('cutin').className = ''; $('encWin').style.visibility = 'hidden';
+    e.style.display = 'block'; e.offsetWidth; e.classList.add('on');   // 探索画面がフェードで消える
+    thump();
+    setTimeout(function(){ encNext(); }, 1300);
+  }
+  function encType(t, done){
+    var m = $('encMsg'), i = 0; m.textContent = ''; $('encWin').style.visibility = 'visible';
+    clearInterval(ENC.typing);
+    ENC.typing = setInterval(function(){ i++; m.textContent = t.slice(0,i); if (i>=t.length){ clearInterval(ENC.typing); ENC.typing = null; ENC.full = null; if (done) done(); } }, 45);
+    ENC.full = t;
+  }
+  function encNext(){
+    if (!ENC || ENC.busy) return;
+    if (ENC.typing){ clearInterval(ENC.typing); ENC.typing = null; $('encMsg').textContent = ENC.full; return; }   // 文字送り中なら全部出す
+    ENC.i++;
+    var img = $('encImg');
+    if (ENC.i < 3){ img.className = 's' + (ENC.i+1); thump(); ENC.busy = true; setTimeout(function(){ ENC.busy = false; encType(ENC.T[ENC.i]); }, ENC.i===0 ? 900 : 1700); return; }
+    if (ENC.i === 3){ sanCheck(); return; }
+    cutIn();
+  }
+  function sanCheck(){
+    var lines = ['SANチェック（成功 0／失敗 1D4）'], bad = false;
+    S.units.forEach(function(a){
+      if (a.side!=='ally' || !a.msan) return;
+      var d = 1 + (Math.random()*100|0), okk = d <= a.san, loss = okk ? 0 : 1 + (Math.random()*4|0);
+      a.san = Math.max(0, a.san - loss); if (!okk) bad = true;
+      lines.push(a.name + '：' + d + '／' + (a.san+loss) + (okk ? '　成功　SAN -0' : '　失敗　SAN -' + loss));
+    });
+    save();
+    if (bad){ var e = $('enc'); e.classList.remove('shake'); e.offsetWidth; e.classList.add('shake'); scream(); } else thump();
+    encType(lines.join('\n'));
+  }
+  function cutIn(){
+    ENC.busy = true; $('encWin').style.visibility = 'hidden';
+    $('cutin').className = 'go'; sting();
+    setTimeout(function(){
+      var names = ENC.list.map(function(x){ return x.name||'何か'; }).join('、');
+      inBattle = true; panX = panY = 0; ENC = null;
+      var e = $('enc'); e.classList.remove('on');
+      setTimeout(function(){ e.style.display = 'none'; $('cutin').className = ''; }, 900);
+      render(); syncSliders(); say(names + ' が現れた！\n戦闘開始。');
+    }, 1700);
+  }
+  $('enc').onclick = function(){ encNext(); };
+  function thump(){ if (!ok()) return; var t = AC.currentTime + .02; tone(t, 'sine', 58, 30, .5, .7); tone(t+.25, 'sine', 50, 28, .45, .45); }
+  function scream(){ if (!ok()) return; var t = AC.currentTime + .02; noise(t, .9, 'bandpass', 2200, 3, .4, .02); [440, 466, 622].forEach(function(f){ tone(t, 'sawtooth', f, f*.6, 1.0, .05); }); }
   var SAMPLE_MSG = '古い屋敷の一室。\n味方をタップ→進みたいマスをタップ。\n物をタップすると調べる。';
 
   window.addEventListener('resize', function(){ setTimeout(render, 100); });
@@ -1068,9 +1211,13 @@
       var newly = [];
       S.units.forEach(function(u){
         if (u.side!=='enemy' || S.met[u.id] || !u.el || u.el.style.display==='none') return;
-        S.met[u.id] = 1; newly.push(u.name || '何か');
+        // 照らされていて近い（3マス以内）なら遭遇。それ以外は黒いモヤで、姿が分からない
+        var n = usize(u), lit = false, near = false;
+        for (var y=u.r;y<u.r+n;y++) for (var x=u.c;x<u.c+n;x++) if (vis[y*C+x]===2) lit = true;
+        S.units.forEach(function(a){ if (a.side!=='ally') return; var dx = Math.max(0, u.c-a.c, a.c-(u.c+n-1)), dy = Math.max(0, u.r-a.r, a.r-(u.r+n-1)); if (Math.max(dx,dy)<=3) near = true; });
+        if (lit && near && !ENC){ S.met[u.id] = 1; newly.push(u); } else u.el.classList.add('haze');
       });
-      if (newly.length){ inBattle = true; panX = panY = 0; save(); setTimeout(function(){ render(); syncSliders(); say(newly.join('、')+' が現れた！\n戦闘開始。'); }, 0); }
+      if (newly.length){ save(); setTimeout(function(){ startEncounter(newly); }, 0); }
     }
     // 懐中電灯の光（暖かい色、中心ほど明るく、ゆらゆら揺れる。壊れかけはちらつく）
     var w = S.cols*size, h = S.rows*size;
