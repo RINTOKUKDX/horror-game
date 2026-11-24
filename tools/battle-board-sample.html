@@ -75,7 +75,7 @@
 <div id="app">
   <div id="stage">
     <div id="bgimg"></div><div id="bgshade"></div>
-    <div id="ver">戦闘盤 見本 v1.4</div>
+    <div id="ver">戦闘盤 見本 v1.5</div>
     <button id="bMenu">☰ 設定</button>
     <div id="field"><div id="board"><div id="grid"></div></div></div>
     <div id="params"></div>
@@ -88,6 +88,8 @@
     <div class="row2"><button id="bRp">縦＋</button><button id="bRm">縦－</button></div>
     <div class="sl">角度<input type="range" id="sTilt" min="20" max="80" step="1"></div>
     <div class="sl">回転<input type="range" id="sYaw" min="-60" max="60" step="1"></div>
+    <div class="sl">左右<input type="range" id="sOx" min="-300" max="300" step="2"></div>
+    <div class="sl">上下<input type="range" id="sOy" min="-200" max="200" step="2"></div>
     <div class="sl">大きさ<input type="range" id="sScale" min="50" max="140" step="1"></div>
     <button id="bBg">背景を変える</button>
     <button id="bClear">障害物を全消去</button>
@@ -119,7 +121,7 @@
   var $ = function(id){ return document.getElementById(id); };
   var stage = $('stage'), field = $('field'), board = $('board'), grid = $('grid');
 
-  var S = { cols:8, rows:6, cells:[], bg:0, tilt:55, yaw:0, scale:100,
+  var S = { cols:8, rows:6, cells:[], bg:0, tilt:55, yaw:0, ox:0, oy:0, scale:100,
     units:[
       {id:'a1', side:'ally', c:6, r:5, name:'探索者A', hp:12, mhp:12, mp:8, mmp:10, san:62, msan:70},
       {id:'a2', side:'ally', c:7, r:3, name:'探索者B', hp:9, mhp:11, mp:5, mmp:6, san:48, msan:55},
@@ -135,7 +137,7 @@
   function apply(o){
     if (!o || !o.cols || !o.rows) return;
     S.cols = Math.max(3, Math.min(14, o.cols|0)); S.rows = Math.max(3, Math.min(12, o.rows|0));
-    S.cells = o.cells || {}; S.bg = (o.bg|0) % BGS.length; S.tilt = o.tilt||55; S.yaw = o.yaw||0; S.scale = o.scale||100;
+    S.cells = o.cells || {}; S.bg = (o.bg|0) % BGS.length; S.tilt = o.tilt||55; S.yaw = o.yaw||0; S.ox = o.ox||0; S.oy = o.oy||0; S.scale = o.scale||100;
     if (o.units && o.units.length) S.units = o.units;
     clampUnits();
   }
@@ -159,7 +161,7 @@
     fit();
     var w = S.cols*size, h = S.rows*size;
     board.style.width = w+'px'; board.style.height = h+'px';
-    board.style.marginLeft = (-w/2)+'px'; board.style.marginTop = (-h/2)+'px';
+    board.style.marginLeft = (-w/2 + (S.ox||0))+'px'; board.style.marginTop = (-h/2 + (S.oy||0))+'px';
     board.style.transform = 'rotateX('+TILT+'deg) rotateZ('+S.yaw+'deg)';
     grid.style.width = w+'px'; grid.style.height = h+'px';
     grid.style.gridTemplateColumns = 'repeat('+S.cols+','+size+'px)';
@@ -270,6 +272,9 @@
   }
   $('sTilt').value = S.tilt; $('sScale').value = S.scale; $('sYaw').value = S.yaw;
   $('sYaw').oninput = function(){ S.yaw = +this.value; save(); render(); };
+  $('sOx').value = S.ox||0; $('sOy').value = S.oy||0;
+  $('sOx').oninput = function(){ S.ox = +this.value; save(); render(); };
+  $('sOy').oninput = function(){ S.oy = +this.value; save(); render(); };
   $('bMenu').onclick = function(){ $('menu').classList.toggle('open'); };
   $('bMenuClose').onclick = function(){ $('menu').classList.remove('open'); };
   $('sTilt').oninput = function(){ S.tilt = +this.value; save(); render(); };
@@ -288,10 +293,10 @@
   $('bClear').onclick = function(){ S.cells = {}; save(); render(); };
 
   function stageObj(){
-    return { cols:S.cols, rows:S.rows, bg:S.bg, tilt:S.tilt, yaw:S.yaw, scale:S.scale, cells:JSON.parse(JSON.stringify(S.cells)),
+    return { cols:S.cols, rows:S.rows, bg:S.bg, tilt:S.tilt, yaw:S.yaw, ox:S.ox||0, oy:S.oy||0, scale:S.scale, cells:JSON.parse(JSON.stringify(S.cells)),
       units:S.units.map(function(u){ var q={}; Object.keys(u).forEach(function(k){ if (k!=='el') q[k]=u[k]; }); return q; }) };
   }
-  function syncSliders(){ $('sTilt').value = S.tilt; $('sScale').value = S.scale; $('sYaw').value = S.yaw; }
+  function syncSliders(){ $('sTilt').value = S.tilt; $('sScale').value = S.scale; $('sYaw').value = S.yaw; $('sOx').value = S.ox||0; $('sOy').value = S.oy||0; }
 
   // ---- 戦闘の保存（名前付き）----
   var stages = {};
@@ -349,7 +354,7 @@
   };
   window.addEventListener('resize', function(){ setTimeout(render, 100); });
 
-  load(); $('sTilt').value = S.tilt; $('sScale').value = S.scale; $('sYaw').value = S.yaw; render();
+  load(); syncSliders(); render();
 })();
 </script>
 </body>
