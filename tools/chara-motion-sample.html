@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>キャラ動き見本 v1.0</title>
+<style>
+  :root { --bg:#08070a; --panel:#1a1614; --line:#4a3f33; --text:#e8e2da; --dim:#928b82; --gold:#c7b07c; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--text); overflow:hidden;
+    font-family:'Shippori Mincho','Noto Serif JP','Yu Mincho',serif; touch-action:manipulation; user-select:none; }
+  #app { position:fixed; inset:0; display:flex; }
+  #stage { position:relative; flex:1; overflow:hidden;
+    background:radial-gradient(ellipse at 50% 85%, #2a2420 0%, #0c0a0b 70%); }
+  #floor { position:absolute; left:10%; right:10%; bottom:11%; height:2px; background:linear-gradient(90deg,transparent,#3a3028,transparent); }
+  #actor { position:absolute; left:50%; bottom:12%; height:72%; aspect-ratio:469/811; transform:translateX(-50%); }
+  #inner { position:absolute; inset:0; transform-origin:50% 100%; }
+  #flip { position:absolute; inset:0; transform-style:preserve-3d; transform-origin:50% 50%; }
+  #flip img { position:absolute; inset:0; width:100%; height:100%; backface-visibility:hidden; -webkit-backface-visibility:hidden; pointer-events:none; }
+  #flip img.back { transform:rotateY(180deg); }
+  #fx { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+  .glow { position:absolute; left:50%; bottom:12%; width:34%; aspect-ratio:1; border-radius:50%; transform:translateX(-50%);
+    background:radial-gradient(circle, rgba(150,110,255,.65), rgba(150,110,255,0) 65%); opacity:0; }
+  .shield { position:absolute; left:50%; bottom:14%; height:60%; aspect-ratio:1; transform:translateX(-10%);
+    border-radius:50%; border:3px solid rgba(199,176,124,.85); box-shadow:0 0 18px rgba(199,176,124,.6), inset 0 0 18px rgba(199,176,124,.3);
+    clip-path:inset(0 0 0 50%); opacity:0; }
+  .slash { position:absolute; left:58%; bottom:28%; width:26%; height:4px; background:linear-gradient(90deg,transparent,#fff,transparent);
+    transform:rotate(-35deg); opacity:0; box-shadow:0 0 10px #fff; }
+  .bolt { position:absolute; left:55%; bottom:38%; width:3.2vmin; height:3.2vmin; border-radius:50%;
+    background:radial-gradient(circle,#fff,#c7b07c 60%,rgba(199,176,124,0) 70%); opacity:0; }
+  #menu { width:21%; min-width:150px; max-width:220px; padding:8px; display:flex; flex-direction:column; gap:5px; overflow-y:auto;
+    background:var(--panel); border-left:1px solid var(--line); }
+  #menu button { flex:1; min-height:0; background:#120f0e; color:var(--text); border:1px solid var(--line); font:inherit; font-size:clamp(11px,3.2vmin,15px); border-radius:2px; cursor:pointer; padding:2px 4px; }
+  #menu button:active { border-color:var(--gold); color:var(--gold); }
+  #ver { position:absolute; left:8px; top:6px; font-size:11px; color:var(--dim); }
+  #start, #rot { position:fixed; inset:0; z-index:10; display:flex; align-items:center; justify-content:center; text-align:center;
+    background:rgba(8,7,10,.96); font-size:18px; letter-spacing:.1em; padding:20px; line-height:1.9; }
+  #rot { display:none; z-index:11; }
+  @media (orientation:portrait) { #rot { display:flex; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <div id="ver">キャラ動き見本 v1.0</div>
+    <div id="floor"></div>
+    <div id="fx"><div class="glow"></div><div class="shield"></div><div class="slash"></div><div class="bolt"></div></div>
+    <div id="actor"><div id="inner"><div id="flip">
+      <img class="front" src="../assets/chara/sample_front.webp" alt="">
+      <img class="back" src="../assets/chara/sample_back.webp" alt="">
+    </div></div></div>
+  </div>
+  <div id="menu">
+    <button data-m="idle">待機</button>
+    <button data-m="attack">攻撃</button>
+    <button data-m="ranged">遠距離攻撃</button>
+    <button data-m="cast">唱える</button>
+    <button data-m="guard">ガード</button>
+    <button data-m="dodge">避ける</button>
+    <button data-m="damage">ダメージ</button>
+    <button data-m="run">逃げる</button>
+    <button data-m="turn">裏返る</button>
+  </div>
+</div>
+<div id="start">タップして開始<br>（全画面・横向きになります）</div>
+<div id="rot">スマホを横向きにしてください</div>
+
+<script>
+(function(){
+  var actor = document.getElementById('actor'), inner = document.getElementById('inner'), flip = document.getElementById('flip');
+  var glow = document.querySelector('.glow'), shield = document.querySelector('.shield'),
+      slash = document.querySelector('.slash'), bolt = document.querySelector('.bolt');
+  var running = [], idleAnim = null, facing = 0; // facing: 0=front 180=back
+
+  function A(el, kf, opt){ opt = opt || {}; opt.fill = opt.fill || 'none'; var a = el.animate(kf, opt); running.push(a); return a; }
+  function stopAll(){ running.forEach(function(a){ try{a.cancel();}catch(e){} }); running = []; if (idleAnim) idleAnim.cancel(); idleAnim = null; }
+  function done(a, fn){ a.onfinish = fn; }
+
+  function setFlip(deg, ms){
+    var from = facing; facing = deg;
+    var a = A(flip, [{transform:'rotateY('+from+'deg)'},{transform:'rotateY('+deg+'deg)'}], {duration:ms, easing:'ease-in-out', fill:'forwards'});
+    return a;
+  }
+  function holdFlip(){ flip.style.transform = 'rotateY('+facing+'deg)'; }
+
+  function idle(){
+    stopAll(); holdFlip(); inner.style.transform = '';
+    idleAnim = inner.animate([
+      {transform:'translateY(0) scaleY(1)'},
+      {transform:'translateY(-1.2%) scaleY(1.012)'},
+      {transform:'translateY(0) scaleY(1)'}
+    ], {duration:2200, iterations:Infinity, easing:'ease-in-out'});
+  }
+
+  function once(fn){ stopAll(); holdFlip(); fn(function(){ idle(); }); }
+
+  var M = {
+    idle: idle,
+    attack: function(){ once(function(end){
+      var a = A(actor, [
+        {transform:'translateX(-50%) translateX(0) rotate(0)'},
+        {transform:'translateX(-50%) translateX(-6%) rotate(-5deg)', offset:.25},
+        {transform:'translateX(-50%) translateX(55%) rotate(9deg)', offset:.45},
+        {transform:'translateX(-50%) translateX(55%) rotate(9deg)', offset:.6},
+        {transform:'translateX(-50%) translateX(0) rotate(0)'}
+      ], {duration:800, easing:'ease-out'});
+      A(slash, [{opacity:0},{opacity:0,offset:.43},{opacity:1,offset:.5},{opacity:0}], {duration:800});
+      done(a, end);
+    });},
+    ranged: function(){ once(function(end){
+      var a = A(actor, [
+        {transform:'translateX(-50%) rotate(0)'},
+        {transform:'translateX(-50%) translateX(-8%) rotate(-7deg)', offset:.35},
+        {transform:'translateX(-50%) translateX(3%) rotate(4deg)', offset:.5},
+        {transform:'translateX(-50%) rotate(0)'}
+      ], {duration:1000, easing:'ease-in-out'});
+      A(bolt, [
+        {opacity:0, transform:'translateX(0) scale(.5)'},
+        {opacity:1, transform:'translateX(0) scale(1)', offset:.5},
+        {opacity:1, transform:'translateX(42vw) scale(1.2)', offset:.9},
+        {opacity:0, transform:'translateX(46vw) scale(1.6)'}
+      ], {duration:1000});
+      done(a, end);
+    });},
+    cast: function(){ once(function(end){
+      var a = A(inner, [
+        {transform:'translateY(0)', filter:'none'},
+        {transform:'translateY(-6%)', filter:'drop-shadow(0 0 14px #a07cff) brightness(1.25)', offset:.35},
+        {transform:'translateY(-7%)', filter:'drop-shadow(0 0 22px #a07cff) brightness(1.4)', offset:.7},
+        {transform:'translateY(0)', filter:'none'}
+      ], {duration:1600, easing:'ease-in-out'});
+      A(glow, [{opacity:0, transform:'translateX(-50%) scale(.6)'},{opacity:1, transform:'translateX(-50%) scale(1.1)', offset:.5},{opacity:0, transform:'translateX(-50%) scale(1.5)'}], {duration:1600});
+      done(a, end);
+    });},
+    guard: function(){ once(function(end){
+      var a = A(inner, [
+        {transform:'scale(1,1)'},
+        {transform:'scale(1.04,.9)', offset:.2},
+        {transform:'scale(1.04,.9)', offset:.8},
+        {transform:'scale(1,1)'}
+      ], {duration:1100, easing:'ease-out'});
+      A(shield, [{opacity:0},{opacity:1,offset:.15},{opacity:1,offset:.8},{opacity:0}], {duration:1100});
+      done(a, end);
+    });},
+    dodge: function(){ once(function(end){
+      var a = A(actor, [
+        {transform:'translateX(-50%) translateX(0) skewX(0)', opacity:1},
+        {transform:'translateX(-50%) translateX(-60%) skewX(10deg)', opacity:.3, offset:.3},
+        {transform:'translateX(-50%) translateX(-60%) skewX(10deg)', opacity:.3, offset:.6},
+        {transform:'translateX(-50%) translateX(0) skewX(0)', opacity:1}
+      ], {duration:900, easing:'ease-out'});
+      done(a, end);
+    });},
+    damage: function(){ once(function(end){
+      var a = A(actor, [
+        {transform:'translateX(-50%) translateX(0)'},
+        {transform:'translateX(-50%) translateX(-4%)', offset:.1},
+        {transform:'translateX(-50%) translateX(4%)', offset:.25},
+        {transform:'translateX(-50%) translateX(-3%)', offset:.4},
+        {transform:'translateX(-50%) translateX(3%)', offset:.55},
+        {transform:'translateX(-50%) translateX(0)'}
+      ], {duration:600});
+      A(inner, [
+        {filter:'none', transform:'rotate(0)'},
+        {filter:'brightness(1.8) sepia(1) saturate(6) hue-rotate(-30deg)', transform:'rotate(-5deg)', offset:.15},
+        {filter:'brightness(1.4) sepia(1) saturate(5) hue-rotate(-30deg)', transform:'rotate(-3deg)', offset:.5},
+        {filter:'none', transform:'rotate(0)'}
+      ], {duration:600});
+      done(a, end);
+    });},
+    run: function(){ stopAll(); holdFlip();
+      // 背中を見せて走り去る → 戻る
+      var t = setTimeout(function(){}, 0); clearTimeout(t);
+      var f = setFlip(180, 350);
+      f.onfinish = function(){
+        flip.style.transform = 'rotateY(180deg)';
+        var a = A(actor, [
+          {transform:'translateX(-50%) translateX(0) scale(1)', opacity:1},
+          {transform:'translateX(-50%) translateX(0) scale(.45)', opacity:0}
+        ], {duration:1300, easing:'ease-in', fill:'forwards'});
+        A(inner, [
+          {transform:'translateY(0) rotate(-3deg)'},{transform:'translateY(-5%) rotate(3deg)'},
+          {transform:'translateY(0) rotate(-3deg)'},{transform:'translateY(-5%) rotate(3deg)'},
+          {transform:'translateY(0) rotate(-3deg)'},{transform:'translateY(-5%) rotate(3deg)'},
+          {transform:'translateY(0) rotate(-3deg)'}
+        ], {duration:1300});
+        a.onfinish = function(){
+          // 戻ってくる
+          actor.style.transform = 'translateX(-50%)'; actor.style.opacity = 1;
+          facing = 0;
+          idle();
+        };
+      };
+    },
+    turn: function(){ stopAll(); holdFlip(); var to = facing ? 0 : 180;
+      var a = setFlip(to, 600);
+      a.onfinish = function(){ holdFlip(); idle(); };
+    }
+  };
+
+  // 逃げる後にフェードアウトした状態が残らないよう、各動作の前に戻す
+  function reset(){ actor.getAnimations().forEach(function(a){ a.cancel(); }); actor.style.transform=''; actor.style.opacity=''; }
+
+  Array.prototype.forEach.call(document.querySelectorAll('#menu button'), function(b){
+    b.onclick = function(){ reset(); M[b.dataset.m](); };
+  });
+
+  document.getElementById('start').onclick = function(){
+    this.style.display = 'none';
+    var el = document.documentElement;
+    try { (el.requestFullscreen || el.webkitRequestFullscreen).call(el); } catch(e){}
+    try { screen.orientation.lock('landscape').catch(function(){}); } catch(e){}
+  };
+
+  idle();
+})();
+</script>
+</body>
+</html>
