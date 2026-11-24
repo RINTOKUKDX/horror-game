@@ -104,6 +104,8 @@
   #vLabel { font-size:12px; color:var(--gold); text-align:center; }
   #stage.exp #field { right:0; bottom:0; }
   #stage.exp #params, #stage.exp #win { display:none; }
+  #sil { position:absolute; inset:0; pointer-events:none; z-index:3; overflow:hidden; }
+  #sil img { position:absolute; filter:brightness(0) drop-shadow(0 0 1px #f2d98a) drop-shadow(0 0 3px #f2d98a); opacity:.5; }
   #ver { position:absolute; left:8px; top:6px; font-size:11px; color:var(--dim); z-index:3; }
   #win { position:absolute; left:2%; right:2%; bottom:2.5%; height:calc(var(--win) - 4%); z-index:5; background:rgba(4,6,30,.92);
     border:3px solid #eee; border-radius:8px; box-shadow:0 0 0 2px #000, inset 0 0 0 2px #000; padding:2% 3%; }
@@ -154,10 +156,11 @@
 <div id="app">
   <div id="stage">
     <div id="bgimg"></div><div id="bgshade"></div>
-    <div id="ver">戦闘盤 見本 v2.4</div>
+    <div id="ver">戦闘盤 見本 v2.5</div>
     <button id="bMenu">☰ 設定</button>
     <button id="bMode"></button>
     <div id="field"><div id="board"><div id="grid"></div></div></div>
+    <div id="sil"></div>
     <div id="params"></div>
     <div id="win"><div id="msg"></div><span id="caret">▼</span></div>
     <div id="pal"><button id="palEnd">編集<br>終了</button><div id="palList"></div></div>
@@ -202,7 +205,7 @@
 
 <script>
 (function(){
-  var VER = 'v2.4';
+  var VER = 'v2.5';
   Array.prototype.forEach.call(document.querySelectorAll('.vv'), function(e){ e.textContent = '戦闘盤 見本 ' + VER; });
   var BGS = ['corridor','factory','hospital','mansion','prison','sewage','lab','parking'];
   var TILT = 55, MAXC = 40;   // マスの上限（横・縦）
@@ -268,6 +271,7 @@
     }
     board.style.transform = 'rotateX('+TILT+'deg) rotateZ('+v.yaw+'deg)';
     field.classList.toggle('explore', m);
+    if (typeof updateSil==='function' && grid.children.length) updateSil();
     var mb = $('bMode'); mb.style.display = explore ? 'block' : 'none'; mb.textContent = inBattle ? '探索へ戻る' : '戦闘へ';
   }
   function render(){
@@ -296,15 +300,43 @@
     S.units.forEach(addUnit);
     if (edit) markSel();
     applyFog();
+    updateSil(); clearTimeout(silT); silT = setTimeout(updateSil, 500);
     renderParams();
     $('bEdit').textContent = edit ? '編集：ON' : '編集：OFF';
     $('bEdit').classList.toggle('on', edit);
   }
 
+  // キャラの絵は盤に垂直に立てる（壁と同じ向き）。前は画面に平行で後ろへ倒れていたため、奥の壁に頭が刺さっていた。
+  // 縦に立てると見かけが縮むので、そのぶん高さを伸ばして、画面上の見た目の大きさは前と同じにする。
   function place(el, c, r, wpx, hpx){
-    el.style.width = wpx+'px'; el.style.height = hpx+'px';
+    var sn = Math.max(.5, Math.sin(TILT*Math.PI/180));
+    el.style.width = wpx+'px'; el.style.height = (hpx/sn)+'px';
     el.style.left = ((c+.5)*size)+'px'; el.style.top = ((r+.62)*size)+'px';
-    el.style.transform = 'translate(-50%,-100%) rotateZ('+(-V().yaw)+'deg) rotateX(-'+TILT+'deg)';
+    el.style.transform = 'translate(-50%,-100%) rotateZ('+(-V().yaw)+'deg) rotateX(-90deg)';
+  }
+  // 背の高い物の裏に隠れた味方は、輪郭だけ透けて見せる
+  var silT = null;
+  function hiddenBehind(u){
+    var yw = V().yaw*Math.PI/180, sx = Math.sin(yw), sy = Math.cos(yw);   // 画面の手前方向（盤の上での向き）
+    for (var k=1;k<=2;k++){
+      var c = Math.round(u.c + k*sx), r = Math.round(u.r + k*sy);
+      if (c<0 || r<0 || c>=S.cols || r>=S.rows) continue;
+      var cv = coverAt(c, r); if (!cv) continue;
+      if (OBS[cv.t].h >= (k===1 ? .95 : 1.6)) return true;
+    }
+    return false;
+  }
+  function updateSil(){
+    var box = $('sil'); box.innerHTML = '';
+    var fr = stage.getBoundingClientRect();
+    S.units.forEach(function(u){
+      if (u.side!=='ally' || !u.el || u.el.style.display==='none' || !hiddenBehind(u)) return;
+      var q = u.el.getBoundingClientRect(), im = document.createElement('img');
+      im.src = u.el.firstChild.src; im.style.left = (q.left-fr.left)+'px'; im.style.top = (q.top-fr.top)+'px';
+      im.style.width = q.width+'px'; im.style.height = q.height+'px';
+      if (u.el.firstChild.style.transform) im.style.transform = u.el.firstChild.style.transform;
+      box.appendChild(im);
+    });
   }
   // 迫り上がるマス：高さ(h)はマス幅に対する比、幅(w)は占める大きさの比
   // n=名前、h=高さ（マス幅に対する比）、w=占める大きさの比、fw/fh=使うマス数、dur=耐久（-1=壊れない、null=なし）、join=並べると繋がる
