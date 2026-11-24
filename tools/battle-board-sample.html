@@ -102,10 +102,11 @@
   @keyframes flick { 0%,100%{opacity:1} 7%{opacity:.2} 9%{opacity:1} 41%{opacity:.85} 43%{opacity:.05} 46%{opacity:.9} 70%{opacity:1} 72%{opacity:.35} 74%{opacity:1} 88%{opacity:.6} 90%{opacity:1} }
   #bMode { position:absolute; left:6px; top:58px; z-index:10; display:none; background:rgba(18,15,14,.85); color:var(--gold); border:1px solid var(--gold); font:inherit; font-size:13px; padding:5px 9px; border-radius:2px; }
   #vLabel { font-size:12px; color:var(--gold); text-align:center; }
+  #field { touch-action:none; }
   #stage.exp #field { right:0; bottom:0; }
   #stage.exp #params, #stage.exp #win { display:none; }
   #sil { position:absolute; inset:0; pointer-events:none; z-index:3; overflow:hidden; }
-  #sil img { position:absolute; filter:brightness(0) drop-shadow(0 0 1px #f2d98a) drop-shadow(0 0 3px #f2d98a); opacity:.5; }
+  #sil img { position:absolute; filter:brightness(0) invert(.8) sepia(.7) drop-shadow(0 0 1px #f2d98a) drop-shadow(0 0 3px #f2d98a); opacity:.38; }
   #ver { position:absolute; left:8px; top:6px; font-size:11px; color:var(--dim); z-index:3; }
   #win { position:absolute; left:2%; right:2%; bottom:2.5%; height:calc(var(--win) - 4%); z-index:5; background:rgba(4,6,30,.92);
     border:3px solid #eee; border-radius:8px; box-shadow:0 0 0 2px #000, inset 0 0 0 2px #000; padding:2% 3%; }
@@ -156,7 +157,7 @@
 <div id="app">
   <div id="stage">
     <div id="bgimg"></div><div id="bgshade"></div>
-    <div id="ver">戦闘盤 見本 v2.5</div>
+    <div id="ver">戦闘盤 見本 v2.6</div>
     <button id="bMenu">☰ 設定</button>
     <button id="bMode"></button>
     <div id="field"><div id="board"><div id="grid"></div></div></div>
@@ -173,7 +174,7 @@
     <div class="row2"><button id="bRp">縦＋</button><button id="bRm">縦－</button></div>
     <div id="vLabel"></div>
     <div class="sl">角度<input type="range" id="sTilt" min="20" max="80" step="1"></div>
-    <div class="sl">回転<input type="range" id="sYaw" min="-60" max="60" step="1"></div>
+    <div class="sl">回転<input type="range" id="sYaw" min="-180" max="180" step="1"></div>
     <div class="sl">左右<input type="range" id="sOx" min="-300" max="300" step="2"></div>
     <div class="sl">上下<input type="range" id="sOy" min="-200" max="200" step="2"></div>
     <div class="sl">大きさ<input type="range" id="sScale" min="40" max="300" step="1"></div>
@@ -205,7 +206,7 @@
 
 <script>
 (function(){
-  var VER = 'v2.5';
+  var VER = 'v2.6';
   Array.prototype.forEach.call(document.querySelectorAll('.vv'), function(e){ e.textContent = '戦闘盤 見本 ' + VER; });
   var BGS = ['corridor','factory','hospital','mansion','prison','sewage','lab','parking'];
   var TILT = 55, MAXC = 40;   // マスの上限（横・縦）
@@ -318,20 +319,36 @@
   var silT = null;
   function hiddenBehind(u){
     var yw = V().yaw*Math.PI/180, sx = Math.sin(yw), sy = Math.cos(yw);   // 画面の手前方向（盤の上での向き）
+    var occ = [];
     for (var k=1;k<=2;k++){
       var c = Math.round(u.c + k*sx), r = Math.round(u.r + k*sy);
       if (c<0 || r<0 || c>=S.cols || r>=S.rows) continue;
       var cv = coverAt(c, r); if (!cv) continue;
-      if (OBS[cv.t].h >= (k===1 ? .95 : 1.6)) return true;
+      if (OBS[cv.t].h >= (k===1 ? .95 : 1.6)) occ.push(cv);
     }
-    return false;
+    return occ.length ? occ : null;
+  }
+  // 物の面が画面のどこを覆っているか（面ごとの四角をまとめたもの）
+  function objRect(c, r){
+    var b = board.querySelector('.blk[data-c="'+c+'"][data-r="'+r+'"]'); if (!b) return null;
+    var L = 1e9, T = 1e9, R = -1e9, B = -1e9;
+    Array.prototype.forEach.call(b.children, function(f){ var q = f.getBoundingClientRect(); if (!q.width) return; L = Math.min(L,q.left); T = Math.min(T,q.top); R = Math.max(R,q.right); B = Math.max(B,q.bottom); });
+    return R>L ? { left:L, top:T, right:R, bottom:B } : null;
   }
   function updateSil(){
     var box = $('sil'); box.innerHTML = '';
     var fr = stage.getBoundingClientRect();
     S.units.forEach(function(u){
-      if (u.side!=='ally' || !u.el || u.el.style.display==='none' || !hiddenBehind(u)) return;
+      if (u.side!=='ally' || !u.el || u.el.style.display==='none') return;
+      var occ = hiddenBehind(u); if (!occ) return;
       var q = u.el.getBoundingClientRect(), im = document.createElement('img');
+      // 実際に物に隠れている範囲だけ輪郭を出す
+      var o = null;
+      occ.forEach(function(cv){ var rr = objRect(cv.c, cv.r); if (!rr) return; o = o ? { left:Math.min(o.left,rr.left), top:Math.min(o.top,rr.top), right:Math.max(o.right,rr.right), bottom:Math.max(o.bottom,rr.bottom) } : rr; });
+      if (!o) return;
+      var ct = Math.max(0, o.top-q.top), cb = Math.max(0, q.bottom-o.bottom), cl = Math.max(0, o.left-q.left), cr = Math.max(0, q.right-o.right);
+      if (ct+cb >= q.height-1 || cl+cr >= q.width-1) return;   // 重なっていない
+      im.style.clipPath = 'inset('+ct+'px '+cr+'px '+cb+'px '+cl+'px)';
       im.src = u.el.firstChild.src; im.style.left = (q.left-fr.left)+'px'; im.style.top = (q.top-fr.top)+'px';
       im.style.width = q.width+'px'; im.style.height = q.height+'px';
       if (u.el.firstChild.style.transform) im.style.transform = u.el.firstChild.style.transform;
@@ -911,7 +928,7 @@
   };
   // 探索中：スワイプで画面をずらす（ある程度まで）
   var PN = null;
-  field.addEventListener('pointerdown', function(e){ if (edit || !camExplore() || PN) return; PN = { id:e.pointerId, x:e.clientX, y:e.clientY, px:panX, py:panY, moved:false }; });
+  field.addEventListener('pointerdown', function(e){ if (edit || !camExplore() || PN || G) return; PN = { id:e.pointerId, x:e.clientX, y:e.clientY, px:panX, py:panY, moved:false }; });
   field.addEventListener('pointermove', function(e){
     if (!PN || e.pointerId!==PN.id) return;
     var dx = e.clientX-PN.x, dy = e.clientY-PN.y;
@@ -922,6 +939,51 @@
   });
   function endPN(e){ if (!PN || e.pointerId!==PN.id) return; if (PN.moved){ noClick = true; setTimeout(function(){ noClick = false; }, 80); board.classList.remove('panning'); } PN = null; }
   field.addEventListener('pointerup', endPN); field.addEventListener('pointercancel', endPN);
+
+  // 2本指：ピンチで大きさ、ひねると回転（今の画面の画角に保存）
+  var PTS = {}, G = null, gRaf = 0;
+  function gInfo(){ var k = Object.keys(PTS); if (k.length<2) return null; var a = PTS[k[0]], b = PTS[k[1]];
+    return { d:Math.hypot(b.x-a.x, b.y-a.y), a:Math.atan2(b.y-a.y, b.x-a.x)*180/Math.PI }; }
+  field.addEventListener('pointerdown', function(e){
+    if (edit) return;
+    PTS[e.pointerId] = { x:e.clientX, y:e.clientY };
+    if (Object.keys(PTS).length===2){
+      var g = gInfo(); G = { d0:g.d, a0:g.a, s0:V().scale, y0:V().yaw };
+      if (PN){ PN = null; board.classList.remove('panning'); }
+      board.classList.add('panning');
+    }
+  }, true);
+  field.addEventListener('pointermove', function(e){
+    if (!PTS[e.pointerId]) return;
+    PTS[e.pointerId] = { x:e.clientX, y:e.clientY };
+    if (!G) return;
+    var g = gInfo(); if (!g || g.d0===0) return;
+    var v = V(), da = g.a - G.a0; while (da>180) da -= 360; while (da<-180) da += 360;
+    v.scale = Math.max(40, Math.min(300, Math.round(G.s0 * g.d / G.d0)));
+    var y = G.y0 + da; while (y>180) y -= 360; while (y<-180) y += 360; v.yaw = Math.round(y);
+    if (!gRaf) gRaf = requestAnimationFrame(function(){ gRaf = 0; render(); });
+  }, true);
+  function gEnd(e){
+    if (!PTS[e.pointerId]) return;
+    delete PTS[e.pointerId];
+    if (G && Object.keys(PTS).length<2){ G = null; noClick = true; setTimeout(function(){ noClick = false; }, 120); board.classList.remove('panning'); save(); syncSliders(); render(); }
+  }
+  field.addEventListener('pointerup', gEnd, true); field.addEventListener('pointercancel', gEnd, true);
+
+  // キャラは絵のどこを触っても選べる（壁や本棚の裏にいても）
+  field.addEventListener('click', function(e){
+    if (edit || noClick) return;
+    if (selected && e.target.classList && e.target.classList.contains('cell') && !unitAt(+e.target.dataset.c, +e.target.dataset.r)) return;   // 選択中の空きマスへの移動はそのまま
+    var x = e.clientX, y = e.clientY;
+    var us = S.units.filter(function(u){ return u.el && u.el.style.display!=='none'; })
+      .sort(function(a,b){ return (a.side==='ally'?0:1)-(b.side==='ally'?0:1) || (b.r+usize(b))-(a.r+usize(a)); });
+    for (var i=0;i<us.length;i++){
+      var q = us[i].el.getBoundingClientRect();
+      if (x>=q.left+q.width*.18 && x<=q.right-q.width*.18 && y>=q.top+q.height*.05 && y<=q.bottom){
+        e.stopPropagation(); e.preventDefault(); cellTap(us[i].c, us[i].r); return;
+      }
+    }
+  }, true);
 
   load(); syncSliders(); render();
 })();
