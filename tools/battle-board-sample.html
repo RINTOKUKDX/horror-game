@@ -113,7 +113,7 @@
     TILT = S.tilt;
     var W = field.clientWidth, H = field.clientHeight;
     var cos = Math.cos(TILT*Math.PI/180);
-    size = Math.min(W*0.88/S.cols, H*0.78/(S.rows*cos), 90) * S.scale/100;
+    size = Math.min(W*0.88/S.cols, H*0.66/(S.rows*cos), 90) * S.scale/100;
     size = Math.max(Math.floor(size), 18);
   }
 
