@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>パーツ位置合わせ v1.0</title>
+<style>
+  :root { --bg:#0d0b0a; --panel:#1a1614; --line:#4a3f33; --text:#e8e2da; --dim:#928b82; --gold:#c7b07c; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:'Shippori Mincho','Noto Serif JP',serif; padding:12px; }
+  h1 { font-size:16px; margin:0 0 8px; font-weight:600; }
+  h1 small { color:var(--dim); font-weight:400; }
+  .view { background:#2a2623; border:1px solid var(--line); }
+  canvas { display:block; width:100%; height:auto; }
+  .tabs { display:flex; gap:6px; margin:8px 0; }
+  button, .btn { background:var(--panel); color:var(--text); border:1px solid var(--line); padding:10px 12px; font:inherit; font-size:14px; flex:1; text-align:center; cursor:pointer; border-radius:2px; }
+  button.on { border-color:var(--gold); color:var(--gold); }
+  .row { display:flex; align-items:center; gap:8px; margin:10px 0; font-size:14px; }
+  .row label { width:3.5em; }
+  .row input[type=range] { flex:1; }
+  .row output { width:4em; text-align:right; color:var(--dim); font-size:13px; }
+  .files { display:flex; gap:6px; margin:8px 0; }
+  input[type=file] { display:none; }
+  .save { border-color:var(--gold); color:var(--gold); width:100%; margin-top:6px; }
+  #msg { color:var(--dim); font-size:12px; min-height:1.4em; margin-top:6px; }
+</style>
+</head>
+<body>
+<h1>パーツ位置合わせ <small>v1.0</small></h1>
+
+<div class="view"><canvas id="cv"></canvas></div>
+
+<div class="tabs">
+  <button data-v="both" class="on">両方</button>
+  <button data-v="front">正面</button>
+  <button data-v="back">背面</button>
+</div>
+
+<div class="files">
+  <label class="btn">パーツ画像を選ぶ<input type="file" id="partFile" accept="image/*"></label>
+  <label class="btn">素体を変える<input type="file" id="baseFile" accept="image/*"></label>
+</div>
+
+<div class="row"><label>大きさ</label><input type="range" id="sc" min="40" max="160" step="0.5" value="100"><output id="scO"></output></div>
+<div class="row"><label>左右</label><input type="range" id="dx" min="-200" max="200" step="1" value="0"><output id="dxO"></output></div>
+<div class="row"><label>上下</label><input type="range" id="dy" min="-200" max="200" step="1" value="0"><output id="dyO"></output></div>
+
+<button class="save" id="save">合わせた画像を保存（PNG）</button>
+<div id="msg">パーツ画像を選んでください。</div>
+
+<script>
+(function(){
+  var cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  var base = new Image(), part = null, view = 'both';
+  var sc = document.getElementById('sc'), dx = document.getElementById('dx'), dy = document.getElementById('dy');
+  var msg = document.getElementById('msg');
+
+  base.onload = function(){ cv.width = base.width; cv.height = base.height; draw(); };
+  base.src = '../assets/chara/base_body.png';
+
+  function fileToImg(file, cb){
+    var url = URL.createObjectURL(file), im = new Image();
+    im.onload = function(){ cb(im); };
+    im.src = url;
+  }
+  document.getElementById('partFile').onchange = function(e){
+    var f = e.target.files[0]; if (!f) return;
+    fileToImg(f, function(im){ part = im; msg.textContent = '動かして素体に合わせてください。'; draw(); });
+  };
+  document.getElementById('baseFile').onchange = function(e){
+    var f = e.target.files[0]; if (!f) return;
+    fileToImg(f, function(im){ base = im; cv.width = im.width; cv.height = im.height; draw(); });
+  };
+
+  function draw(){
+    document.getElementById('scO').textContent = sc.value + '%';
+    document.getElementById('dxO').textContent = dx.value;
+    document.getElementById('dyO').textContent = dy.value;
+    var w = base.width, h = base.height;
+    if (!w) return;
+    ctx.clearRect(0,0,cv.width,cv.height);
+    ctx.drawImage(base, 0, 0, w, h);
+    drawPart(ctx, w, h);
+    // 表示範囲（正面／背面）
+    if (view === 'front') cv.style.clipPath = 'inset(0 50% 0 0)';
+    else if (view === 'back') cv.style.clipPath = 'inset(0 0 0 50%)';
+    else cv.style.clipPath = 'none';
+    var wrap = cv.parentNode;
+    if (view === 'both') { cv.style.width = '100%'; cv.style.marginLeft = '0'; }
+    else { cv.style.width = '200%'; cv.style.marginLeft = (view === 'front' ? '0' : '-100%'); }
+    wrap.style.overflow = 'hidden';
+  }
+
+  // 正面・背面それぞれの上端中央を基準に拡大縮小。両方に同じ変形をかける
+  function drawPart(c, w, h){
+    if (!part) return;
+    var s = sc.value/100, half = w/2, ax = half/2, ay = h*0.07;
+    for (var i=0;i<2;i++){
+      c.save();
+      c.beginPath(); c.rect(i*half, 0, half, h); c.clip();
+      c.translate(i*half + ax + Number(dx.value), ay + Number(dy.value));
+      c.scale(s, s);
+      c.translate(-ax, -ay);
+      c.drawImage(part, i*(part.width/2), 0, part.width/2, part.height, 0, 0, half, h);
+      c.restore();
+    }
+  }
+
+  [sc,dx,dy].forEach(function(el){ el.oninput = draw; });
+  Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function(b){
+    b.onclick = function(){
+      view = b.dataset.v;
+      Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function(x){ x.classList.toggle('on', x===b); });
+      draw();
+    };
+  });
+
+  document.getElementById('save').onclick = function(){
+    if (!part) { msg.textContent = '先にパーツ画像を選んでください。'; return; }
+    var out = document.createElement('canvas');
+    out.width = base.width; out.height = base.height;
+    drawPart(out.getContext('2d'), out.width, out.height);
+    out.toBlob(function(b){
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = 'part_fitted.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      msg.textContent = '保存しました（素体と同じサイズのPNG）。';
+    }, 'image/png');
+  };
+})();
+</script>
+</body>
+</html>
