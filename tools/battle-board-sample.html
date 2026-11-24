@@ -32,6 +32,18 @@
   .blk.rock .top   { background:linear-gradient(135deg,#8a8a94,#6c6c76); box-shadow:inset 0 0 0 2px #22222a; }
   .blk.rock .front { background:linear-gradient(180deg,#5c5c66,#4a4a52 60%,#3e3e46); box-shadow:inset 0 0 0 2px #1c1c22; }
   .blk.rock .side  { background:linear-gradient(180deg,#46464e,#363640); box-shadow:inset 0 0 0 2px #1c1c22; }
+  .blk.wall .top   { background:linear-gradient(135deg,#7a6a62,#5e5049); box-shadow:inset 0 0 0 2px #1e1612; }
+  .blk.wall .front { background:repeating-linear-gradient(0deg,#6b4a3e 0 14px,#4a3228 14px 16px),#6b4a3e; box-shadow:inset 0 0 0 2px #1e1612; }
+  .blk.wall .side  { background:repeating-linear-gradient(0deg,#4f362d 0 14px,#35241d 14px 16px); box-shadow:inset 0 0 0 2px #1e1612; }
+  .blk.pillar .top   { background:linear-gradient(135deg,#b8b2a4,#9a9486); box-shadow:inset 0 0 0 2px #35322a; }
+  .blk.pillar .front { background:linear-gradient(90deg,#8c867a,#c4beb0 45%,#7a746a); box-shadow:inset 0 0 0 2px #35322a; }
+  .blk.pillar .side  { background:linear-gradient(90deg,#6a655b,#8c867a); box-shadow:inset 0 0 0 2px #35322a; }
+  .blk.barrel .top   { background:radial-gradient(circle,#8a6a45 0 35%,#5a4129 36% 100%); box-shadow:inset 0 0 0 2px #22160c; border-radius:30%; }
+  .blk.barrel .front { background:repeating-linear-gradient(90deg,#7a5836 0 7px,#5c4126 7px 9px); box-shadow:inset 0 0 0 2px #22160c, inset 0 8px 0 #3a3a40, inset 0 -8px 0 #3a3a40; }
+  .blk.barrel .side  { background:repeating-linear-gradient(0deg,#5c4126 0 7px,#46301c 7px 9px); box-shadow:inset 0 0 0 2px #22160c; }
+  .blk.altar .top   { background:linear-gradient(135deg,#3a2a46,#241a30); box-shadow:inset 0 0 0 2px #b03030, inset 0 0 14px #7a1a1a; }
+  .blk.altar .front { background:linear-gradient(180deg,#2c2236,#1a1424); box-shadow:inset 0 0 0 2px #14101c; }
+  .blk.altar .side  { background:linear-gradient(180deg,#221a2c,#150f1d); box-shadow:inset 0 0 0 2px #14101c; }
   #ver { position:absolute; left:8px; top:6px; font-size:11px; color:var(--dim); z-index:3; }
   #win { position:absolute; left:2%; right:2%; bottom:2.5%; height:calc(var(--win) - 4%); z-index:5; background:rgba(4,6,30,.92);
     border:3px solid #eee; border-radius:8px; box-shadow:0 0 0 2px #000, inset 0 0 0 2px #000; padding:2% 3%; }
@@ -80,7 +92,7 @@
 <div id="app">
   <div id="stage">
     <div id="bgimg"></div><div id="bgshade"></div>
-    <div id="ver">戦闘盤 見本 v1.6</div>
+    <div id="ver">戦闘盤 見本 v1.7</div>
     <button id="bMenu">☰ 設定</button>
     <div id="field"><div id="board"><div id="grid"></div></div></div>
     <div id="params"></div>
@@ -196,11 +208,19 @@
     el.style.left = ((c+.5)*size)+'px'; el.style.top = ((r+.62)*size)+'px';
     el.style.transform = 'translate(-50%,-100%) rotateZ('+(-S.yaw)+'deg) rotateX(-'+TILT+'deg)';
   }
-  // 迫り上がるマス：1=低い木箱（半マス）、2=高い岩（1マス）
+  // 迫り上がるマス：高さ(h)はマス幅に対する比、幅(w)は占める大きさの比
+  var OBS = [null,
+    {cls:'wood',   h:.5,  w:1},    // 1 低い木箱
+    {cls:'rock',   h:1.0, w:1},    // 2 高い岩
+    {cls:'wall',   h:1.7, w:1},    // 3 壁
+    {cls:'pillar', h:1.8, w:.5},   // 4 柱
+    {cls:'barrel', h:.7,  w:.6},   // 5 樽
+    {cls:'altar',  h:.6,  w:.8}    // 6 祭壇
+  ];
   function addObstacle(c,r,t){
-    var H = size*(t===1 ? 0.5 : 1.0), g = Math.max(1, Math.round(size*0.015));
-    var b = document.createElement('div'); b.className = 'blk ' + (t===1 ? 'wood' : 'rock');
-    b.style.left = (c*size)+'px'; b.style.top = (r*size)+'px'; b.style.width = size+'px'; b.style.height = size+'px';
+    var o = OBS[t], W = size*o.w, H = size*o.h, off = (size-W)/2;
+    var b = document.createElement('div'); b.className = 'blk ' + o.cls;
+    b.style.left = (c*size+off)+'px'; b.style.top = (r*size+off)+'px'; b.style.width = W+'px'; b.style.height = W+'px';
     function face(cls, css){
       var f = document.createElement('div'); f.className = 'f ' + cls;
       Object.keys(css).forEach(function(k){ f.style[k] = css[k]; });
@@ -208,10 +228,10 @@
       b.appendChild(f); return f;
     }
     var px = function(v){ return v+'px'; };
-    face('top',   { left:'0', top:'0', width:px(size), height:px(size), transform:'translateZ('+px(H)+')' });
-    face('front', { left:'0', top:px(size), width:px(size), height:px(H), transformOrigin:'50% 0', transform:'rotateX(90deg)' });
-    face('side',  { left:px(size), top:'0', width:px(H), height:px(size), transformOrigin:'0 50%', transform:'rotateY(-90deg)' });
-    face('side',  { left:px(-H), top:'0', width:px(H), height:px(size), transformOrigin:'100% 50%', transform:'rotateY(90deg)' });
+    face('top',   { left:'0', top:'0', width:px(W), height:px(W), transform:'translateZ('+px(H)+')' });
+    face('front', { left:'0', top:px(W), width:px(W), height:px(H), transformOrigin:'50% 0', transform:'rotateX(90deg)' });
+    face('side',  { left:px(W), top:'0', width:px(H), height:px(W), transformOrigin:'0 50%', transform:'rotateY(-90deg)' });
+    face('side',  { left:px(-H), top:'0', width:px(H), height:px(W), transformOrigin:'100% 50%', transform:'rotateY(90deg)' });
     board.appendChild(b);
   }
   // 一番近い敵（味方から見れば敵、敵から見れば味方）の方向を向く。画面の右なら反転。
@@ -248,7 +268,7 @@
     var u = unitAt(c,r);
     if (edit){
       if (u) return;
-      var t = (cellAt(c,r)+1)%3;
+      var t = (cellAt(c,r)+1)%OBS.length;
       if (t) S.cells[key(c,r)] = t; else delete S.cells[key(c,r)];
       save(); render(); return;
     }
