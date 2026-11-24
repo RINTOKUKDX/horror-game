@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ゲーム画面 見本 v1.4</title>
+<title>ゲーム画面 見本 v1.5</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* ゲーム画面の動く見本。ゲーム本体（index.html）には影響しない */
@@ -170,6 +170,17 @@
   .small{font-size:clamp(11px,3dvh,14px);color:var(--dim);margin-top:1dvh}
 
 
+
+  /* 探索者シート（古びた羊皮紙の見開き） */
+  #pSheet{background:rgba(4,3,3,.94)}
+  #book{display:flex;gap:1vw;height:84dvh;margin-top:1dvh;padding:2dvh 2vw;border-radius:4px;color:#2b1d0e;
+    background:radial-gradient(ellipse at 50% 50%,#d9c08f 0%,#c4a56e 60%,#8c6a3a 100%);box-shadow:inset 0 0 6dvh rgba(60,30,5,.7),0 0 3dvh #000}
+  #book .pg{flex:1;padding:1dvh 1.5vw;overflow-y:auto;position:relative}
+  #book .pg+.pg{border-left:1px solid rgba(60,30,5,.5)}
+  #book h3{font-size:4dvh;margin-bottom:1.2dvh;border-bottom:1px solid rgba(60,30,5,.5)}
+  #book .ln{display:flex;justify-content:space-between;font-size:clamp(12px,3.4dvh,17px);line-height:1.7;border-bottom:1px dotted rgba(60,30,5,.35)}
+  #book .flip{margin-top:1.5dvh;font-size:clamp(12px,3.2dvh,16px);background:none;border:1px solid #5a3f1d;color:#2b1d0e;padding:.8dvh 2vw;border-radius:3px}
+
   /* ---- 古いフィルム演出 ---- */
   #film{position:absolute;inset:0;pointer-events:none;z-index:25;display:none;overflow:hidden}
   body.film #film{display:block}
@@ -234,20 +245,22 @@
   <button type="button" class="close" data-close>閉じる</button>
   <h2>メニュー</h2>
   <div class="grid">
-    <button type="button" class="item" data-open="pStatus">ステータス</button>
     <button type="button" class="item" data-open="pSheet">探索者シート</button>
-    <button type="button" class="item" data-open="pItems">持ち物</button>
+    <button type="button" class="item" data-open="pNote">手帳</button>
     <button type="button" class="item" data-open="pLog">ログ</button>
     <button type="button" class="item" data-open="pSave">セーブ・ロード</button>
     <button type="button" class="item" data-open="pTune">見本の調整</button>
     <button type="button" class="item" data-open="pAssets">素材を見る</button>
   </div>
-  <p class="small">ゲーム画面 見本 v1.4</p>
+  <p class="small">ゲーム画面 見本 v1.5</p>
 </div>
-<div class="panel" id="pStatus"><button type="button" class="close" data-back>戻る</button><h2>ステータス</h2><div class="sub" id="statusBody"></div></div>
-<div class="panel" id="pSheet"><button type="button" class="close" data-back>戻る</button><h2>探索者シート</h2>
-  <div class="sub">貴方：古書店の店主（見本）<br>目星 60／聞き耳 55／図書館 70／心理学 45／オカルト 40</div></div>
-<div class="panel" id="pItems"><button type="button" class="close" data-back>戻る</button><h2>持ち物</h2><div class="sub">懐中電灯／古い鍵／手帳（見本）</div></div>
+<div class="panel" id="pSheet"><button type="button" class="close" data-back>戻る</button>
+  <div id="book">
+    <div class="pg" id="pgL"><h3>探索者シート</h3><div id="sheetL"></div></div>
+    <div class="pg" id="pgR"><h3 id="pgRt">技能</h3><div id="sheetR"></div>
+      <button type="button" class="flip" id="flip">持ち物のページへ ▶</button></div>
+  </div></div>
+<div class="panel" id="pNote"><button type="button" class="close" data-back>戻る</button><h2>手帳</h2><div class="sub">・女将は事件の夜、家にいなかった（見本）<br>・地下の鍵は古い鍵では開かない（見本）</div></div>
 <div class="panel" id="pLog"><button type="button" class="close" data-close>閉じる</button><h2>ログ</h2><div class="sub" id="logBody"></div></div>
 <div class="panel" id="pSave"><button type="button" class="close" data-back>戻る</button><h2>セーブ・ロード</h2><div class="sub">（見本なので中身はありません）</div></div>
 <div class="panel tune" id="pTune"><button type="button" class="close" data-back>戻る</button><h2>見本の調整</h2>
@@ -268,7 +281,7 @@
   <div class="row"><input type="text" id="free" placeholder="技能名や行動を入力（例：目星）" autocomplete="off"><button type="button" class="item" id="freeGo">決定</button></div>
 </div>
 
-<div id="start" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプでログ／長押しで絵だけ</span><span class="ver">ゲーム画面 見本 v1.4</span></div>
+<div id="start" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプでログ／長押しで絵だけ</span><span class="ver">ゲーム画面 見本 v1.5</span></div>
 <div id="portrait">スマホを横向きにしてください</div>
 
 <script src="../assets/manifest.js"></script>
@@ -620,8 +633,23 @@
     $('bg').style.filter=(S.hp<=1||h<.2)?'blur(3px)':'';
     if(S.strokes<S.maxStrokes) $('stage').style.filter=f;
     refreshEat();
-    $('statusBody').innerHTML='正気度：'+S.san+' / '+S.sanMax+'<br>HP：'+S.hp+' / '+S.hpMax+'<br>魔法陣：'+S.strokes+' / '+S.maxStrokes+' 画<br><span class="small">（本番では数字は出さず、演出だけで伝える予定）</span>';
+    renderSheet();
   }
+  var sheetPage=0;
+  var SKILLS=[['近接',50],['銃火器',20],['回避',60],['防御',50],['目星',60],['聞き耳',55],['隠密',10],['医学',30],['製作',20],['説得',15],['心理学',45],['クトゥルフ神話','M'],['教養',70],['アイデア',65],['幸運',50]];
+  var ITEMS=['懐中電灯','古い鍵','手帳'];
+  function ln(a,b){ return '<div class="ln"><span>'+a+'</span><span>'+b+'</span></div>'; }
+  function renderSheet(){
+    if(!$('sheetL')) return;
+    $('sheetL').innerHTML=ln('名前','貴方（見本）')+ln('職業','古書店の店主')+ln('体力',S.hp+' / '+S.hpMax)+ln('正気度',S.san+' / '+S.sanMax)+ln('MP',10)
+      +ln('STR',9)+ln('CON',11)+ln('POW',16)+ln('DEX',12)+ln('APP',10)+ln('SIZ',13)+ln('INT',13)+ln('EDU',14)
+      +'<div class="small" style="color:#5a3f1d">魔法陣：'+S.strokes+' / '+S.maxStrokes+' 画</div>';
+    $('pgRt').textContent=sheetPage?'持ち物':'技能';
+    $('flip').textContent=sheetPage?'◀ 技能のページへ':'持ち物のページへ ▶';
+    $('sheetR').innerHTML=sheetPage?ITEMS.map(function(i){ return ln(i,''); }).join('')
+      :SKILLS.map(function(k){ return ln(k[0],k[1]==='M'?S.mythos:k[1]); }).join('');
+  }
+  document.addEventListener('DOMContentLoaded',function(){ $('flip').addEventListener('click',function(){ sheetPage=sheetPage?0:1; renderSheet(); }); });
   // 視界の欠け：場面ごとに少しずつ変わる。端だけを欠けさせ、中央と選択肢は残す
   function refreshEat(){
     var e=$('eat');
@@ -643,7 +671,7 @@
   var stack=[];
   function openPanel(id){ stack.forEach(function(p){ $(p).classList.remove('on'); }); stack.push(id); $(id).classList.add('on');
     if(id==='pLog') $('logBody').innerHTML=log.map(function(l){ return l.replace(/</g,'&lt;'); }).join('<br>');
-    if(id==='pStatus') applyState();
+    if(id==='pSheet') renderSheet();
     if(id==='pAssets') buildAssets(); }
   function closePanels(){ stack.forEach(function(p){ $(p).classList.remove('on'); }); stack=[]; }
   function back(){ var p=stack.pop(); if(p) $(p).classList.remove('on'); var q=stack[stack.length-1]; if(q) $(q).classList.add('on'); }
