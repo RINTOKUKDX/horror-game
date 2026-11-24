@@ -91,6 +91,17 @@
   #lp b { color:var(--gold); font-weight:normal; }
   #lp button { background:#120f0e; color:var(--text); border:1px solid var(--line); font:inherit; padding:4px 8px; border-radius:3px; }
   #lp button.on { border-color:var(--gold); color:var(--gold); }
+  #board.cam { transition:margin .45s ease, transform-origin .45s ease; }
+  #board.panning { transition:none !important; }
+  #field.explore { touch-action:none; }
+  .cell { transition:background .35s; }
+  .beam, .halo { position:absolute; left:0; top:0; pointer-events:none; }
+  .beam { animation:sway 3.4s ease-in-out infinite; }
+  .beam.broken { animation:sway 3.4s ease-in-out infinite, flick 2.6s linear infinite; }
+  @keyframes sway { 0%,100% { transform:translateZ(1.5px) rotateZ(-1.8deg); } 50% { transform:translateZ(1.5px) rotateZ(1.8deg); } }
+  @keyframes flick { 0%,100%{opacity:1} 7%{opacity:.2} 9%{opacity:1} 41%{opacity:.85} 43%{opacity:.05} 46%{opacity:.9} 70%{opacity:1} 72%{opacity:.35} 74%{opacity:1} 88%{opacity:.6} 90%{opacity:1} }
+  #bMode { position:absolute; left:6px; top:58px; z-index:10; display:none; background:rgba(18,15,14,.85); color:var(--gold); border:1px solid var(--gold); font:inherit; font-size:13px; padding:5px 9px; border-radius:2px; }
+  #vLabel { font-size:12px; color:var(--gold); text-align:center; }
   #ver { position:absolute; left:8px; top:6px; font-size:11px; color:var(--dim); z-index:3; }
   #win { position:absolute; left:2%; right:2%; bottom:2.5%; height:calc(var(--win) - 4%); z-index:5; background:rgba(4,6,30,.92);
     border:3px solid #eee; border-radius:8px; box-shadow:0 0 0 2px #000, inset 0 0 0 2px #000; padding:2% 3%; }
@@ -141,8 +152,9 @@
 <div id="app">
   <div id="stage">
     <div id="bgimg"></div><div id="bgshade"></div>
-    <div id="ver">戦闘盤 見本 v2.2</div>
+    <div id="ver">戦闘盤 見本 v2.3</div>
     <button id="bMenu">☰ 設定</button>
+    <button id="bMode"></button>
     <div id="field"><div id="board"><div id="grid"></div></div></div>
     <div id="params"></div>
     <div id="win"><div id="msg"></div><span id="caret">▼</span></div>
@@ -154,11 +166,12 @@
     <button id="bEdit">編集：OFF</button>
     <div class="row2"><button id="bCp">横＋</button><button id="bCm">横－</button></div>
     <div class="row2"><button id="bRp">縦＋</button><button id="bRm">縦－</button></div>
+    <div id="vLabel"></div>
     <div class="sl">角度<input type="range" id="sTilt" min="20" max="80" step="1"></div>
     <div class="sl">回転<input type="range" id="sYaw" min="-60" max="60" step="1"></div>
     <div class="sl">左右<input type="range" id="sOx" min="-300" max="300" step="2"></div>
     <div class="sl">上下<input type="range" id="sOy" min="-200" max="200" step="2"></div>
-    <div class="sl">大きさ<input type="range" id="sScale" min="50" max="140" step="1"></div>
+    <div class="sl">大きさ<input type="range" id="sScale" min="40" max="300" step="1"></div>
     <button id="bExp">探索モード：OFF</button>
     <button id="bSeen">見た場所をリセット</button>
     <button id="bBg">背景を変える</button>
@@ -187,20 +200,24 @@
 
 <script>
 (function(){
-  var VER = 'v2.2';
+  var VER = 'v2.3';
   Array.prototype.forEach.call(document.querySelectorAll('.vv'), function(e){ e.textContent = '戦闘盤 見本 ' + VER; });
   var BGS = ['corridor','factory','hospital','mansion','prison','sewage','lab','parking'];
   var TILT = 55, MAXC = 40;   // マスの上限（横・縦）
   var $ = function(id){ return document.getElementById(id); };
   var stage = $('stage'), field = $('field'), board = $('board'), grid = $('grid');
 
-  var S = { cols:8, rows:6, cells:{}, dur:{}, seen:{}, bg:0, tilt:55, yaw:0, ox:0, oy:0, scale:100,
+  var S = { cols:8, rows:6, cells:{}, dur:{}, seen:{}, met:{}, lead:null,
+    ve:{ tilt:50, yaw:0, ox:0, oy:0, scale:100 },   // 探索用の画角（S.tilt などは戦闘用） bg:0, tilt:55, yaw:0, ox:0, oy:0, scale:100,
     units:[
       {id:'a1', side:'ally', c:6, r:5, name:'探索者A', hp:12, mhp:12, mp:8, mmp:10, san:62, msan:70},
       {id:'a2', side:'ally', c:7, r:3, name:'探索者B', hp:9, mhp:11, mp:5, mmp:6, san:48, msan:55},
       {id:'e1', side:'enemy', c:1, r:0, name:'影の群れ', hp:20, mhp:20, mp:0, mmp:0},
       {id:'e2', side:'enemy', c:0, r:2, name:'歪んだ者', hp:14, mhp:16, mp:3, mmp:3} ] };
-  var edit = false, selected = null, size = 60, brush = 0, dragging = false, selObj = null, explore = false;
+  var edit = false, selected = null, size = 60, brush = 0, dragging = false, selObj = null, explore = false, inBattle = false, panX = 0, panY = 0, noClick = false, lastCam = null;
+  function camExplore(){ return explore && !inBattle; }
+  function V(){ return camExplore() ? S.ve : S; }   // 今の画角（探索用 or 戦闘用）
+  function leadUnit(){ var al = S.units.filter(function(u){ return u.side==='ally'; }); return al.filter(function(u){ return u.id===S.lead; })[0] || al[0] || null; }
 
   function key(c,r){ return r*100+c; }
   function cellAt(c,r){ return S.cells[key(c,r)] || 0; }
@@ -212,6 +229,7 @@
     if (!o || !o.cols || !o.rows) return;
     S.cols = Math.max(3, Math.min(MAXC, o.cols|0)); S.rows = Math.max(3, Math.min(MAXC, o.rows|0));
     S.cells = o.cells || {}; S.dur = o.dur || {}; S.bg = (o.bg|0) % BGS.length; S.tilt = o.tilt||55; S.yaw = o.yaw||0; S.ox = o.ox||0; S.oy = o.oy||0; S.scale = o.scale||100;
+    if (o.ve) S.ve = o.ve; S.seen = o.seen || {}; S.met = o.met || {}; S.lead = o.lead || null;
     if (o.units && o.units.length) S.units = o.units;
     clampUnits();
   }
@@ -225,20 +243,36 @@
   }
 
   function fit(){
-    TILT = S.tilt;
+    var v = V(); TILT = v.tilt;
     var W = field.clientWidth, H = field.clientHeight;
-    var cos = Math.cos(TILT*Math.PI/180), y = Math.abs(S.yaw)*Math.PI/180;
+    if (camExplore()){ size = Math.max(Math.floor(H*0.62/4.2 * v.scale/100), 6); return; }   // 探索：盤の大きさに関係なく、手前から奥まで4〜5マスほど
+    var cos = Math.cos(TILT*Math.PI/180), y = Math.abs(v.yaw)*Math.PI/180;
     var ex = S.cols*Math.cos(y) + S.rows*Math.sin(y), ey = (S.rows*Math.cos(y) + S.cols*Math.sin(y))*cos;
-    size = Math.min(W*0.88/ex, H*0.66/ey, 90) * S.scale/100;
+    size = Math.min(W*0.88/ex, H*0.66/ey, 90) * v.scale/100;
     size = Math.max(Math.floor(size), 6);
   }
 
+  // 画面の向き・位置。探索中は先頭の味方が画面の中心に来る
+  function camera(){
+    var v = V(), w = S.cols*size, h = S.rows*size, m = camExplore();
+    if (m!==lastCam){ board.classList.remove('cam'); lastCam = m; requestAnimationFrame(function(){ requestAnimationFrame(function(){ if (camExplore()) board.classList.add('cam'); }); }); }
+    if (m){
+      var L = leadUnit(), ux = (L ? L.c+.5 : S.cols/2)*size, uy = (L ? L.r+.5 : S.rows/2)*size;
+      board.style.top = '60%'; board.style.transformOrigin = ux+'px '+uy+'px';
+      board.style.marginLeft = (-ux + (v.ox||0) + panX)+'px'; board.style.marginTop = (-uy + (v.oy||0) + panY)+'px';
+    } else {
+      board.style.top = ''; board.style.transformOrigin = '';
+      board.style.marginLeft = (-w/2 + (v.ox||0))+'px'; board.style.marginTop = (-h/2 + (v.oy||0))+'px';
+    }
+    board.style.transform = 'rotateX('+TILT+'deg) rotateZ('+v.yaw+'deg)';
+    field.classList.toggle('explore', m);
+    var mb = $('bMode'); mb.style.display = explore ? 'block' : 'none'; mb.textContent = inBattle ? '探索へ戻る' : '戦闘へ';
+  }
   function render(){
     fit();
     var w = S.cols*size, h = S.rows*size;
     board.style.width = w+'px'; board.style.height = h+'px';
-    board.style.marginLeft = (-w/2 + (S.ox||0))+'px'; board.style.marginTop = (-h/2 + (S.oy||0))+'px';
-    board.style.transform = 'rotateX('+TILT+'deg) rotateZ('+S.yaw+'deg)';
+    camera();
     grid.style.width = w+'px'; grid.style.height = h+'px';
     grid.style.gridTemplateColumns = 'repeat('+S.cols+','+size+'px)';
     grid.style.gridTemplateRows = 'repeat('+S.rows+','+size+'px)';
@@ -267,7 +301,7 @@
   function place(el, c, r, wpx, hpx){
     el.style.width = wpx+'px'; el.style.height = hpx+'px';
     el.style.left = ((c+.5)*size)+'px'; el.style.top = ((r+.62)*size)+'px';
-    el.style.transform = 'translate(-50%,-100%) rotateZ('+(-S.yaw)+'deg) rotateX(-'+TILT+'deg)';
+    el.style.transform = 'translate(-50%,-100%) rotateZ('+(-V().yaw)+'deg) rotateX(-'+TILT+'deg)';
   }
   // 迫り上がるマス：高さ(h)はマス幅に対する比、幅(w)は占める大きさの比
   // n=名前、h=高さ（マス幅に対する比）、w=占める大きさの比、fw/fh=使うマス数、dur=耐久（-1=壊れない、null=なし）、join=並べると繋がる
@@ -357,7 +391,7 @@
       if (d < bd){ bd = d; best = o; }
     });
     if (!best) return u.side === 'enemy';
-    var yw = S.yaw*Math.PI/180, dc = (best.c+usize(best)/2)-(u.c+usize(u)/2), dr = (best.r+usize(best)/2)-(u.r+usize(u)/2);
+    var yw = V().yaw*Math.PI/180, dc = (best.c+usize(best)/2)-(u.c+usize(u)/2), dr = (best.r+usize(best)/2)-(u.r+usize(u)/2);
     var sx = dc*Math.cos(yw) - dr*Math.sin(yw);    // 画面上の左右
     if (Math.abs(sx) < 0.01) return u._flip === undefined ? (u.side === 'enemy') : u._flip;
     u._flip = sx > 0; return u._flip;
@@ -385,11 +419,11 @@
   function onCell(e){ cellTap(+this.dataset.c, +this.dataset.r); }
   function cellTap(c, r){
     var u = unitAt(c,r);
-    if (edit) return;   // 編集中の操作は下の「指の操作」で扱う
-    if (u && u.side==='ally'){ selected = (selected===u) ? null : u; render2(); say(selected ? '味方を選んだ。\nどこへ動く？' : '選びなおした。'); return; }
+    if (edit || noClick) return;   // 編集中の操作は下の「指の操作」で扱う／スワイプ直後は無視
+    if (u && u.side==='ally'){ selected = (selected===u) ? null : u; if (explore && selected && S.lead!==u.id){ S.lead = u.id; panX = panY = 0; camera(); } render2(); say(selected ? '味方を選んだ。\nどこへ動く？' : '選びなおした。'); return; }
     if (selected && !u && !blockedAt(c,r)){
       var m = selected;
-      var ddc = c-(m.c), ddr = r-(m.r); if (ddc||ddr) m.dir = Math.round(Math.atan2(ddr,ddc)*180/Math.PI/45)*45; m.c = c; m.r = r; updateFacing(); selected = null; save(); render2(); say('味方は 素早く移動した。');
+      var ddc = c-(m.c), ddr = r-(m.r); if (ddc||ddr) m.dir = Math.round(Math.atan2(ddr,ddc)*180/Math.PI/45)*45; m.c = c; m.r = r; updateFacing(); selected = null; if (explore){ S.lead = m.id; panX = panY = 0; camera(); } save(); render2(); say('味方は 素早く移動した。');
       if (m.el){ unitPos(m.el, m); setTimeout(render, 450); } else render();
       return;
     }
@@ -417,6 +451,7 @@
   }
 
   function setEdit(v){
+    if (v && explore){ explore = false; inBattle = false; $('bExp').textContent = '探索モード：OFF'; $('bExp').classList.remove('on'); syncSliders(); }
     edit = v; selected = null; brush = 0; hideInfo();
     field.classList.toggle('edit', v); $('pal').classList.toggle('on', v); $('pal').classList.remove('hide');
     $('menu').classList.remove('open'); buildPal(); render();
@@ -430,15 +465,13 @@
     tm = setInterval(function(){ i++; m.textContent = t.slice(0,i); if (i>=t.length) clearInterval(tm); }, 28);
     if (edit) toast(t);
   }
-  $('sTilt').value = S.tilt; $('sScale').value = S.scale; $('sYaw').value = S.yaw;
-  $('sYaw').oninput = function(){ S.yaw = +this.value; save(); render(); };
-  $('sOx').value = S.ox||0; $('sOy').value = S.oy||0;
-  $('sOx').oninput = function(){ S.ox = +this.value; save(); render(); };
-  $('sOy').oninput = function(){ S.oy = +this.value; save(); render(); };
+  $('sYaw').oninput = function(){ V().yaw = +this.value; save(); render(); };
+  $('sOx').oninput = function(){ V().ox = +this.value; save(); render(); };
+  $('sOy').oninput = function(){ V().oy = +this.value; save(); render(); };
   $('bMenu').onclick = function(){ $('menu').classList.toggle('open'); };
   $('bMenuClose').onclick = function(){ $('menu').classList.remove('open'); };
-  $('sTilt').oninput = function(){ S.tilt = +this.value; save(); render(); };
-  $('sScale').oninput = function(){ S.scale = +this.value; save(); render(); };
+  $('sTilt').oninput = function(){ V().tilt = +this.value; save(); render(); };
+  $('sScale').oninput = function(){ V().scale = +this.value; save(); render(); };
   function resize(dc, dr){
     S.cols = Math.max(3, Math.min(MAXC, S.cols+dc)); S.rows = Math.max(3, Math.min(MAXC, S.rows+dr));
     // 範囲外の障害物を消す
@@ -453,10 +486,11 @@
   $('bClear').onclick = function(){ S.cells = {}; S.dur = {}; hideInfo(); save(); render(); };
 
   function stageObj(){
-    return { cols:S.cols, rows:S.rows, bg:S.bg, tilt:S.tilt, yaw:S.yaw, ox:S.ox||0, oy:S.oy||0, scale:S.scale, cells:JSON.parse(JSON.stringify(S.cells)), dur:JSON.parse(JSON.stringify(S.dur||{})),
+    return { cols:S.cols, rows:S.rows, bg:S.bg, tilt:S.tilt, yaw:S.yaw, ox:S.ox||0, oy:S.oy||0, scale:S.scale, ve:JSON.parse(JSON.stringify(S.ve)), cells:JSON.parse(JSON.stringify(S.cells)), dur:JSON.parse(JSON.stringify(S.dur||{})),
       units:S.units.map(function(u){ var q={}; Object.keys(u).forEach(function(k){ if (k!=='el') q[k]=u[k]; }); return q; }) };
   }
-  function syncSliders(){ $('sTilt').value = S.tilt; $('sScale').value = S.scale; $('sYaw').value = S.yaw; $('sOx').value = S.ox||0; $('sOy').value = S.oy||0; }
+  function syncSliders(){ var v = V(); $('sTilt').value = v.tilt; $('sScale').value = v.scale; $('sYaw').value = v.yaw; $('sOx').value = v.ox||0; $('sOy').value = v.oy||0;
+    $('vLabel').textContent = camExplore() ? '画角：探索用（キャラ中心）' : (explore ? '画角：戦闘用' : '画角：戦闘用（通常）'); }
 
   // ---- 戦闘の保存（名前付き）----
   var stages = {};
@@ -715,7 +749,7 @@
   palList.addEventListener('pointercancel', endQ);
 
   // ===== 探索モード：明かりと暗がり =====
-  var LIGHTS = { lamp:'電気', torch:'懐中電灯', none:'なし' };
+  var LIGHTS = { lamp:'電気', torch:'懐中電灯', broken:'壊れかけ', none:'なし' };
   function lightOf(u){ return u.light || 'torch'; }
   function dirOf(u){
     if (u.dir!=null) return u.dir;
@@ -747,10 +781,10 @@
         if (d<=1) mark(r*C+c, 3);             // 自分のマス＋約0.5マス
         if (!los(uc,ur,c,r)) continue;
         if (L==='lamp'){ mark(r*C+c, 2); }
-        else if (L==='torch'){
+        else if (L==='torch' || L==='broken'){
           var ang = Math.atan2(r-ur, c-uc), diff = Math.abs(Math.atan2(Math.sin(ang-a0), Math.cos(ang-a0)));
-          var dist = Math.sqrt((c-uc)*(c-uc)+(r-ur)*(r-ur));
-          if (diff <= Math.PI/5+0.01 && dist <= 5.2) mark(r*C+c, dist<=3.2 ? 2 : 3);
+          var dist = Math.sqrt((c-uc)*(c-uc)+(r-ur)*(r-ur)), far = L==='torch' ? 5.2 : 3.6, near = L==='torch' ? 3.2 : 2.0;
+          if (diff <= Math.PI/5+0.01 && dist <= far) mark(r*C+c, dist<=near ? 2 : 3);
         }
       }
     });
@@ -760,7 +794,7 @@
   }
   function applyFog(){
     updateLP();
-    var arrows = board.querySelectorAll('.arrow'); Array.prototype.forEach.call(arrows, function(n){ n.remove(); });
+    Array.prototype.forEach.call(board.querySelectorAll('.arrow, .beam, .halo'), function(n){ n.remove(); });
     if (!explore) return;
     var vis = computeVis(), C = S.cols;
     Array.prototype.forEach.call(grid.children, function(d){
@@ -781,6 +815,33 @@
       var n = usize(u), show = false;
       for (var y=u.r;y<u.r+n;y++) for (var x=u.c;x<u.c+n;x++) if (vis[y*C+x]===2 || vis[y*C+x]===3) show = true;
       u.el.style.display = show ? '' : 'none';
+    });
+    // 敵が見えたら戦闘へ（一度出会った敵では、もう切り替えない）
+    if (!inBattle){
+      var newly = [];
+      S.units.forEach(function(u){
+        if (u.side!=='enemy' || S.met[u.id] || !u.el || u.el.style.display==='none') return;
+        S.met[u.id] = 1; newly.push(u.name || '何か');
+      });
+      if (newly.length){ inBattle = true; panX = panY = 0; save(); setTimeout(function(){ render(); syncSliders(); say(newly.join('、')+' が現れた！\n戦闘開始。'); }, 0); }
+    }
+    // 懐中電灯の光（暖かい色、中心ほど明るく、ゆらゆら揺れる。壊れかけはちらつく）
+    var w = S.cols*size, h = S.rows*size;
+    S.units.forEach(function(u){
+      if (u.side!=='ally') return;
+      var L = lightOf(u), X = (u.c+.5)*size, Y = (u.r+.5)*size;
+      var ha = document.createElement('div'); ha.className = 'halo';
+      ha.style.width = w+'px'; ha.style.height = h+'px'; ha.style.transform = 'translateZ(1.4px)';
+      ha.style.background = 'radial-gradient(circle at '+X+'px '+Y+'px, rgba(255,222,160,'+(L==='lamp'?0:.16)+') 0, rgba(255,210,140,0) '+(size*1.1)+'px)';
+      board.appendChild(ha);
+      if (L!=='torch' && L!=='broken') return;
+      var R = (L==='torch' ? 5.4 : 3.8)*size, A = dirOf(u)+90-40;
+      var b = document.createElement('div'); b.className = 'beam' + (L==='broken' ? ' broken' : '');
+      b.style.width = w+'px'; b.style.height = h+'px'; b.style.transformOrigin = X+'px '+Y+'px';
+      b.style.background = 'radial-gradient(circle at '+X+'px '+Y+'px, rgba(255,232,170,.42) 0, rgba(255,214,140,.24) '+(R*.35)+'px, rgba(255,196,110,.10) '+(R*.7)+'px, rgba(255,190,100,0) '+R+'px)';
+      var mk = 'conic-gradient(from '+A+'deg at '+X+'px '+Y+'px, transparent 0deg, #000 12deg, #000 68deg, transparent 80deg, transparent 360deg)';
+      b.style.webkitMaskImage = mk; b.style.maskImage = mk;
+      board.appendChild(b);
     });
     // 向きの矢印（味方）
     S.units.forEach(function(u){
@@ -803,12 +864,29 @@
     box.style.display = 'flex';
   }
   $('bExp').onclick = function(){
-    explore = !explore; if (explore && edit) setEdit(false);
+    explore = !explore; inBattle = false; panX = panY = 0; if (explore && edit) setEdit(false);
     $('bExp').textContent = '探索モード：' + (explore ? 'ON' : 'OFF'); $('bExp').classList.toggle('on', explore);
-    $('menu').classList.remove('open'); selected = null; render();
+    $('menu').classList.remove('open'); selected = null; render(); syncSliders();
     say(explore ? '探索モード。\n見えている所だけが明るい。\n味方をタップして、灯りと向きを変えよう。' : '探索モードを終えた。');
   };
-  $('bSeen').onclick = function(){ S.seen = {}; save(); render(); toast('見た場所を忘れた。'); };
+  $('bSeen').onclick = function(){ S.seen = {}; S.met = {}; save(); render(); toast('見た場所を忘れた。'); };
+  $('bMode').onclick = function(){
+    inBattle = !inBattle; panX = panY = 0; selected = null; render(); syncSliders();
+    say(inBattle ? '戦闘の画面に切り替えた。' : '探索に戻った。\n画面をスワイプすると、周りを見回せる。');
+  };
+  // 探索中：スワイプで画面をずらす（ある程度まで）
+  var PN = null;
+  field.addEventListener('pointerdown', function(e){ if (edit || !camExplore() || PN) return; PN = { id:e.pointerId, x:e.clientX, y:e.clientY, px:panX, py:panY, moved:false }; });
+  field.addEventListener('pointermove', function(e){
+    if (!PN || e.pointerId!==PN.id) return;
+    var dx = e.clientX-PN.x, dy = e.clientY-PN.y;
+    if (!PN.moved && Math.abs(dx)+Math.abs(dy) > 12){ PN.moved = true; board.classList.add('panning'); try { field.setPointerCapture(e.pointerId); } catch(_){} }
+    if (!PN.moved) return;
+    var W = field.clientWidth*.42, H = field.clientHeight*.42;
+    panX = Math.max(-W, Math.min(W, PN.px+dx)); panY = Math.max(-H, Math.min(H, PN.py+dy)); camera();
+  });
+  function endPN(e){ if (!PN || e.pointerId!==PN.id) return; if (PN.moved){ noClick = true; setTimeout(function(){ noClick = false; }, 80); board.classList.remove('panning'); } PN = null; }
+  field.addEventListener('pointerup', endPN); field.addEventListener('pointercancel', endPN);
 
   load(); syncSliders(); render();
 })();
