@@ -38,7 +38,7 @@
   #menu { position:absolute; left:0; top:0; bottom:0; width:210px; padding:6px; display:none; flex-direction:column; gap:4px; overflow-y:auto;
     background:var(--panel); border-right:1px solid var(--line); z-index:9; }
   #menu.open { display:flex; }
-  #bMenu { position:absolute; left:6px; top:22px; z-index:8; background:rgba(18,15,14,.85); color:var(--text); border:1px solid var(--line); font:inherit; font-size:14px; padding:6px 10px; border-radius:2px; }
+  #bMenu { position:absolute; left:6px; top:22px; z-index:10; background:rgba(18,15,14,.85); color:var(--text); border:1px solid var(--line); font:inherit; font-size:14px; padding:6px 10px; border-radius:2px; }
   #params { position:absolute; right:0; top:0; bottom:var(--win); width:var(--pw); min-width:140px; z-index:4; padding:6px; display:flex; flex-direction:column; gap:6px; overflow:hidden;
     background:rgba(18,15,14,.82); border-left:1px solid var(--line); }
   .pc { border:1px solid var(--line); background:rgba(0,0,0,.35); padding:4px 6px; font-size:clamp(10px,2.8vmin,13px); flex:1; min-height:0; }
@@ -66,13 +66,14 @@
 <div id="app">
   <div id="stage">
     <div id="bgimg"></div><div id="bgshade"></div>
-    <div id="ver">戦闘盤 見本 v1.1</div>
+    <div id="ver">戦闘盤 見本 v1.2</div>
     <button id="bMenu">☰ 設定</button>
     <div id="field"><div id="board"><div id="grid"></div></div></div>
     <div id="params"></div>
     <div id="win"><div id="msg"></div><span id="caret">▼</span></div>
   </div>
   <div id="menu">
+    <button id="bMenuClose">▲ 閉じる</button>
     <button id="bEdit">編集：OFF</button>
     <div class="row2"><button id="bCp">横＋</button><button id="bCm">横－</button></div>
     <div class="row2"><button id="bRp">縦＋</button><button id="bRm">縦－</button></div>
@@ -176,6 +177,7 @@
     place(o, c, r, size*(t===1?0.78:0.8), size*(t===1?0.75:1.7));
     board.appendChild(o);
   }
+  function flipOf(u){ return u.flip === undefined ? u.side === 'enemy' : !!u.flip; }
   function addUnit(u){
     var el = document.createElement('div'); el.className = 'bb unit ' + u.side;
     var h = size*1.5;
@@ -183,6 +185,7 @@
     el.style.transition = 'left .4s ease, top .4s ease';
     var img = document.createElement('img');
     img.src = '../assets/chara/sample_' + (u.side==='ally' ? 'back' : 'front') + '.webp';
+    if (flipOf(u)) img.style.transform = 'scaleX(-1)';
     el.appendChild(img);
     board.appendChild(el); u.el = el;
   }
@@ -198,7 +201,10 @@
     }
     if (u && u.side==='ally'){ selected = (selected===u) ? null : u; render2(); say(selected ? '味方を選んだ。\nどこへ動く？' : '選びなおした。'); return; }
     if (selected && !u && !cellAt(c,r)){
-      var m = selected; m.c = c; m.r = r; selected = null; save(); render2(); say('味方は 素早く移動した。');
+      var m = selected, dc = c - m.c, dr = r - m.r, yw = S.yaw*Math.PI/180;
+      var sx = dc*Math.cos(yw) - dr*Math.sin(yw);   // 画面上の左右の動き
+      if (Math.abs(sx) > 0.01){ m.flip = sx > 0; if (m.el && m.el.firstChild) m.el.firstChild.style.transform = m.flip ? 'scaleX(-1)' : ''; }
+      m.c = c; m.r = r; selected = null; save(); render2(); say('味方は 素早く移動した。');
       if (m.el){ m.el.style.left = ((c+.5)*size)+'px'; m.el.style.top = ((r+.62)*size)+'px'; setTimeout(render, 450); } else render();
       return;
     }
@@ -234,6 +240,7 @@
   $('sTilt').value = S.tilt; $('sScale').value = S.scale; $('sYaw').value = S.yaw;
   $('sYaw').oninput = function(){ S.yaw = +this.value; save(); render(); };
   $('bMenu').onclick = function(){ $('menu').classList.toggle('open'); };
+  $('bMenuClose').onclick = function(){ $('menu').classList.remove('open'); };
   $('sTilt').oninput = function(){ S.tilt = +this.value; save(); render(); };
   $('sScale').oninput = function(){ S.scale = +this.value; save(); render(); };
   function resize(dc, dr){
