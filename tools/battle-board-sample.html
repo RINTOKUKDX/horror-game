@@ -198,10 +198,15 @@
   #encImg.s3, #encImg.s4 { transform:scale(1.02); transform-origin:50% 50%; filter:brightness(.78) saturate(.85); opacity:1; }
   #enc.hit #encImg { transform:scale(1.12); filter:brightness(.22) saturate(2.4) sepia(.5) hue-rotate(-25deg) blur(2.5px); transition:transform 2.6s ease-out, filter 1.8s ease; }
   #encView::after { content:''; position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 45%, rgba(0,0,0,.85) 100%); }
-  #encWin { position:absolute; left:2%; right:2%; bottom:2.5%; height:27%; background:rgba(4,6,30,.92); border:3px solid #eee; border-radius:8px;
-    box-shadow:0 0 0 2px #000, inset 0 0 0 2px #000; padding:2% 3%; visibility:hidden; }
-  #encMsg { font-size:clamp(14px,4.4vmin,22px); line-height:1.6; letter-spacing:.06em; color:#fff; white-space:pre-wrap; }
-  #encWin span { position:absolute; right:14px; bottom:6px; font-size:14px; color:#fff; animation:bl 1s steps(2) infinite; }
+  /* 遭遇の文章：枠なしのサウンドノベル風 */
+  #encWin { position:absolute; left:0; right:0; bottom:0; height:46%; padding:0 9% 5%; display:flex; align-items:flex-end; visibility:hidden;
+    background:linear-gradient(0deg, rgba(0,0,0,.82) 0, rgba(0,0,0,.6) 45%, rgba(0,0,0,0) 100%); }
+  #encMsg { font-family:'Shippori Mincho','Noto Serif JP','Yu Mincho',serif; font-size:clamp(15px,5vmin,26px); line-height:1.95; letter-spacing:.14em; color:#ece6dc;
+    white-space:pre-wrap; text-shadow:0 0 6px #000, 0 0 14px #000, 1px 1px 2px #000; }
+  #encMsg i { font-style:normal; opacity:0; animation:chIn .9s ease forwards; }
+  #encMsg.all i { animation:none; opacity:1; }
+  @keyframes chIn { 0%{opacity:0; filter:blur(3px)} 100%{opacity:1; filter:blur(0)} }
+  #encWin span { position:absolute; right:5%; bottom:5%; font-size:13px; color:#a89f92; animation:bl 1.4s steps(2) infinite; }
   #cutin { position:absolute; inset:0; pointer-events:none; display:none; }
   #cutin.go { display:block; }
   #cutin .bleed { position:absolute; inset:0; opacity:0; animation:bleed 2.4s ease-in forwards;
@@ -216,7 +221,7 @@
 <div id="app">
   <div id="stage">
     <div id="bgimg"></div><div id="bgshade"></div>
-    <div id="ver">戦闘盤 見本 v2.9</div>
+    <div id="ver">戦闘盤 見本 v2.10</div>
     <button id="bMenu">☰ 設定</button>
     <button id="bMode"></button>
     <div id="field"><div id="board"><div id="grid"></div></div></div>
@@ -276,7 +281,7 @@
 
 <script>
 (function(){
-  var VER = 'v2.9';
+  var VER = 'v2.10';
   Array.prototype.forEach.call(document.querySelectorAll('.vv'), function(e){ e.textContent = '戦闘盤 見本 ' + VER; });
   var BGS = ['corridor','factory','hospital','mansion','prison','sewage','lab','parking'];
   var TILT = 55, MAXC = 40;   // マスの上限（横・縦）
@@ -891,14 +896,18 @@
     setTimeout(function(){ encNext(); }, 1300);
   }
   function encType(t, done){
-    var m = $('encMsg'), i = 0; m.textContent = ''; $('encWin').style.visibility = 'visible';
+    var m = $('encMsg'), i = 0; m.textContent = ''; m.className = ''; $('encWin').style.visibility = 'visible';
     clearInterval(ENC.typing);
-    ENC.typing = setInterval(function(){ i++; m.textContent = t.slice(0,i); if (i>=t.length){ clearInterval(ENC.typing); ENC.typing = null; ENC.full = null; if (done) done(); } }, 45);
+    ENC.typing = setInterval(function(){
+      var ch = t.charAt(i++);
+      if (ch === '\n') m.appendChild(document.createTextNode('\n')); else { var e = document.createElement('i'); e.textContent = ch; m.appendChild(e); }
+      if (i>=t.length){ clearInterval(ENC.typing); ENC.typing = null; ENC.full = null; if (done) done(); }
+    }, 70);
     ENC.full = t;
   }
   function encNext(){
     if (!ENC || ENC.busy) return;
-    if (ENC.typing){ clearInterval(ENC.typing); ENC.typing = null; $('encMsg').textContent = ENC.full; return; }   // 文字送り中なら全部出す
+    if (ENC.typing){ clearInterval(ENC.typing); ENC.typing = null; var m = $('encMsg'); m.className = 'all'; m.innerHTML = ''; ENC.full.split('').forEach(function(ch){ if (ch==='\n') m.appendChild(document.createTextNode('\n')); else { var e = document.createElement('i'); e.textContent = ch; m.appendChild(e); } }); return; }   // 文字送り中なら全部出す
     ENC.i++;
     var img = $('encImg');
     if (ENC.i < 3){ img.className = 's' + (ENC.i+1); thump(); ENC.busy = true; setTimeout(function(){ ENC.busy = false; encType(ENC.T[ENC.i]); }, ENC.i===0 ? 1200 : 2400); return; }
