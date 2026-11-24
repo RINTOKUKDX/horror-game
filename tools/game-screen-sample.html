@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ゲーム画面 見本 v1.5</title>
+<title>ゲーム画面 見本 v1.6</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* ゲーム画面の動く見本。ゲーム本体（index.html）には影響しない */
@@ -172,14 +172,43 @@
 
 
   /* 探索者シート（古びた羊皮紙の見開き） */
-  #pSheet{background:rgba(4,3,3,.94)}
-  #book{display:flex;gap:1vw;height:84dvh;margin-top:1dvh;padding:2dvh 2vw;border-radius:4px;color:#2b1d0e;
-    background:radial-gradient(ellipse at 50% 50%,#d9c08f 0%,#c4a56e 60%,#8c6a3a 100%);box-shadow:inset 0 0 6dvh rgba(60,30,5,.7),0 0 3dvh #000}
-  #book .pg{flex:1;padding:1dvh 1.5vw;overflow-y:auto;position:relative}
-  #book .pg+.pg{border-left:1px solid rgba(60,30,5,.5)}
-  #book h3{font-size:4dvh;margin-bottom:1.2dvh;border-bottom:1px solid rgba(60,30,5,.5)}
-  #book .ln{display:flex;justify-content:space-between;font-size:clamp(12px,3.4dvh,17px);line-height:1.7;border-bottom:1px dotted rgba(60,30,5,.35)}
-  #book .flip{margin-top:1.5dvh;font-size:clamp(12px,3.2dvh,16px);background:none;border:1px solid #5a3f1d;color:#2b1d0e;padding:.8dvh 2vw;border-radius:3px}
+  #pSheet{background:rgba(4,3,3,.94);padding-top:2dvh;padding-bottom:1dvh}
+  #book{position:relative;display:flex;height:80dvh;margin-top:1dvh;padding:1.6dvh 1.4vw;border-radius:5px;color:#2a1a08;overflow:hidden;
+    background:
+      radial-gradient(circle at 18% 22%,rgba(110,60,15,.28) 0,transparent 9%),
+      radial-gradient(circle at 78% 70%,rgba(90,45,10,.3) 0,transparent 12%),
+      radial-gradient(circle at 63% 18%,transparent 5.2%,rgba(95,50,12,.34) 5.6%,transparent 6.4%),
+      radial-gradient(circle at 36% 84%,rgba(70,35,8,.22) 0,transparent 7%),
+      radial-gradient(ellipse at 50% 50%,#dcc592 0%,#c9a96f 58%,#8a6535 100%);
+    box-shadow:inset 0 0 7dvh rgba(50,22,3,.85),0 0 3dvh #000}
+  #book::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;mix-blend-mode:multiply;opacity:.75;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.045' numOctaves='4' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 .25  0 0 0 0 .14  0 0 0 0 .04  0 0 0 .9 -.25'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  #book::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;
+    background:linear-gradient(90deg,transparent 48.6%,rgba(40,18,2,.38) 49.8%,rgba(255,235,190,.18) 50.4%,transparent 51.6%),
+      linear-gradient(180deg,rgba(40,18,2,.35),transparent 7%,transparent 93%,rgba(40,18,2,.4))}
+  #book .pg{position:relative;z-index:1;flex:1;padding:.4dvh 1.3vw;overflow-y:auto}
+  #book .pg+.pg{margin-left:1.2vw}
+  #book h3{font-size:3.6dvh;letter-spacing:.2em;text-align:center;margin:.4dvh 0 .8dvh;padding-bottom:.4dvh;border-bottom:2px double rgba(50,28,6,.7)}
+  #book .sec{font-size:2.8dvh;letter-spacing:.3em;text-align:center;margin:1.2dvh 0 .6dvh;background:linear-gradient(90deg,transparent,rgba(60,35,10,.22),transparent)}
+  #book .fl{display:flex;gap:.6vw;font-size:clamp(11px,3dvh,15px);line-height:1.5;border-bottom:1px solid rgba(50,28,6,.55)}
+  #book .fl b{font-weight:600;white-space:nowrap}
+  #book .fl span{flex:1;text-align:right;font-style:italic}
+  #book .abil{display:grid;grid-template-columns:repeat(3,1fr);gap:.8dvh .8vw}
+  #book .ab{display:flex;align-items:center;justify-content:space-between;font-size:clamp(11px,3dvh,15px);font-weight:700}
+  .bx{display:inline-block;min-width:2.6em;padding:.1em .3em;text-align:center;font-weight:700;font-variant-numeric:tabular-nums;
+    border:1.5px solid #3a2410;background:linear-gradient(90deg,rgba(255,240,200,.28) 66%,rgba(60,35,10,.12) 66%)}
+  #book .st{display:grid;grid-template-columns:repeat(4,1fr);gap:.8vw;text-align:center;font-size:clamp(10px,2.8dvh,14px)}
+  #book .st .bx{display:block;font-size:clamp(14px,4.2dvh,22px);margin-top:.3dvh}
+  #book .st small{display:block;font-weight:400}
+  #book .sk{display:grid;grid-template-columns:repeat(3,1fr);gap:.2dvh 1vw}
+  #book .sk div{display:flex;align-items:center;gap:.4vw;font-size:clamp(11px,3dvh,15px);border-bottom:1px solid rgba(50,28,6,.35);padding:.2dvh 0}
+  #book .sk i{width:1.1em;height:1.1em;border:1.5px solid #3a2410;flex:none}
+  #book .sk em{flex:1;font-style:normal;white-space:nowrap;letter-spacing:-.04em;font-size:.92em}
+  #book .wp{width:100%;border-collapse:collapse;font-size:clamp(10px,2.8dvh,14px)}
+  #book .wp td,#book .wp th{border-bottom:1px solid rgba(50,28,6,.5);padding:.2dvh .5vw;text-align:left;font-weight:500}
+  #book .wp th{font-weight:700}
+  #book .inv{columns:2;column-gap:1.5vw}
+  #book .inv div{break-inside:avoid;height:4.2dvh;line-height:4.2dvh;font-size:clamp(12px,3.2dvh,16px);border-bottom:1px solid rgba(50,28,6,.55)}
+  #book .flip{position:absolute;right:2vw;bottom:1.2dvh;z-index:3;font-size:clamp(11px,3dvh,15px);background:rgba(230,205,150,.85);border:1.5px solid #3a2410;color:#2a1a08;padding:.6dvh 2vw;border-radius:3px}
 
   /* ---- 古いフィルム演出 ---- */
   #film{position:absolute;inset:0;pointer-events:none;z-index:25;display:none;overflow:hidden}
@@ -252,13 +281,13 @@
     <button type="button" class="item" data-open="pTune">見本の調整</button>
     <button type="button" class="item" data-open="pAssets">素材を見る</button>
   </div>
-  <p class="small">ゲーム画面 見本 v1.5</p>
+  <p class="small">ゲーム画面 見本 v1.6</p>
 </div>
 <div class="panel" id="pSheet"><button type="button" class="close" data-back>戻る</button>
   <div id="book">
-    <div class="pg" id="pgL"><h3>探索者シート</h3><div id="sheetL"></div></div>
-    <div class="pg" id="pgR"><h3 id="pgRt">技能</h3><div id="sheetR"></div>
-      <button type="button" class="flip" id="flip">持ち物のページへ ▶</button></div>
+    <div class="pg" id="pgL"></div>
+    <div class="pg" id="pgR"></div>
+    <button type="button" class="flip" id="flip">次のページ ▶</button>
   </div></div>
 <div class="panel" id="pNote"><button type="button" class="close" data-back>戻る</button><h2>手帳</h2><div class="sub">・女将は事件の夜、家にいなかった（見本）<br>・地下の鍵は古い鍵では開かない（見本）</div></div>
 <div class="panel" id="pLog"><button type="button" class="close" data-close>閉じる</button><h2>ログ</h2><div class="sub" id="logBody"></div></div>
@@ -281,7 +310,7 @@
   <div class="row"><input type="text" id="free" placeholder="技能名や行動を入力（例：目星）" autocomplete="off"><button type="button" class="item" id="freeGo">決定</button></div>
 </div>
 
-<div id="start" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプでログ／長押しで絵だけ</span><span class="ver">ゲーム画面 見本 v1.5</span></div>
+<div id="start" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプでログ／長押しで絵だけ</span><span class="ver">ゲーム画面 見本 v1.6</span></div>
 <div id="portrait">スマホを横向きにしてください</div>
 
 <script src="../assets/manifest.js"></script>
@@ -638,16 +667,24 @@
   var sheetPage=0;
   var SKILLS=[['近接',50],['銃火器',20],['回避',60],['防御',50],['目星',60],['聞き耳',55],['隠密',10],['医学',30],['製作',20],['説得',15],['心理学',45],['クトゥルフ神話','M'],['教養',70],['アイデア',65],['幸運',50]];
   var ITEMS=['懐中電灯','古い鍵','手帳'];
-  function ln(a,b){ return '<div class="ln"><span>'+a+'</span><span>'+b+'</span></div>'; }
+  function fl(a,b){ return '<div class="fl"><b>'+a+'</b><span>'+(b||'&nbsp;')+'</span></div>'; }
+  function ab(n,v){ return '<div class="ab">'+n+'<span class="bx">'+v+'</span></div>'; }
   function renderSheet(){
-    if(!$('sheetL')) return;
-    $('sheetL').innerHTML=ln('名前','貴方（見本）')+ln('職業','古書店の店主')+ln('体力',S.hp+' / '+S.hpMax)+ln('正気度',S.san+' / '+S.sanMax)+ln('MP',10)
-      +ln('STR',9)+ln('CON',11)+ln('POW',16)+ln('DEX',12)+ln('APP',10)+ln('SIZ',13)+ln('INT',13)+ln('EDU',14)
-      +'<div class="small" style="color:#5a3f1d">魔法陣：'+S.strokes+' / '+S.maxStrokes+' 画</div>';
-    $('pgRt').textContent=sheetPage?'持ち物':'技能';
-    $('flip').textContent=sheetPage?'◀ 技能のページへ':'持ち物のページへ ▶';
-    $('sheetR').innerHTML=sheetPage?ITEMS.map(function(i){ return ln(i,''); }).join('')
-      :SKILLS.map(function(k){ return ln(k[0],k[1]==='M'?S.mythos:k[1]); }).join('');
+    if(!$('pgL')) return;
+    var L,R;
+    if(!sheetPage){
+      L='<h3>探索者記録</h3>'+fl('名前','貴方（見本）')+fl('職業','古書店の店主')+fl('年齢／性別','34／—')+fl('住所','（見本）')+fl('出身','（見本）')
+        +'<div class="sec">能 力 値</div><div class="abil">'+ab('STR',9)+ab('DEX',12)+ab('INT',13)+ab('CON',11)+ab('APP',10)+ab('POW',16)+ab('SIZ',13)+ab('EDU',14)+'</div>'
+        +'<div class="sec">状 態</div><div class="st"><div>体力<span class="bx">'+S.hp+'</span><small>最大 '+S.hpMax+'</small></div><div>正気度<span class="bx">'+S.san+'</span><small>最大 '+S.sanMax+'</small></div><div>MP<span class="bx">10</span><small>最大 16</small></div><div>幸運<span class="bx">50</span><small>&nbsp;</small></div></div>'
+        +'<div class="fl" style="margin-top:1dvh"><b>魔法陣</b><span>'+S.strokes+' / '+S.maxStrokes+' 画</span></div>';
+      R='<h3>技 能</h3><div class="sk">'+SKILLS.map(function(k){ return '<div><i></i><em>'+k[0]+'</em><span class="bx">'+(k[1]==='M'?S.mythos:k[1])+'</span></div>'; }).join('')+'</div>'
+        +'<div class="sec">武 器</div><table class="wp"><tr><th>武器</th><th>ダメージ</th><th>回数</th></tr><tr><td>素手</td><td>1D3</td><td>1</td></tr><tr><td>&nbsp;</td><td></td><td></td></tr></table>';
+    } else {
+      L='<h3>装備と所持品</h3><div class="inv">'+ITEMS.concat(['','','','','','','','','']).map(function(i){ return '<div>'+i+'</div>'; }).join('')+'</div>';
+      R='<h3>バックストーリー</h3>'+fl('容姿','痩せた長身、古い眼鏡')+fl('特徴','古書の匂い')+fl('信念','真実を知りたい')+fl('傷跡','')+fl('重要な人々','亡き師')+fl('恐怖症・マニア','')+fl('意味のある場所','古書店の地下室')+fl('魔道書・呪文','')+fl('秘蔵の品','')+fl('遭遇した存在','');
+    }
+    $('pgL').innerHTML=L; $('pgR').innerHTML=R;
+    $('flip').textContent=sheetPage?'◀ 前のページ':'次のページ ▶';
   }
   document.addEventListener('DOMContentLoaded',function(){ $('flip').addEventListener('click',function(){ sheetPage=sheetPage?0:1; renderSheet(); }); });
   // 視界の欠け：場面ごとに少しずつ変わる。端だけを欠けさせ、中央と選択肢は残す
