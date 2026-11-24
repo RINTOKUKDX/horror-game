@@ -66,7 +66,7 @@
 <div id="app">
   <div id="stage">
     <div id="bgimg"></div><div id="bgshade"></div>
-    <div id="ver">戦闘盤 見本 v1.2</div>
+    <div id="ver">戦闘盤 見本 v1.3</div>
     <button id="bMenu">☰ 設定</button>
     <div id="field"><div id="board"><div id="grid"></div></div></div>
     <div id="params"></div>
@@ -177,7 +177,23 @@
     place(o, c, r, size*(t===1?0.78:0.8), size*(t===1?0.75:1.7));
     board.appendChild(o);
   }
-  function flipOf(u){ return u.flip === undefined ? u.side === 'enemy' : !!u.flip; }
+  // 一番近い敵（味方から見れば敵、敵から見れば味方）の方向を向く。画面の右なら反転。
+  function flipOf(u){
+    var best = null, bd = 1e9;
+    S.units.forEach(function(o){
+      if (o.side === u.side) return;
+      var d = (o.c-u.c)*(o.c-u.c) + (o.r-u.r)*(o.r-u.r);
+      if (d < bd){ bd = d; best = o; }
+    });
+    if (!best) return u.side === 'enemy';
+    var yw = S.yaw*Math.PI/180, dc = best.c-u.c, dr = best.r-u.r;
+    var sx = dc*Math.cos(yw) - dr*Math.sin(yw);    // 画面上の左右
+    if (Math.abs(sx) < 0.01) return u._flip === undefined ? (u.side === 'enemy') : u._flip;
+    u._flip = sx > 0; return u._flip;
+  }
+  function updateFacing(){
+    S.units.forEach(function(u){ if (u.el && u.el.firstChild) u.el.firstChild.style.transform = flipOf(u) ? 'scaleX(-1)' : ''; });
+  }
   function addUnit(u){
     var el = document.createElement('div'); el.className = 'bb unit ' + u.side;
     var h = size*1.5;
@@ -201,10 +217,8 @@
     }
     if (u && u.side==='ally'){ selected = (selected===u) ? null : u; render2(); say(selected ? '味方を選んだ。\nどこへ動く？' : '選びなおした。'); return; }
     if (selected && !u && !cellAt(c,r)){
-      var m = selected, dc = c - m.c, dr = r - m.r, yw = S.yaw*Math.PI/180;
-      var sx = dc*Math.cos(yw) - dr*Math.sin(yw);   // 画面上の左右の動き
-      if (Math.abs(sx) > 0.01){ m.flip = sx > 0; if (m.el && m.el.firstChild) m.el.firstChild.style.transform = m.flip ? 'scaleX(-1)' : ''; }
-      m.c = c; m.r = r; selected = null; save(); render2(); say('味方は 素早く移動した。');
+      var m = selected;
+      m.c = c; m.r = r; updateFacing(); selected = null; save(); render2(); say('味方は 素早く移動した。');
       if (m.el){ m.el.style.left = ((c+.5)*size)+'px'; m.el.style.top = ((r+.62)*size)+'px'; setTimeout(render, 450); } else render();
       return;
     }
