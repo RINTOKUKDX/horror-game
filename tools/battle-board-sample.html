@@ -82,6 +82,15 @@
   #info .v { min-width:2.4em; text-align:center; }
   #info button { background:#120f0e; color:var(--text); border:1px solid var(--line); font:inherit; padding:4px 8px; border-radius:3px; }
   #info button.warn { border-color:#b05a4a; color:#e08a7a; }
+  .cell.f0 { background:#000 !important; border-color:#000 !important; box-shadow:none !important; }
+  .cell.f1 { background:rgba(0,0,0,.74) !important; }
+  .cell.f3 { background:rgba(0,0,0,.42) !important; }
+  .arrow { position:absolute; display:flex; align-items:center; justify-content:center; color:#f2d98a; text-shadow:0 0 6px #000; pointer-events:none; transform:translateZ(2px); }
+  #lp { position:absolute; left:50%; top:8px; transform:translateX(-50%); z-index:13; background:rgba(18,15,14,.96); border:1px solid var(--gold);
+    padding:6px 8px; display:none; gap:6px; align-items:center; font-size:14px; flex-wrap:wrap; justify-content:center; max-width:78%; border-radius:4px; }
+  #lp b { color:var(--gold); font-weight:normal; }
+  #lp button { background:#120f0e; color:var(--text); border:1px solid var(--line); font:inherit; padding:4px 8px; border-radius:3px; }
+  #lp button.on { border-color:var(--gold); color:var(--gold); }
   #ver { position:absolute; left:8px; top:6px; font-size:11px; color:var(--dim); z-index:3; }
   #win { position:absolute; left:2%; right:2%; bottom:2.5%; height:calc(var(--win) - 4%); z-index:5; background:rgba(4,6,30,.92);
     border:3px solid #eee; border-radius:8px; box-shadow:0 0 0 2px #000, inset 0 0 0 2px #000; padding:2% 3%; }
@@ -132,13 +141,13 @@
 <div id="app">
   <div id="stage">
     <div id="bgimg"></div><div id="bgshade"></div>
-    <div id="ver">戦闘盤 見本 v2.1</div>
+    <div id="ver">戦闘盤 見本 v2.2</div>
     <button id="bMenu">☰ 設定</button>
     <div id="field"><div id="board"><div id="grid"></div></div></div>
     <div id="params"></div>
     <div id="win"><div id="msg"></div><span id="caret">▼</span></div>
     <div id="pal"><button id="palEnd">編集<br>終了</button><div id="palList"></div></div>
-    <div id="toast"></div><div id="info"></div>
+    <div id="toast"></div><div id="info"></div><div id="lp"></div>
   </div>
   <div id="menu">
     <button id="bMenuClose">▲ 閉じる</button>
@@ -150,6 +159,8 @@
     <div class="sl">左右<input type="range" id="sOx" min="-300" max="300" step="2"></div>
     <div class="sl">上下<input type="range" id="sOy" min="-200" max="200" step="2"></div>
     <div class="sl">大きさ<input type="range" id="sScale" min="50" max="140" step="1"></div>
+    <button id="bExp">探索モード：OFF</button>
+    <button id="bSeen">見た場所をリセット</button>
     <button id="bBg">背景を変える</button>
     <button id="bClear">障害物を全消去</button>
     <button id="bSt">戦闘の保存／一覧</button>
@@ -176,20 +187,20 @@
 
 <script>
 (function(){
-  var VER = 'v2.1';
+  var VER = 'v2.2';
   Array.prototype.forEach.call(document.querySelectorAll('.vv'), function(e){ e.textContent = '戦闘盤 見本 ' + VER; });
   var BGS = ['corridor','factory','hospital','mansion','prison','sewage','lab','parking'];
   var TILT = 55, MAXC = 40;   // マスの上限（横・縦）
   var $ = function(id){ return document.getElementById(id); };
   var stage = $('stage'), field = $('field'), board = $('board'), grid = $('grid');
 
-  var S = { cols:8, rows:6, cells:{}, dur:{}, bg:0, tilt:55, yaw:0, ox:0, oy:0, scale:100,
+  var S = { cols:8, rows:6, cells:{}, dur:{}, seen:{}, bg:0, tilt:55, yaw:0, ox:0, oy:0, scale:100,
     units:[
       {id:'a1', side:'ally', c:6, r:5, name:'探索者A', hp:12, mhp:12, mp:8, mmp:10, san:62, msan:70},
       {id:'a2', side:'ally', c:7, r:3, name:'探索者B', hp:9, mhp:11, mp:5, mmp:6, san:48, msan:55},
       {id:'e1', side:'enemy', c:1, r:0, name:'影の群れ', hp:20, mhp:20, mp:0, mmp:0},
       {id:'e2', side:'enemy', c:0, r:2, name:'歪んだ者', hp:14, mhp:16, mp:3, mmp:3} ] };
-  var edit = false, selected = null, size = 60, brush = 0, dragging = false, selObj = null;
+  var edit = false, selected = null, size = 60, brush = 0, dragging = false, selObj = null, explore = false;
 
   function key(c,r){ return r*100+c; }
   function cellAt(c,r){ return S.cells[key(c,r)] || 0; }
@@ -247,6 +258,7 @@
     }
     S.units.forEach(addUnit);
     if (edit) markSel();
+    applyFog();
     renderParams();
     $('bEdit').textContent = edit ? '編集：ON' : '編集：OFF';
     $('bEdit').classList.toggle('on', edit);
@@ -308,7 +320,7 @@
   function delObj(c,r){ var k = key(c,r); delete S.cells[k]; delete S.dur[k]; }
   function addObstacle(c,r,t){
     var o = OBS[t], f = fp(t), W = size*o.w*f.w, D = size*o.w*f.h, H = size*o.h, off = (size-size*o.w)/2;
-    var b = document.createElement('div'); b.className = 'blk ' + o.cls + (H===0 ? ' flat' : '');
+    var b = document.createElement('div'); b.className = 'blk ' + o.cls + (H===0 ? ' flat' : ''); b.dataset.c = c; b.dataset.r = r;
     b.style.left = (c*size+off)+'px'; b.style.top = (r*size+off)+'px'; b.style.width = W+'px'; b.style.height = D+'px';
     function face(cls, css, sh){
       var e = document.createElement('div'); e.className = 'f ' + cls;
@@ -377,7 +389,7 @@
     if (u && u.side==='ally'){ selected = (selected===u) ? null : u; render2(); say(selected ? '味方を選んだ。\nどこへ動く？' : '選びなおした。'); return; }
     if (selected && !u && !blockedAt(c,r)){
       var m = selected;
-      m.c = c; m.r = r; updateFacing(); selected = null; save(); render2(); say('味方は 素早く移動した。');
+      var ddc = c-(m.c), ddr = r-(m.r); if (ddc||ddr) m.dir = Math.round(Math.atan2(ddr,ddc)*180/Math.PI/45)*45; m.c = c; m.r = r; updateFacing(); selected = null; save(); render2(); say('味方は 素早く移動した。');
       if (m.el){ unitPos(m.el, m); setTimeout(render, 450); } else render();
       return;
     }
@@ -398,7 +410,7 @@
     $('params').innerHTML = h;
   }
   function render2(){
-    renderParams();
+    renderParams(); updateLP();
     Array.prototype.forEach.call(grid.children, function(d){
       d.classList.toggle('sel', !!selected && selected.c===+d.dataset.c && selected.r===+d.dataset.r);
     });
@@ -701,6 +713,102 @@
   }
   palList.addEventListener('pointerup', endQ);
   palList.addEventListener('pointercancel', endQ);
+
+  // ===== 探索モード：明かりと暗がり =====
+  var LIGHTS = { lamp:'電気', torch:'懐中電灯', none:'なし' };
+  function lightOf(u){ return u.light || 'torch'; }
+  function dirOf(u){
+    if (u.dir!=null) return u.dir;
+    var best = null, bd = 1e9;    // 向き未設定なら、一番近い敵のほうを向く
+    S.units.forEach(function(o){ if (o.side!=='enemy') return; var d = (o.c-u.c)*(o.c-u.c)+(o.r-u.r)*(o.r-u.r); if (d<bd){ bd = d; best = o; } });
+    return best ? Math.round(Math.atan2(best.r-u.r, best.c-u.c)*180/Math.PI/45)*45 : 0;
+  }
+  // 各マスの見え方：0=見ていない 1=見たが今は暗い 2=明るい 3=うす暗い（ぼんやり見える）
+  function computeVis(){
+    var C = S.cols, R = S.rows, vis = new Array(C*R), tall = new Array(C*R), i;
+    for (i=0;i<C*R;i++){ vis[i] = 0; tall[i] = false; }
+    Object.keys(S.cells).forEach(function(k){ var t = S.cells[k], o = OBS[t]; if (o.h < 1) return; var f = fp(t), ac = k%100, ar = Math.floor(k/100);
+      for (var y=ar;y<ar+f.h;y++) for (var x=ac;x<ac+f.w;x++) if (x<C && y<R) tall[y*C+x] = true; });
+    function los(c0,r0,c1,r1){          // 間に背の高い物があれば見えない
+      var dx = Math.abs(c1-c0), dy = Math.abs(r1-r0), sx = c0<c1?1:-1, sy = r0<r1?1:-1, err = dx-dy, x = c0, y = r0;
+      while (!(x===c1 && y===r1)){
+        if (!(x===c0 && y===r0) && tall[y*C+x]) return false;
+        var e2 = 2*err; if (e2 > -dy){ err -= dy; x += sx; } if (e2 < dx){ err += dx; y += sy; }
+      }
+      return true;
+    }
+    function mark(idx, v){ var cur = (vis[idx]===2) ? 2 : (vis[idx]===3 ? 3 : 0); if (v===2 || (v===3 && cur===0)) vis[idx] = v; }
+    S.units.forEach(function(u){
+      if (u.side!=='ally') return;
+      var uc = u.c, ur = u.r, L = lightOf(u), a0 = dirOf(u)*Math.PI/180;
+      for (var r=0;r<R;r++) for (var c=0;c<C;c++){
+        var d = Math.max(Math.abs(c-uc), Math.abs(r-ur));
+        if (d===0){ mark(r*C+c, 2); continue; }
+        if (d<=1) mark(r*C+c, 3);             // 自分のマス＋約0.5マス
+        if (!los(uc,ur,c,r)) continue;
+        if (L==='lamp'){ mark(r*C+c, 2); }
+        else if (L==='torch'){
+          var ang = Math.atan2(r-ur, c-uc), diff = Math.abs(Math.atan2(Math.sin(ang-a0), Math.cos(ang-a0)));
+          var dist = Math.sqrt((c-uc)*(c-uc)+(r-ur)*(r-ur));
+          if (diff <= Math.PI/5+0.01 && dist <= 5.2) mark(r*C+c, dist<=3.2 ? 2 : 3);
+        }
+      }
+    });
+    for (i=0;i<C*R;i++) if (vis[i]>=2) S.seen[i] = 1;   // key(c,r) とは別に、行×列番号で覚える
+    for (i=0;i<C*R;i++) if (vis[i]===0 && S.seen[i]) vis[i] = 1;
+    return vis;
+  }
+  function applyFog(){
+    updateLP();
+    var arrows = board.querySelectorAll('.arrow'); Array.prototype.forEach.call(arrows, function(n){ n.remove(); });
+    if (!explore) return;
+    var vis = computeVis(), C = S.cols;
+    Array.prototype.forEach.call(grid.children, function(d){
+      var v = vis[(+d.dataset.r)*C + (+d.dataset.c)];
+      d.classList.remove('f0','f1','f3'); if (v===0) d.classList.add('f0'); else if (v===1) d.classList.add('f1'); else if (v===3) d.classList.add('f3');
+    });
+    Array.prototype.forEach.call(board.querySelectorAll('.blk'), function(b){
+      var c = +b.dataset.c, r = +b.dataset.r, t = S.cells[key(c,r)]; if (!t) return;
+      var f = fp(t), m = 0;
+      for (var y=r;y<r+f.h;y++) for (var x=c;x<c+f.w;x++){ var v = vis[y*C+x]; if (v===2) m = 2; else if (v===3 && m!==2) m = 3; else if (v===1 && m===0) m = 1; }
+      b.style.display = m===0 ? 'none' : '';
+      var fl = m===2 ? '' : m===3 ? 'brightness(.7)' : 'brightness(.32)';
+      Array.prototype.forEach.call(b.children, function(e){ e.style.filter = fl; });
+    });
+    S.units.forEach(function(u){
+      if (!u.el) return;
+      if (u.side==='ally'){ u.el.style.display = ''; return; }
+      var n = usize(u), show = false;
+      for (var y=u.r;y<u.r+n;y++) for (var x=u.c;x<u.c+n;x++) if (vis[y*C+x]===2 || vis[y*C+x]===3) show = true;
+      u.el.style.display = show ? '' : 'none';
+    });
+    // 向きの矢印（味方）
+    S.units.forEach(function(u){
+      if (u.side!=='ally') return;
+      var a = document.createElement('div'); a.className = 'arrow'; a.textContent = '➤';
+      a.style.left = (u.c*size)+'px'; a.style.top = (u.r*size)+'px'; a.style.width = size+'px'; a.style.height = size+'px';
+      a.style.fontSize = (size*.45)+'px'; a.style.transform = 'translateZ(2px) rotateZ('+dirOf(u)+'deg)'; a.style.opacity = '.85';
+      board.appendChild(a);
+    });
+  }
+  function updateLP(){
+    var box = $('lp');
+    if (!explore || !selected || selected.side!=='ally'){ box.style.display = 'none'; return; }
+    box.innerHTML = '';
+    function el(tag, txt, cls, fn){ var e = document.createElement(tag); e.textContent = txt; if (cls) e.className = cls; if (fn) e.onclick = fn; box.appendChild(e); return e; }
+    el('b', selected.name);
+    Object.keys(LIGHTS).forEach(function(k){ el('button', LIGHTS[k], lightOf(selected)===k ? 'on' : '', function(){ selected.light = k; save(); render(); }); });
+    el('button', '◀ 向き', '', function(){ selected.dir = (dirOf(selected)+315)%360; save(); render(); });
+    el('button', '向き ▶', '', function(){ selected.dir = (dirOf(selected)+45)%360; save(); render(); });
+    box.style.display = 'flex';
+  }
+  $('bExp').onclick = function(){
+    explore = !explore; if (explore && edit) setEdit(false);
+    $('bExp').textContent = '探索モード：' + (explore ? 'ON' : 'OFF'); $('bExp').classList.toggle('on', explore);
+    $('menu').classList.remove('open'); selected = null; render();
+    say(explore ? '探索モード。\n見えている所だけが明るい。\n味方をタップして、灯りと向きを変えよう。' : '探索モードを終えた。');
+  };
+  $('bSeen').onclick = function(){ S.seen = {}; save(); render(); toast('見た場所を忘れた。'); };
 
   load(); syncSliders(); render();
 })();
