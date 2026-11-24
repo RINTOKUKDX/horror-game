@@ -132,7 +132,7 @@
 <div id="app">
   <div id="stage">
     <div id="bgimg"></div><div id="bgshade"></div>
-    <div id="ver">戦闘盤 見本 v2.0</div>
+    <div id="ver">戦闘盤 見本 v2.1</div>
     <button id="bMenu">☰ 設定</button>
     <div id="field"><div id="board"><div id="grid"></div></div></div>
     <div id="params"></div>
@@ -176,10 +176,10 @@
 
 <script>
 (function(){
-  var VER = 'v2.0';
+  var VER = 'v2.1';
   Array.prototype.forEach.call(document.querySelectorAll('.vv'), function(e){ e.textContent = '戦闘盤 見本 ' + VER; });
   var BGS = ['corridor','factory','hospital','mansion','prison','sewage','lab','parking'];
-  var TILT = 55;
+  var TILT = 55, MAXC = 40;   // マスの上限（横・縦）
   var $ = function(id){ return document.getElementById(id); };
   var stage = $('stage'), field = $('field'), board = $('board'), grid = $('grid');
 
@@ -199,7 +199,7 @@
   function load(){ try{ var t = localStorage.getItem('battleBoardV2'); if (t) apply(JSON.parse(t)); }catch(e){} }
   function apply(o){
     if (!o || !o.cols || !o.rows) return;
-    S.cols = Math.max(3, Math.min(14, o.cols|0)); S.rows = Math.max(3, Math.min(12, o.rows|0));
+    S.cols = Math.max(3, Math.min(MAXC, o.cols|0)); S.rows = Math.max(3, Math.min(MAXC, o.rows|0));
     S.cells = o.cells || {}; S.dur = o.dur || {}; S.bg = (o.bg|0) % BGS.length; S.tilt = o.tilt||55; S.yaw = o.yaw||0; S.ox = o.ox||0; S.oy = o.oy||0; S.scale = o.scale||100;
     if (o.units && o.units.length) S.units = o.units;
     clampUnits();
@@ -219,7 +219,7 @@
     var cos = Math.cos(TILT*Math.PI/180), y = Math.abs(S.yaw)*Math.PI/180;
     var ex = S.cols*Math.cos(y) + S.rows*Math.sin(y), ey = (S.rows*Math.cos(y) + S.cols*Math.sin(y))*cos;
     size = Math.min(W*0.88/ex, H*0.66/ey, 90) * S.scale/100;
-    size = Math.max(Math.floor(size), 18);
+    size = Math.max(Math.floor(size), 6);
   }
 
   function render(){
@@ -428,15 +428,15 @@
   $('sTilt').oninput = function(){ S.tilt = +this.value; save(); render(); };
   $('sScale').oninput = function(){ S.scale = +this.value; save(); render(); };
   function resize(dc, dr){
-    S.cols = Math.max(3, Math.min(14, S.cols+dc)); S.rows = Math.max(3, Math.min(12, S.rows+dr));
+    S.cols = Math.max(3, Math.min(MAXC, S.cols+dc)); S.rows = Math.max(3, Math.min(MAXC, S.rows+dr));
     // 範囲外の障害物を消す
     Object.keys(S.cells).forEach(function(k){ var r=Math.floor(k/100), c=k%100, f=fp(S.cells[k]); if (c+f.w>S.cols||r+f.h>S.rows){ delete S.cells[k]; delete S.dur[k]; } });
     clampUnits(); save(); render();
   }
-  $('bCp').onclick = function(){ resize(1,0); };
-  $('bCm').onclick = function(){ resize(-1,0); };
-  $('bRp').onclick = function(){ resize(0,1); };
-  $('bRm').onclick = function(){ resize(0,-1); };
+  $('bCp').onclick = function(){ resize(1,0); toast('横 '+S.cols+'マス'); };
+  $('bCm').onclick = function(){ resize(-1,0); toast('横 '+S.cols+'マス'); };
+  $('bRp').onclick = function(){ resize(0,1); toast('縦 '+S.rows+'マス'); };
+  $('bRm').onclick = function(){ resize(0,-1); toast('縦 '+S.rows+'マス'); };
   $('bBg').onclick = function(){ S.bg = (S.bg+1)%BGS.length; save(); render(); };
   $('bClear').onclick = function(){ S.cells = {}; S.dur = {}; hideInfo(); save(); render(); };
 
@@ -533,6 +533,9 @@
     return (el && el.classList.contains('cell')) ? { c:+el.dataset.c, r:+el.dataset.r } : null;
   }
   function hitAt(x, y){
+    // キャラは絵のどこを触っても反応する（手前のキャラ優先）
+    var us = S.units.filter(function(u){ return u.el; }).sort(function(a,b){ return (b.r+usize(b)) - (a.r+usize(a)); });
+    for (var i=0;i<us.length;i++){ var q = us[i].el.getBoundingClientRect(); if (x>=q.left+q.width*.15 && x<=q.right-q.width*.15 && y>=q.top && y<=q.bottom) return { kind:'unit', u:us[i], c:us[i].c, r:us[i].r }; }
     var el = document.elementFromPoint(x, y);
     if (el && el.classList.contains('f') && el.dataset.c != null) return { kind:'obj', c:+el.dataset.c, r:+el.dataset.r };
     var g = groundCell(x, y); if (!g) return null;
@@ -605,9 +608,9 @@
     P = { id:e.pointerId, x:e.clientX, y:e.clientY, h:h, mode:'press' };
     P.t = setTimeout(function(){
       if (!P || P.mode!=='press' || h.kind!=='obj') return;
-      P.mode = 'done'; vib();
-      var t = S.cells[key(h.c,h.r)]; delObj(h.c, h.r); hideInfo(); save(); render(); if (t) toast(OBS[t].n+'を消した');
-    }, 550);
+      P.mode = 'held'; P.pt = S.cells[key(h.c,h.r)]; P.n = 0; P.lc = -1; P.lr = -1; vib(); hideInfo(); startDrag();
+      toast('離すと消す／なぞると同じ物を増やす');
+    }, 500);
   });
   field.addEventListener('pointermove', function(e){
     if (!P || e.pointerId!==P.id) return;
@@ -620,6 +623,12 @@
         if (P.h.kind==='obj'){ var f = fp(S.cells[key(P.ac,P.ar)]); g0.c = Math.max(P.ac, Math.min(P.ac+f.w-1, g0.c)); g0.r = Math.max(P.ar, Math.min(P.ar+f.h-1, g0.r)); }
         P.oc = g0.c-P.ac; P.or = g0.r-P.ar;
       } else P.mode = 'none';
+    }
+    if (P.mode==='held' && Math.abs(e.clientX-P.x)+Math.abs(e.clientY-P.y) > 12) P.mode = 'copy';
+    if (P.mode==='copy'){
+      var gc = groundCell(e.clientX, e.clientY); if (!gc) return;
+      if (gc.c!==P.lc || gc.r!==P.lr){ P.lc = gc.c; P.lr = gc.r; if (putObj(gc.c, gc.r, P.pt)){ P.n++; render(); vib(); } showHint(gc.c, gc.r, P.pt); }
+      return;
     }
     if (P.mode!=='move') return;
     var g = groundCell(e.clientX, e.clientY); if (!g) return;
@@ -637,7 +646,10 @@
     if (!P || e.pointerId!==P.id) return;
     clearTimeout(P.t); var p = P; P = null; endDrag();
     if (p.mode==='press') tapEdit(p.h);
+    else if (p.mode==='held' && e.type==='pointerup'){ delObj(p.h.c, p.h.r); save(); render(); toast(OBS[p.pt].n+'を消した'); }
+    else if (p.mode==='copy'){ clearHint(); save(); render(); if (p.n) toast(OBS[p.pt].n+'を '+p.n+'個 増やした'); }
     else if (p.mode==='move'){ save(); render(); }
+    else render();
   }
   field.addEventListener('pointerup', endP);
   field.addEventListener('pointercancel', endP);
