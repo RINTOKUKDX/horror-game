@@ -44,6 +44,11 @@
   .blk.altar .top   { background:linear-gradient(135deg,#3a2a46,#241a30); box-shadow:inset 0 0 0 2px #b03030, inset 0 0 14px #7a1a1a; }
   .blk.altar .front { background:linear-gradient(180deg,#2c2236,#1a1424); box-shadow:inset 0 0 0 2px #14101c; }
   .blk.altar .side  { background:linear-gradient(180deg,#221a2c,#150f1d); box-shadow:inset 0 0 0 2px #14101c; }
+  .blk.circle .top { background:
+      radial-gradient(circle, transparent 0 20%, rgba(200,40,50,.85) 21% 23%, transparent 24% 58%, rgba(200,40,50,.85) 59% 61%, transparent 62% 94%, rgba(200,40,50,.9) 95% 97%, transparent 98%),
+      repeating-conic-gradient(from 0deg, rgba(200,40,50,.55) 0 2deg, transparent 2deg 45deg),
+      radial-gradient(circle, rgba(90,10,30,.5), rgba(30,0,10,.15));
+    border-radius:50%; box-shadow:0 0 14px rgba(200,40,50,.6); }
   #ver { position:absolute; left:8px; top:6px; font-size:11px; color:var(--dim); z-index:3; }
   #win { position:absolute; left:2%; right:2%; bottom:2.5%; height:calc(var(--win) - 4%); z-index:5; background:rgba(4,6,30,.92);
     border:3px solid #eee; border-radius:8px; box-shadow:0 0 0 2px #000, inset 0 0 0 2px #000; padding:2% 3%; }
@@ -92,7 +97,7 @@
 <div id="app">
   <div id="stage">
     <div id="bgimg"></div><div id="bgshade"></div>
-    <div id="ver">戦闘盤 見本 v1.7</div>
+    <div id="ver">戦闘盤 見本 v1.8</div>
     <button id="bMenu">☰ 設定</button>
     <div id="field"><div id="board"><div id="grid"></div></div></div>
     <div id="params"></div>
@@ -161,7 +166,7 @@
   function clampUnits(){
     S.units.forEach(function(u){
       u.c = Math.min(S.cols-1, Math.max(0,u.c)); u.r = Math.min(S.rows-1, Math.max(0,u.r));
-      delete S.cells[key(u.c,u.r)];
+      var cv = coverAt(u.c,u.r); if (cv && OBS[cv.t].h>0) delete S.cells[key(cv.c,cv.r)];
     });
   }
 
@@ -215,12 +220,42 @@
     {cls:'wall',   h:1.7, w:1},    // 3 壁
     {cls:'pillar', h:1.8, w:.5},   // 4 柱
     {cls:'barrel', h:.7,  w:.6},   // 5 樽
-    {cls:'altar',  h:.6,  w:.8}    // 6 祭壇
+    {cls:'altar',  h:.6,  w:.8},   // 6 祭壇
+    {cls:'wood',   h:.65, w:1, fw:2, fh:1},   // 7 長机（2マス）
+    {cls:'rock',   h:1.3, w:1, fw:2, fh:2},   // 8 大岩（4マス）
+    {cls:'altar',  h:.8,  w:1, fw:2, fh:2},   // 9 大祭壇（4マス）
+    {cls:'wall',   h:1.7, w:1, fw:4, fh:1},   // 10 長い壁（4マス）
+    {cls:'rock',   h:.9,  w:1, fw:3, fh:2},   // 11 石の壇（6マス）
+    {cls:'circle', h:0,   w:1, fw:2, fh:2},   // 12 魔法陣（高さ0）
+    {cls:'circle', h:0,   w:1, fw:4, fh:4}    // 13 大魔法陣（高さ0）
   ];
+  function fp(t){ var o = OBS[t]; return { w:o.fw||1, h:o.fh||1 }; }
+  // その場所を覆っている物（なければ null）。{c,r,t}
+  function coverAt(c,r){
+    var ks = Object.keys(S.cells);
+    for (var i=0;i<ks.length;i++){
+      var k = +ks[i], t = S.cells[k], f = fp(t), ac = k%100, ar = Math.floor(k/100);
+      if (c>=ac && c<ac+f.w && r>=ar && r<ar+f.h) return {c:ac, r:ar, t:t};
+    }
+    return null;
+  }
+  // 通れない（高さのある物がある）か
+  function blockedAt(c,r){ var o = coverAt(c,r); return !!o && OBS[o.t].h>0; }
+  function canPlace(c,r,t){
+    var f = fp(t);
+    if (c+f.w>S.cols || r+f.h>S.rows) return false;
+    if (OBS[t].h===0) return true;
+    for (var y=r;y<r+f.h;y++) for (var x=c;x<c+f.w;x++){
+      if (unitAt(x,y)) return false;
+      var o = coverAt(x,y);
+      if (o && !(o.c===c && o.r===r) && OBS[o.t].h>0) return false;
+    }
+    return true;
+  }
   function addObstacle(c,r,t){
-    var o = OBS[t], W = size*o.w, H = size*o.h, off = (size-W)/2;
+    var o = OBS[t], f = fp(t), W = size*o.w*f.w, D = size*o.w*f.h, H = size*o.h, off = (size-size*o.w)/2;
     var b = document.createElement('div'); b.className = 'blk ' + o.cls;
-    b.style.left = (c*size+off)+'px'; b.style.top = (r*size+off)+'px'; b.style.width = W+'px'; b.style.height = W+'px';
+    b.style.left = (c*size+off)+'px'; b.style.top = (r*size+off)+'px'; b.style.width = W+'px'; b.style.height = D+'px';
     function face(cls, css){
       var f = document.createElement('div'); f.className = 'f ' + cls;
       Object.keys(css).forEach(function(k){ f.style[k] = css[k]; });
@@ -228,10 +263,11 @@
       b.appendChild(f); return f;
     }
     var px = function(v){ return v+'px'; };
-    face('top',   { left:'0', top:'0', width:px(W), height:px(W), transform:'translateZ('+px(H)+')' });
-    face('front', { left:'0', top:px(W), width:px(W), height:px(H), transformOrigin:'50% 0', transform:'rotateX(90deg)' });
-    face('side',  { left:px(W), top:'0', width:px(H), height:px(W), transformOrigin:'0 50%', transform:'rotateY(-90deg)' });
-    face('side',  { left:px(-H), top:'0', width:px(H), height:px(W), transformOrigin:'100% 50%', transform:'rotateY(90deg)' });
+    if (H===0){ face('top', { left:'0', top:'0', width:px(W), height:px(D), transform:'translateZ(1px)' }); board.appendChild(b); return; }
+    face('top',   { left:'0', top:'0', width:px(W), height:px(D), transform:'translateZ('+px(H)+')' });
+    face('front', { left:'0', top:px(D), width:px(W), height:px(H), transformOrigin:'50% 0', transform:'rotateX(90deg)' });
+    face('side',  { left:px(W), top:'0', width:px(H), height:px(D), transformOrigin:'0 50%', transform:'rotateY(-90deg)' });
+    face('side',  { left:px(-H), top:'0', width:px(H), height:px(D), transformOrigin:'100% 50%', transform:'rotateY(90deg)' });
     board.appendChild(b);
   }
   // 一番近い敵（味方から見れば敵、敵から見れば味方）の方向を向く。画面の右なら反転。
@@ -268,12 +304,15 @@
     var u = unitAt(c,r);
     if (edit){
       if (u) return;
-      var t = (cellAt(c,r)+1)%OBS.length;
-      if (t) S.cells[key(c,r)] = t; else delete S.cells[key(c,r)];
+      var cv = coverAt(c,r);
+      if (cv && (cv.c!==c || cv.r!==r)){ delete S.cells[key(cv.c,cv.r)]; save(); render(); return; }
+      var t = cellAt(c,r), n = 0;
+      do { t = (t+1)%OBS.length; n++; } while (t && !canPlace(c,r,t) && n<=OBS.length);
+      if (t && canPlace(c,r,t)) S.cells[key(c,r)] = t; else delete S.cells[key(c,r)];
       save(); render(); return;
     }
     if (u && u.side==='ally'){ selected = (selected===u) ? null : u; render2(); say(selected ? '味方を選んだ。\nどこへ動く？' : '選びなおした。'); return; }
-    if (selected && !u && !cellAt(c,r)){
+    if (selected && !u && !blockedAt(c,r)){
       var m = selected;
       m.c = c; m.r = r; updateFacing(); selected = null; save(); render2(); say('味方は 素早く移動した。');
       if (m.el){ m.el.style.left = ((c+.5)*size)+'px'; m.el.style.top = ((r+.62)*size)+'px'; setTimeout(render, 450); } else render();
@@ -302,7 +341,7 @@
   }
 
   $('bEdit').onclick = function(){ edit = !edit; selected = null; render();
-    say(edit ? '編集モード。\nマスをタップすると、低い木箱→高い岩→なし の順で置ける。' : '編集を終えた。\n味方をタップして動かそう。'); };
+    say(edit ? '編集モード。\nマスをタップするたびに、\n木箱・岩・壁・柱・樽・祭壇・大型・魔法陣 の順で変わる。' : '編集を終えた。\n味方をタップして動かそう。'); };
   var tm = null;
   function say(t){
     clearInterval(tm); var i = 0, m = $('msg'); m.textContent = '';
@@ -320,7 +359,7 @@
   function resize(dc, dr){
     S.cols = Math.max(3, Math.min(14, S.cols+dc)); S.rows = Math.max(3, Math.min(12, S.rows+dr));
     // 範囲外の障害物を消す
-    Object.keys(S.cells).forEach(function(k){ var r=Math.floor(k/100), c=k%100; if (c>=S.cols||r>=S.rows) delete S.cells[k]; });
+    Object.keys(S.cells).forEach(function(k){ var r=Math.floor(k/100), c=k%100, f=fp(S.cells[k]); if (c+f.w>S.cols||r+f.h>S.rows) delete S.cells[k]; });
     clampUnits(); save(); render();
   }
   $('bCp').onclick = function(){ resize(1,0); };
