@@ -1,5 +1,5 @@
 /* ============================================================================
-   ダイス部品（HorrorDice） v1.0.0
+   ダイス部品（HorrorDice） v1.1.0
    ----------------------------------------------------------------------------
    ゲーム本編・ダイス見本・戦闘盤など、どの画面からも同じダイスを呼ぶための部品。
    見た目・動き・音を直すときは、このファイルだけを直せば全部の画面に反映される。
@@ -25,7 +25,7 @@
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.0.0';
+  var VERSION='1.1.0';
   // この部品と同じフォルダの画像を使う（どの画面から読み込んでも場所がずれない）
   var BASE=(function(){ var s=document.currentScript&&document.currentScript.src; return s?s.replace(/[^\/]*$/,''):'assets/dice/'; })();
 
@@ -175,52 +175,13 @@
     function ringPts(cx,cz,r,y,n){ var a=[]; n=n||72; for(var i=0;i<n;i++){ var t=i/n*2*PI; a.push(v3(cx+r*Math.cos(t),y,cz+r*Math.sin(t))); } return a; }
     function hexPts(rad,y){ var a=[]; for(var i=0;i<6;i++) a.push(hexPt(i,rad,y)); return a; }
     function pxPerUnit(){ return FOC/VIEW.dist; }
-    var GLYPHS=(function(){ var r=rng(7), out=[]; for(var g=0;g<24;g++){ var s=[], n=2+Math.floor(r()*3);
-      for(var k=0;k<n;k++){ var m=2+Math.floor(r()*2), st=[]; for(var j=0;j<m;j++) st.push([r()*2-1,r()*2-1]); s.push(st); }
-      if(r()<.45) s.push('o'); out.push(s); } return out; })();
-    function glyph(c,O,ax,ay,gi){ GLYPHS[gi%GLYPHS.length].forEach(function(st){
-        if(st==='o'){ var pts=[]; for(var i=0;i<12;i++){ var t=i/12*2*PI; pts.push(add(O,add(mul(ax,.3*Math.cos(t)),mul(ay,.7+.3*Math.sin(t))))); } pathW(c,pts); c.stroke(); return; }
-        pathW(c,st.map(function(p){ return add(O,add(mul(ax,p[0]),mul(ay,p[1]))); }),false); c.stroke(); }); }
     // 床に寝かせた目（真ん中のしるし）
     // ===== トレイの種類（発掘された祭具） =====
-    var GEMS={
-      emerald:{hi:'#d8ffd0',mid:'#2fbf5a',lo:'#04240e',glow:'rgba(90,255,140,.9)'},
-      ruby:{hi:'#ffd0d0',mid:'#d0182c',lo:'#300008',glow:'rgba(255,40,60,.9)'},
-      amethyst:{hi:'#f0d8ff',mid:'#9a3ad8',lo:'#1c0630',glow:'rgba(190,90,255,.9)'},
-      sapphire:{hi:'#d8f0ff',mid:'#2a7ae8',lo:'#020c30',glow:'rgba(60,160,255,.9)'},
-      amber:{hi:'#fff0c0',mid:'#e09020',lo:'#3a1800',glow:'rgba(255,170,40,.9)'}};
     var TRAYS=[
-      {id:'bronze',name:'青銅と血の布',style:'bronze',felt:['#5c0e12','#3e080b','#16040a'],speck:'rgba(255,190,190,.05)',sigil:'rgba(205,165,85,.34)',tent:'rgba(8,0,0,.42)',
-        wallIn:['#3a3322','#1a150d'],rim:['#5e5434','#6c5f3a','#4a422a'],patina:'rgba(70,130,100,.38)',stud:['#e2d29a','#8a7444','#2a2210'],wallOut:['#2a3022','#07080a'],trim:'#7a6438',tentCol:'#46553c',sucker:'#9aa67e',lid:'#5a4a2a',spike:'#8a7646',gem:'emerald'},
-      {id:'basalt',name:'黒い玄武岩の祭壇',style:'stone',felt:['#221a1e','#120c0e','#050304'],speck:'rgba(255,220,180,.04)',sigil:'rgba(225,175,70,.5)',tent:'rgba(90,0,0,.5)',
-        wallIn:['#3c3c3e','#161618'],rim:['#47474a','#58585b','#333336'],patina:'rgba(140,130,100,.25)',stud:['#d8c070','#8a6a2a','#2a1a06'],wallOut:['#2e2e31','#08080a'],trim:'#8a6a2a',tentCol:'#2c2c30',sucker:'#6a6a70',lid:'#3a3a3c',spike:'#5c5c60',gem:'ruby'},
-      {id:'bone',name:'骨と革の箱',style:'bone',felt:['#5a3a24','#3a2414','#140a04'],speck:'rgba(255,220,180,.05)',sigil:'rgba(18,6,0,.62)',tent:'rgba(30,10,0,.45)',
-        wallIn:['#4a3a28','#20160c'],rim:['#a8986f','#cfc29a','#8a7a54'],patina:'rgba(90,55,25,.4)',stud:['#f4ead0','#b8a67a','#4a3a20'],wallOut:['#3a2a1a','#0c0804'],trim:'#b8a67a',tentCol:'#cfc09a',sucker:'#f0e6c8',lid:'#8a7654',spike:'#d2c4a0',gem:'amethyst'},
       {id:'img1',name:'画像：青銅の祭具',style:'bronze',img:true,rimK:.29,felt:['#5c0e12','#3e080b','#16040a'],speck:'rgba(255,190,190,.05)',sigil:'rgba(205,165,85,.34)',tent:'rgba(8,0,0,.42)',
-        wallIn:['#3a2e1c','#140e06'],rim:['#5e5434','#6c5f3a','#4a422a'],patina:'rgba(70,130,100,.38)',stud:['#e2d29a','#8a7444','#2a2210'],wallOut:['#2a3022','#07080a'],trim:'#7a6438',tentCol:'#46553c',sucker:'#9aa67e',lid:'#5a4a2a',spike:'#8a7646',gem:'ruby'},
-      {id:'iron',name:'沈んだ神殿の鉄',style:'iron',felt:['#123634','#0a2422','#020a0a'],speck:'rgba(200,255,240,.05)',sigil:'rgba(170,225,215,.36)',tent:'rgba(0,10,10,.5)',
-        wallIn:['#2a3634','#0e1614'],rim:['#4a4640','#5a544a','#38342e'],patina:'rgba(160,75,30,.42)',stud:['#c8c0b0','#6a6458','#1a1814'],wallOut:['#26302e','#060a0a'],trim:'#6a6458',tentCol:'#2e4a44',sucker:'#9ac0b4',lid:'#4a4640',spike:'#5a544a',gem:'sapphire'}];
+        wallIn:['#3a2e1c','#140e06'],rim:['#5e5434','#6c5f3a','#4a422a'],patina:'rgba(70,130,100,.38)',stud:['#e2d29a','#8a7444','#2a2210'],wallOut:['#2a3022','#07080a'],trim:'#7a6438',tentCol:'#46553c',sucker:'#9aa67e',lid:'#5a4a2a',spike:'#8a7646',gem:'ruby'}];
     function TT(){ for(var i=0;i<TRAYS.length;i++) if(TRAYS[i].id===CFG.trayStyle) return TRAYS[i]; return TRAYS[0]; }
-    function GT(){ return GEMS[TT().gem]; }
     // 光を失わない宝石（トレイ用：描き置きなので光のにじみも付ける）
-    function gemAt(c,x,y,r,G){
-      c.save(); c.shadowColor=G.glow; c.shadowBlur=r*4;
-      var g=c.createRadialGradient(x-r*.3,y-r*.35,0,x,y,r); g.addColorStop(0,'#ffffff'); g.addColorStop(.25,G.hi); g.addColorStop(.65,G.mid); g.addColorStop(1,G.lo);
-      c.fillStyle=g; c.beginPath(); for(var i=0;i<8;i++){ var a=i/8*2*PI+PI/8; c.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r*.82); } c.closePath(); c.fill(); c.restore();
-      c.strokeStyle='rgba(255,255,255,.28)'; c.lineWidth=.6; c.beginPath(); for(var j=0;j<8;j++){ var b=j/8*2*PI+PI/8; c.moveTo(x,y); c.lineTo(x+Math.cos(b)*r,y+Math.sin(b)*r*.82); } c.stroke();
-      c.fillStyle='rgba(255,255,255,.95)'; var sx=x-r*.35, sy=y-r*.38, sr=Math.max(1,r*.45);
-      c.beginPath(); c.moveTo(sx-sr,sy); c.lineTo(sx-sr*.15,sy-sr*.15); c.lineTo(sx,sy-sr); c.lineTo(sx+sr*.15,sy-sr*.15); c.lineTo(sx+sr,sy); c.lineTo(sx+sr*.15,sy+sr*.15); c.lineTo(sx,sy+sr); c.lineTo(sx-sr*.15,sy+sr*.15); c.closePath(); c.fill();
-    }
-    function eyeFlat(c,O,ax,ay){
-      var G=GT(), up=[], lo=[]; for(var i=0;i<=16;i++){ var s=-1+i/8, w=1-s*s; up.push(add(O,add(mul(ax,s),mul(ay,w)))); lo.push(add(O,add(mul(ax,-s),mul(ay,-w)))); }
-      var shape=up.concat(lo);
-      c.save(); pathW(c,shape); c.fillStyle='#050403'; c.fill(); c.clip();
-      var s0=proj(O), s1=proj(add(O,mul(ay,.95))), rr=Math.max(2,Math.abs(s1.y-s0.y)+Math.abs(s1.x-s0.x));
-      var g=c.createRadialGradient(s0.x,s0.y,0,s0.x,s0.y,rr); g.addColorStop(0,G.hi); g.addColorStop(.45,G.mid); g.addColorStop(1,G.lo);
-      c.fillStyle=g; c.shadowColor=G.glow; c.shadowBlur=10; pathW(c,ringPts(0,0,1,0,24).map(function(p){ return add(O,add(mul(ax,p.x*.48),mul(ay,p.z*.95))); })); c.fill();
-      c.shadowBlur=0; c.fillStyle='#000'; pathW(c,ringPts(0,0,1,0,20).map(function(p){ return add(O,add(mul(ax,p.x*.09),mul(ay,p.z*.85))); })); c.fill();
-      c.restore(); pathW(c,shape); c.lineWidth=1.4; c.strokeStyle='rgba(150,120,60,.7)'; c.stroke();
-    }
     // 汚れ・ざらつきの模様（壁や縁に重ねる）
     var GRAIN=(function(){ var c=document.createElement('canvas'); c.width=c.height=160; var x=c.getContext('2d'), r=rng(5), im=x.createImageData(160,160), d=im.data;
       for(var i=0;i<d.length;i+=4){ var v=r(); if(v<.45){ d[i]=d[i+1]=d[i+2]=0; d[i+3]=Math.floor(r()*90); } else if(v>.93){ d[i]=235; d[i+1]=220; d[i+2]=180; d[i+3]=Math.floor(r()*40); } }
@@ -232,21 +193,15 @@
     function engrave(c,pts,w){ pathW(c,pts,false); c.lineWidth=w*1.6; c.strokeStyle='rgba(0,0,0,.7)'; c.stroke();
       c.save(); c.translate(0,.9); pathW(c,pts,false); c.lineWidth=w*.7; c.strokeStyle='rgba(225,205,150,.22)'; c.stroke(); c.restore(); }
     // ひび割れ（石・骨）
-    function cracks(c,fn,seed,count){ var r=rng(seed);
-      for(var i=0;i<count;i++){ var u=r(), v=r(), pts=[fn(u,v)], du=(r()-.5)*.25, dv=(r()-.5)*.6;
-        for(var k=0;k<6;k++){ u+=du*(.5+r()); v+=dv*(.5+r()); du+=(r()-.5)*.12; dv+=(r()-.5)*.3; pts.push(fn(Math.max(0,Math.min(1,u)),Math.max(0,Math.min(1,v)))); }
-        engrave(c,pts,.9); } }
     // フジツボ（鉄）
-    function barnacles(c,fn,seed,count){ var r=rng(seed), ppu=pxPerUnit();
-      for(var i=0;i<count;i++){ var p=proj(fn(r(),r())), rr=Math.max(1.2,ppu*(.05+r()*.07));
-        c.fillStyle='rgba(0,0,0,.5)'; c.beginPath(); c.arc(p.x+rr*.3,p.y+rr*.3,rr,0,2*PI); c.fill();
-        var g=c.createRadialGradient(p.x-rr*.3,p.y-rr*.3,0,p.x,p.y,rr); g.addColorStop(0,'#d8d4c4'); g.addColorStop(1,'#5a564a'); c.fillStyle=g; c.beginPath(); c.arc(p.x,p.y,rr,0,2*PI); c.fill();
-        c.fillStyle='#14120e'; c.beginPath(); c.arc(p.x,p.y,rr*.35,0,2*PI); c.fill(); } }
     function wallLocal(wl,rad,u,v){ var A=hexPt(wl.i,rad,0), B=hexPt(wl.i+1,rad,0); return add(lerp(A,B,u),v3(0,v*TRAY.h,0)); }
     // ===== 画像の素材（トレイ・ダイスの面） =====
     var TEX={};
+    // 画像がそろうまでは何も描かない（読み込み途中の別の見た目を出さない）
+    var TEX_KEYS=['tray','t2a','t2b','t2d4','sq2','kite2','pent2'];
+    function texReady(){ for(var i=0;i<TEX_KEYS.length;i++) if(!TEX[TEX_KEYS[i]]) return false; return true; }
     function loadTex(key,src){ var im=new Image(); im.onload=function(){ TEX[key]=im; if(VIEW && W) buildLayers(); }; im.src=src; }
-    loadTex('tray',BASE+'tray-bronze.webp'); loadTex('tri',BASE+'face-tri.webp'); loadTex('sq',BASE+'face-sq.webp'); loadTex('kite',BASE+'face-kite.webp');
+    loadTex('tray',BASE+'tray-bronze.webp');
     ['t2a','t2b','t2d4','sq2','kite2','pent2'].forEach(function(k){ loadTex(k,BASE+'face2-'+k+'.webp'); });
     // 画像の3点(u,v)を画面の3点に合わせて貼る
     function texTri(c,img,uv,sp){
@@ -282,25 +237,14 @@
       var g=c.createLinearGradient(top.x,top.y,bot.x,bot.y); g.addColorStop(0,'rgba(0,0,0,'+Math.max(0,.7-lit*.6).toFixed(2)+')'); g.addColorStop(1,'rgba(0,0,0,.75)');
       pathW(c,pts); c.fillStyle=g; c.fill(); c.lineWidth=1.2; c.strokeStyle='#050504'; c.stroke(); }
     function buildLayers(q){
+      if(!texReady()) return;
       var sc=DPR*(q||1); [bgC,fgC].forEach(function(cc){ cc.width=Math.round(W*sc); cc.height=Math.round(H*sc); });
       var b=bgx, f=fgx, T=TT(); [b,f].forEach(function(c){ c.setTransform(sc,0,0,sc,0,0); c.clearRect(0,0,W,H); c.lineJoin='round'; c.lineCap='round'; });
       var R=TRAY.R, rim=TRAY.rim, Ro=R+rim, h=TRAY.h, ppu=pxPerUnit();
       b.save(); b.shadowColor='rgba(0,0,0,.95)'; b.shadowBlur=ppu*1.6; b.shadowOffsetY=ppu*.5; pathW(b,hexPts(Ro+.3,0)); b.fillStyle='rgba(0,0,0,.9)'; b.fill(); b.restore();
       // 床
       b.save(); pathW(b,hexPts(R,0)); b.clip();
-      if(T.img && TEX.tray){ floorTex(b); } else {
-      var c0=proj(v3(0,0,0)), rr=Math.abs(proj(v3(R,0,0)).x-c0.x)*1.15;
-      var g=b.createRadialGradient(c0.x,c0.y,0,c0.x,c0.y,rr); g.addColorStop(0,T.felt[0]); g.addColorStop(.55,T.felt[1]); g.addColorStop(1,T.felt[2]);
-      b.fillStyle=g; b.fillRect(0,0,W,H);
-      var r=rng(11);
-      for(var i=0;i<(q?800:3200);i++){ var x=(r()*2-1)*R, z=(r()*2-1)*R; var s=proj(v3(x,0,z)); b.fillStyle=r()<.5?T.speck:'rgba(0,0,0,.18)'; b.fillRect(s.x,s.y,1.2,1.2); }
-      var G=GT(), gg=b.createRadialGradient(c0.x,c0.y,0,c0.x,c0.y,rr*.6); gg.addColorStop(0,G.glow.replace(/[\d.]+\)$/,'.12)')); gg.addColorStop(1,'rgba(0,0,0,0)'); b.fillStyle=gg; b.fillRect(0,0,W,H);
-      blotches(b,hexPts(R*.9,0),31,12,'rgba(5,0,0,.5)',.9); blotches(b,hexPts(R*.7,0),37,5,'rgba(150,110,80,.08)',1.4);
-      if(T.style==='bone'){ cracks(b,function(u,v){ return v3((u*2-1)*R*.8,0,(v*2-1)*R*.7); },41,6); }
-      if(T.style==='stone'){ cracks(b,function(u,v){ return v3((u*2-1)*R*.8,0,(v*2-1)*R*.7); },43,4); }
-      grainFill(b,.35);
-      drawSigil(b);
-      }
+      floorTex(b);
       b.save(); b.shadowColor='#000'; b.shadowBlur=ppu*1.4; b.lineWidth=ppu*.9; b.strokeStyle='rgba(0,0,0,.75)'; pathW(b,hexPts(R+.35,0)); b.stroke(); b.restore();
       b.restore();
       var walls=[];
@@ -310,141 +254,23 @@
       walls.forEach(function(wl){ if(wl.inner) drawInner(b,wl); });
       walls.forEach(function(wl){ if(wl.inner) drawRim(b,wl); });
       walls.forEach(function(wl){ if(!wl.inner){ drawOuter(f,wl); drawRim(f,wl); } });
-      var cz=proj(v3(0,0,0)).z;
-      if(!T.img) for(var k=0;k<6;k++){ var K=hexPt(k,R+rim/2,h); drawSpike(proj(K).z<cz-.5?f:b,k); }
-    }
-    function drawSigil(c){
-      var R=TRAY.R, a0=CFG.trayRot*PI/180-PI/2, T=TT(), G=GT();
-      c.save(); c.lineWidth=1.3; c.strokeStyle=T.sigil; c.shadowColor=G.glow.replace(/[\d.]+\)$/,'.4)'); c.shadowBlur=5;
-      [.80,.73,.24,.19].forEach(function(k){ pathW(c,ringPts(0,0,R*k,0,96)); c.stroke(); });
-      var st=[]; for(var i=0;i<7;i++){ var a=a0+i*2*PI/7; st.push(v3(R*.73*Math.cos(a),0,R*.73*Math.sin(a))); }
-      var hp=[]; for(var j=0;j<7;j++) hp.push(st[(j*3)%7]); pathW(c,hp); c.stroke();
-      for(var g=0;g<28;g++){ var a2=a0+g/28*2*PI, rr=R*.765, O=v3(rr*Math.cos(a2),0,rr*Math.sin(a2)), ay=mul(v3(Math.cos(a2),0,Math.sin(a2)),R*.024), ax=mul(v3(-Math.sin(a2),0,Math.cos(a2)),R*.02);
-        c.lineWidth=1; glyph(c,O,ax,ay,g); }
-      c.restore();
-      c.save(); var ppu=pxPerUnit();
-      for(var t=0;t<7;t++){ var base=a0+(t+.5)*2*PI/7, prev=null;
-        for(var s=0;s<=24;s++){ var u=s/24, rad=R*(.24+u*.46), an=base+.32*Math.sin(u*PI*2.2+t)*u, P=v3(rad*Math.cos(an),0,rad*Math.sin(an));
-          if(prev){ c.lineWidth=Math.max(1,ppu*(.34*(1-u)+.04)); c.strokeStyle=T.tent; pathW(c,[prev,P],false); c.stroke(); }
-          prev=P; } }
-      c.restore();
-      // 7つの宝石（星の先）と真ん中の目
-      st.forEach(function(P){ var s=proj(P); gemAt(c,s.x,s.y,Math.max(2,ppu*.16),G); });
-      eyeFlat(c,v3(0,0,0),v3(R*.15,0,0),v3(0,0,R*.075));
     }
     function drawInner(c,wl){
-      var R=TRAY.R, h=TRAY.h, T=TT(), G=GT(), lit=.35+.65*Math.max(0,dot(wl.nin,LIGHT));
+      var R=TRAY.R, h=TRAY.h, T=TT(), lit=.35+.65*Math.max(0,dot(wl.nin,LIGHT));
       var pts=[hexPt(wl.i,R,0),hexPt(wl.i+1,R,0),hexPt(wl.i+1,R,h),hexPt(wl.i,R,h)];
       var top=proj(wallLocal(wl,R,.5,1)), bot=proj(wallLocal(wl,R,.5,0));
       var g=c.createLinearGradient(top.x,top.y,bot.x,bot.y); g.addColorStop(0,shade(T.wallIn[0],lit)); g.addColorStop(.6,shade(T.wallIn[1],lit)); g.addColorStop(1,'#030202');
       c.save(); pathW(c,pts); c.fillStyle=g; c.fill(); c.clip(); grainFill(c,.8);
       blotches(c,pts,wl.i*13+3,5,'rgba(0,0,0,.35)',.6);
-      var fn=function(u,v){ return add(wallLocal(wl,R,u,v),mul(wl.nin,.01)); };
-      if(T.style==='bone'){ for(var q=0;q<12;q++){ var u0=(q+.5)/12; c.save(); pathW(c,[fn(u0,.08),fn(u0,.92)],false); c.lineWidth=pxPerUnit()*.22; c.strokeStyle=shade('#b8a882',lit*.8); c.stroke(); c.lineWidth=pxPerUnit()*.06; c.strokeStyle='rgba(255,250,230,.25)'; c.translate(-1,-1); c.stroke(); c.restore(); } }
-      else for(var k=1;k<3;k++){ engrave(c,[wallLocal(wl,R,k/3,.04),wallLocal(wl,R,k/3,.96)],1.4); }
-      if(T.style==='stone') cracks(c,fn,wl.i*17+5,3);
-      if(T.style==='iron'){ blotches(c,pts,wl.i*19+7,6,T.patina,.5); barnacles(c,fn,wl.i*23+1,10); }
-      var A=hexPt(wl.i,R,0), B=hexPt(wl.i+1,R,0), ax=mul(norm(sub(B,A)),.16), ay=v3(0,h*.24,0);
-      if(T.style!=='bone' && !T.img) for(var j=0;j<7;j++){ var O=add(wallLocal(wl,R,(j+.5)/7,.52),mul(wl.nin,.02));
-        c.lineWidth=1.5; c.strokeStyle='rgba(0,0,0,.75)'; glyph(c,O,ax,ay,wl.i*7+j+3);
-        c.save(); c.translate(0,.9); c.lineWidth=.7; c.strokeStyle='rgba(215,195,140,.2)'; glyph(c,O,ax,ay,wl.i*7+j+3); c.restore();
-        c.save(); c.shadowColor=G.glow; c.shadowBlur=4; c.lineWidth=.6; c.strokeStyle=G.glow.replace(/[\d.]+\)$/,'.28)'); glyph(c,O,ax,ay,wl.i*7+j+3); c.restore(); }
+      for(var k=1;k<3;k++){ engrave(c,[wallLocal(wl,R,k/3,.04),wallLocal(wl,R,k/3,.96)],1.4); }
       c.restore();
       pathW(c,[pts[3],pts[2]],false); c.lineWidth=1; c.strokeStyle='rgba(230,210,160,.28)'; c.stroke();
       pathW(c,pts); c.lineWidth=1; c.strokeStyle='rgba(0,0,0,.8)'; c.stroke();
     }
-    function bronze(n,base,k){ var lit=.42+.75*Math.max(0,dot(n,LIGHT))+.3*Math.max(0,dot(n,LIGHT2)); return shade(base,lit*(k||1)); }
-    function drawRim(c,wl){
-      var R=TRAY.R, rim=TRAY.rim, Ro=R+rim, h=TRAY.h, nout=mul(wl.nin,-1), i=wl.i, T=TT();
-      if(T.img && TEX.tray){ rimTex(c,wl); return; }
-      var r1=R+rim*.16, r2=R+rim*.84, hb=h-.1;
-      function strip(ra,ya,rb,yb,n,col){ var pts=[hexPt(i,ra,ya),hexPt(i+1,ra,ya),hexPt(i+1,rb,yb),hexPt(i,rb,yb)]; pathW(c,pts); c.fillStyle=bronze(n,col); c.fill(); return pts; }
-      strip(R,hb,r1,h,norm(add(v3(0,1,0),mul(wl.nin,.9))),T.rim[0]);
-      var top=strip(r1,h,r2,h,v3(0,1,0),T.rim[1]);
-      strip(r2,h,Ro,hb,norm(add(v3(0,1,0),mul(nout,.9))),T.rim[2]);
-      var fn=function(u,v){ return lerp(lerp(hexPt(i,r1,h),hexPt(i+1,r1,h),u),lerp(hexPt(i,r2,h),hexPt(i+1,r2,h),u),v); };
-      c.save(); pathW(c,top); c.clip(); grainFill(c,.9);
-      blotches(c,top,i*7+1,7,T.patina,.35); blotches(c,top,i*7+2,4,'rgba(0,0,0,.35)',.3);
-      if(T.style==='stone'||T.style==='bone') cracks(c,fn,i*29+3,2);
-      if(T.style==='iron') barnacles(c,fn,i*31+5,5);
-      c.restore();
-      if(T.style!=='bone') engrave(c,[hexPt(i,R+rim*.5,h),hexPt(i+1,R+rim*.5,h)],1.1);
-      pathW(c,[hexPt(i,R,hb),hexPt(i+1,R,hb),hexPt(i+1,Ro,hb),hexPt(i,Ro,hb)]); c.lineWidth=1; c.strokeStyle='#100c06'; c.stroke();
-      var ppu=pxPerUnit();
-      if(T.style==='bone'){ // 縁の内側に並ぶ歯
-        for(var t=0;t<14;t++){ var u=(t+.5)/14, P=lerp(hexPt(i,R+.05,h),hexPt(i+1,R+.05,h),u), dir=norm(sub(hexPt(i+1,R,h),hexPt(i,R,h))), tw=.16;
-          var a=proj(add(P,mul(dir,-tw))), b=proj(add(P,mul(dir,tw))), tp=proj(add(add(P,mul(wl.nin,.12)),v3(0,.38+((t*7)%3)*.08,0)));
-          c.beginPath(); c.moveTo(a.x,a.y); c.quadraticCurveTo((a.x+tp.x)/2-1,(a.y+tp.y)/2,tp.x,tp.y); c.quadraticCurveTo((b.x+tp.x)/2+1,(b.y+tp.y)/2,b.x,b.y); c.closePath();
-          var tg=c.createLinearGradient(a.x,a.y,b.x,b.y); tg.addColorStop(0,'#fbf3da'); tg.addColorStop(1,'#8a7a54'); c.fillStyle=tg; c.fill(); c.lineWidth=.6; c.strokeStyle='#2a2010'; c.stroke(); }
-      }
-      for(var k=1;k<4;k++){ var P2=proj(lerp(hexPt(i,R+rim*.5,h),hexPt(i+1,R+rim*.5,h),k/4)), rr=Math.max(1.5,ppu*.13);
-        if(k===2){ gemAt(c,P2.x,P2.y,Math.max(2,ppu*.17),GT()); continue; }
-        c.fillStyle='rgba(0,0,0,.55)'; c.beginPath(); c.ellipse(P2.x+rr*.25,P2.y+rr*.35,rr,rr*.8,0,0,2*PI); c.fill();
-        var g=c.createRadialGradient(P2.x-rr*.35,P2.y-rr*.35,0,P2.x,P2.y,rr); g.addColorStop(0,T.stud[0]); g.addColorStop(.5,T.stud[1]); g.addColorStop(1,T.stud[2]);
-        c.fillStyle=g; c.beginPath(); c.ellipse(P2.x,P2.y,rr,rr*.8,0,0,2*PI); c.fill(); }
-    }
+    function drawRim(c,wl){ rimTex(c,wl); }
     function drawOuter(c,wl){
-      var R=TRAY.R, Ro=R+TRAY.rim, h=TRAY.h, nout=mul(wl.nin,-1), T=TT(), G=GT(), lit=.45+.7*Math.max(0,dot(nout,LIGHT))+.25*Math.max(0,dot(nout,LIGHT2));
-      if(T.img && TEX.tray){ outerTex(c,wl,lit); return; }
-      var pts=[hexPt(wl.i,Ro,0),hexPt(wl.i+1,Ro,0),hexPt(wl.i+1,Ro,h),hexPt(wl.i,Ro,h)];
-      var top=proj(wallLocal(wl,Ro,.5,1)), bot=proj(wallLocal(wl,Ro,.5,0));
-      var g=c.createLinearGradient(top.x,top.y,bot.x,bot.y); g.addColorStop(0,shade(T.wallOut[0],lit)); g.addColorStop(1,shade(T.wallOut[1],lit));
-      c.save(); pathW(c,pts); c.fillStyle=g; c.fill(); c.clip(); grainFill(c,.8); blotches(c,pts,wl.i*5+9,5,'rgba(0,0,0,.4)',.5);
-      var ppu=pxPerUnit(), A=hexPt(wl.i,Ro,0), B=hexPt(wl.i+1,Ro,0), L=len(sub(B,A)), ax=norm(sub(B,A));
-      function wp(u,v){ return add(add(A,mul(ax,u)),add(v3(0,v,0),mul(nout,.02))); }
-      var fn=function(u,v){ return wp(u*L,v*h); };
-      if(T.style==='stone') cracks(c,fn,wl.i*37+2,4);
-      if(T.style==='iron'){ blotches(c,pts,wl.i*41+3,6,T.patina,.45); barnacles(c,fn,wl.i*43+9,12); }
-      [.9,.1].forEach(function(v){ var a=add(wallLocal(wl,Ro,0,v),mul(nout,.01)), b=add(wallLocal(wl,Ro,1,v),mul(nout,.01));
-        c.save(); c.translate(0,1.2); pathW(c,[a,b],false); c.lineWidth=2.6; c.strokeStyle='rgba(0,0,0,.6)'; c.stroke(); c.restore();
-        pathW(c,[a,b],false); c.lineWidth=2.2; c.strokeStyle=shade(T.trim,lit); c.stroke();
-        c.save(); c.translate(0,-.7); pathW(c,[a,b],false); c.lineWidth=.7; c.strokeStyle='rgba(240,220,160,.4)'; c.stroke(); c.restore(); });
-      if(T.style==='bone'){ // あばら骨が並ぶ
-        for(var q=0;q<16;q++){ var u=(q+.5)/16; if(Math.abs(u-.5)<.14) continue; var a2=wp(u*L,h*.15), b2=wp(u*L,h*.85);
-          [[1.4,1.4,'rgba(0,0,0,.6)',1],[0,0,shade(T.tentCol,lit),1],[-.8,-.8,'rgba(255,250,230,.35)',.35]].forEach(function(p){ c.save(); c.translate(p[0],p[1]); pathW(c,[a2,b2],false); c.lineWidth=ppu*.2*p[3]; c.strokeStyle=p[2]; c.stroke(); c.restore(); }); }
-      } else {
-        for(var side=-1;side<=1;side+=2){ var line=[];
-          for(var s=0;s<=26;s++){ var t=s/26, u2=L/2+side*(.75+t*(L/2-1.1)), v2=h*.5+Math.sin(t*PI*1.7+.4)*h*.22*(1-t*.2); line.push({P:wp(u2,v2),t:t}); }
-          [[1.6,1.6,'rgba(0,0,0,.6)',1],[0,0,shade(T.tentCol,lit),1],[0,-ppu*.07,'rgba(200,220,170,.35)',.3]].forEach(function(pass){
-            c.save(); c.translate(pass[0],pass[1]);
-            for(var k=1;k<line.length;k++){ var t2=line[k].t; c.lineWidth=Math.max(.6,ppu*(.26*(1-t2)+.04)*pass[3]); c.strokeStyle=pass[2]; pathW(c,[line[k-1].P,line[k].P],false); c.stroke(); }
-            c.restore(); });
-          for(var q2=3;q2<line.length*.85;q2+=3){ var sp=proj(line[q2].P), rr=Math.max(.8,ppu*.055*(1-line[q2].t));
-            c.fillStyle='rgba(0,0,0,.55)'; c.beginPath(); c.arc(sp.x,sp.y+ppu*.05,rr,0,2*PI); c.fill();
-            c.fillStyle=shade(T.sucker,lit); c.beginPath(); c.arc(sp.x,sp.y+ppu*.05-rr*.25,rr*.6,0,2*PI); c.fill(); } }
-      }
-      if(T.style==='iron'){ // たれ下がる海藻
-        var r=rng(wl.i*53+1); for(var sw=0;sw<7;sw++){ var u3=r()*L, ln=h*(.4+r()*.5), prev=null;
-          for(var s2=0;s2<=10;s2++){ var tt=s2/10, P=wp(u3+Math.sin(tt*5+sw)*.12,h*.97-tt*ln); if(prev){ c.lineWidth=Math.max(.6,ppu*.07*(1-tt*.6)); c.strokeStyle='rgba(30,70,40,.8)'; pathW(c,[prev,P],false); c.stroke(); } prev=P; } } }
-      // 見ている目（まぶたの縁つき）
-      var O=wp(L/2,h*.5), ex=mul(ax,.72), ey=v3(0,h*.27,0);
-      var up=[], lo=[]; for(var i=0;i<=16;i++){ var sx=-1+i/8, ww=1-sx*sx; up.push(add(O,add(mul(ex,sx),mul(ey,ww)))); lo.push(add(O,add(mul(ex,-sx),mul(ey,-ww)))); }
-      var lid=up.concat(lo).map(function(p){ return add(O,mul(sub(p,O),1.22)); });
-      pathW(c,lid); c.fillStyle=shade(T.lid,lit); c.fill(); c.lineWidth=1; c.strokeStyle='#0a0804'; c.stroke();
-      c.save(); c.translate(0,-.8); pathW(c,up.map(function(p){ return add(O,mul(sub(p,O),1.18)); }),false); c.lineWidth=.8; c.strokeStyle='rgba(240,220,160,.35)'; c.stroke(); c.restore();
-      c.save(); pathW(c,up.concat(lo)); c.fillStyle='#030302'; c.fill(); c.clip();
-      var so=proj(O), sr=Math.max(2,Math.abs(proj(add(O,ey)).y-so.y));
-      var gi=c.createRadialGradient(so.x,so.y,0,so.x,so.y,sr*1.05); gi.addColorStop(0,G.hi); gi.addColorStop(.45,G.mid); gi.addColorStop(1,G.lo);
-      c.shadowColor=G.glow; c.shadowBlur=12; c.fillStyle=gi; c.beginPath(); c.ellipse(so.x,so.y,sr*1.05,sr*1.05,0,0,2*PI); c.fill();
-      c.shadowBlur=0; c.fillStyle='#000'; c.beginPath(); c.ellipse(so.x,so.y,sr*.17,sr*.9,0,0,2*PI); c.fill();
-      var sh=c.createLinearGradient(so.x,so.y-sr,so.x,so.y); sh.addColorStop(0,'rgba(0,0,0,.75)'); sh.addColorStop(1,'rgba(0,0,0,0)'); c.fillStyle=sh; c.fillRect(so.x-sr*3,so.y-sr*1.2,sr*6,sr*1.2);
-      c.restore();
-      c.restore();
-      pathW(c,pts); c.lineWidth=1.2; c.strokeStyle='#050504'; c.stroke();
-    }
-    function drawSpike(c,k){
-      var R=TRAY.R, rim=TRAY.rim, h=TRAY.h, T=TT(), a=hexAng(k), out=v3(Math.cos(a),0,Math.sin(a)), tan=v3(-Math.sin(a),0,Math.cos(a)), ppu=pxPerUnit();
-      var K=hexPt(k,R+rim/2,h), Tp=add(K,add(v3(0,1.3,0),mul(out,.4)));
-      var base=[add(K,mul(tan,.3)),add(K,mul(out,.3)),add(K,mul(tan,-.3)),add(K,mul(out,-.3))];
-      var cp=proj(K), cr=ppu*.42; c.fillStyle='rgba(0,0,0,.6)'; c.beginPath(); c.ellipse(cp.x+cr*.15,cp.y+cr*.2,cr,cr*.65,0,0,2*PI); c.fill();
-      var gb=c.createRadialGradient(cp.x-cr*.3,cp.y-cr*.3,0,cp.x,cp.y,cr); gb.addColorStop(0,T.stud[0]); gb.addColorStop(.6,T.stud[1]); gb.addColorStop(1,T.stud[2]);
-      c.fillStyle=gb; c.beginPath(); c.ellipse(cp.x,cp.y,cr,cr*.65,0,0,2*PI); c.fill();
-      var faces=[]; for(var i=0;i<4;i++){ var p0=base[i], p1=base[(i+1)%4], n=norm(cross(sub(p1,p0),sub(Tp,p0))), ctr=mul(add(add(p0,p1),Tp),1/3);
-        if(dot(n,sub(ctr,K))<0) n=mul(n,-1); if(dot(n,sub(CAM.C,ctr))>0) faces.push({pts:[p0,p1,Tp],n:n,z:proj(ctr).z}); }
-      faces.sort(function(x,y){ return y.z-x.z; });
-      faces.forEach(function(f){ pathW(c,f.pts); c.fillStyle=bronze(f.n,T.spike,1.05); c.fill(); c.lineWidth=.8; c.strokeStyle='#0c0904'; c.stroke(); });
-      c.save(); c.globalAlpha=.5; faces.forEach(function(f){ pathW(c,f.pts); c.clip(); }); grainFill(c,.6); c.restore();
-      var gp=proj(add(K,mul(out,.18))); gemAt(c,gp.x,gp.y,Math.max(2,ppu*.13),GT());
+      var nout=mul(wl.nin,-1), lit=.45+.7*Math.max(0,dot(nout,LIGHT))+.25*Math.max(0,dot(nout,LIGHT2));
+      outerTex(c,wl,lit);
     }
 
     // ===== 音（端末の中で作る。残響つき） =====
@@ -591,55 +417,21 @@
 
     // ===== ダイスの描画（古い金属＋エナメル＋浮き出たメダル＋とげ＋宝石） =====
     var DSTYLES=[
-      {id:'silver',name:'銀と翠玉',metal:'#aba595',enamel:'#1d5a3b',metal2:'#a9864d',enamel2:'#5e1016',gem:'emerald',ink:'#120c06',grime:'rgba(45,32,12,.45)',grime2:'rgba(30,45,30,.35)'},
-      {id:'verdigris',name:'緑青の青銅',metal:'#7d8a66',enamel:'#0f1c16',metal2:'#8a6a3c',enamel2:'#3a0c0c',gem:'amber',medal:'#a08a50',ink:'#100a04',grime:'rgba(15,35,25,.6)',grime2:'rgba(100,170,135,.45)'},
-      {id:'obsidian',name:'黒曜石と血玉',metal:'#36363c',enamel:'#1c0608',metal2:'#3c3232',enamel2:'#1c0608',gem:'ruby',medal:'#b08a3a',ink:'#1a0e04',grime:'rgba(140,125,95,.32)',grime2:'rgba(0,0,0,.4)'},
-      {id:'bone',name:'古い骨と紫水晶',metal:'#c9bb92',enamel:'#36203e',metal2:'#b8986a',enamel2:'#3a1010',gem:'amethyst',medal:'#ddd0aa',ink:'#2a1606',grime:'rgba(80,50,20,.5)',grime2:'rgba(40,25,10,.4)',crack:true,matte:true},
-      {id:'abyss',name:'深海の鉄と真珠',metal:'#5c5a55',enamel:'#2a4a50',metal2:'#6a4a34',enamel2:'#2a1018',gem:'sapphire',medal:'#8e8c86',ink:'#0a0a0a',grime:'rgba(150,70,30,.5)',grime2:'rgba(30,70,55,.45)',irid:true},
-      {id:'img1',name:'画像：骨と青銅',tex:true,metal:'#8a6a3c',enamel:'#d8c8a0',metal2:'#6a3a20',enamel2:'#5a1010',gem:'ruby',ink:'#2a1606',grime:'rgba(60,40,15,.4)',grime2:'rgba(40,25,10,.3)'},
       {id:'img2',name:'画像：クトゥルフの遺物',tex:true,tex2:true,metal:'#8a6a3c',enamel:'#d8c8a0',metal2:'#6a3a20',enamel2:'#5a1010',gem:'ruby',ink:'#2a1606',grime:'rgba(60,40,15,.4)',grime2:'rgba(40,25,10,.3)'}];
     function DS(){ for(var i=0;i<DSTYLES.length;i++) if(DSTYLES[i].id===CFG.diceStyle) return DSTYLES[i]; return DSTYLES[0]; }
     function applyDiceStyle(){ var S=DS(); dice.forEach(function(d){ d.metal=d.role==='tens'?S.metal2:S.metal; d.enamel=d.role==='tens'?S.enamel2:S.enamel; }); }
     // 小さな宝石（ダイス用：毎フレーム描くので軽い作り）
-    function gemDot(x,y,r,G){
-      var h=ctx.createRadialGradient(x,y,0,x,y,r*2.6); h.addColorStop(0,G.glow.replace(/[\d.]+\)$/,'.55)')); h.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=h; ctx.fillRect(x-r*2.6,y-r*2.6,r*5.2,r*5.2);
-      var g=ctx.createRadialGradient(x-r*.3,y-r*.35,0,x,y,r); g.addColorStop(0,'#fff'); g.addColorStop(.3,G.hi); g.addColorStop(.7,G.mid); g.addColorStop(1,G.lo);
-      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,r,0,2*PI); ctx.fill(); ctx.lineWidth=.6; ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.stroke();
-      ctx.fillStyle='rgba(255,255,255,.95)'; ctx.beginPath(); ctx.arc(x-r*.35,y-r*.38,Math.max(.6,r*.28),0,2*PI); ctx.fill();
-    }
-    function envMetal(n,c){
-      if(DS().matte) return .36+.72*Math.max(0,dot(n,LIGHT))+.08;
-      var v=norm(sub(CAM.C,c)), r=sub(mul(n,2*dot(n,v)),v);
-      var e=.26+.5*Math.pow(Math.max(0,r.y),1.6)+1.05*Math.pow(Math.max(0,dot(r,LIGHT)),16)+.4*Math.pow(Math.max(0,dot(r,LIGHT2)),6)-.2*Math.max(0,1-Math.abs(r.y+.05)*5);
-      return Math.max(.14,e*.78+Math.max(0,dot(n,LIGHT))*.32);
-    }
     function inrad(pos,pts){ var m=1e9; for(var i=0;i<pts.length;i++){ var a=pts[i], b=pts[(i+1)%pts.length], ab=sub(b,a), t=Math.max(0,Math.min(1,dot(sub(pos,a),ab)/dot(ab,ab))); m=Math.min(m,len(sub(pos,add(a,mul(ab,t))))); } return m; }
     function polyS(pts){ ctx.beginPath(); for(var k=0;k<pts.length;k++){ var s=pts[k]; if(k) ctx.lineTo(s.x,s.y); else ctx.moveTo(s.x,s.y); } ctx.closePath(); }
-    function circleOnFace(center,a,b,rad,n){ var out=[]; for(var i=0;i<n;i++){ var t=i/n*2*PI; out.push(proj(add(center,add(mul(a,rad*Math.cos(t)),mul(b,rad*Math.sin(t)))))); } return out; }
     // 面ごとの傷と曇り（決まった形を使い回す）
-    var WEAR=(function(){ var r=rng(23), out=[]; for(var i=0;i<24;i++){ var s=[]; for(var k=0;k<3;k++){ var x=r()*1.4-.7, y=r()*1.4-.7, a=r()*PI, l=.15+r()*.35; s.push([x,y,x+Math.cos(a)*l,y+Math.sin(a)*l]); }
-      out.push({s:s,bx:r()*1.2-.6,by:r()*1.2-.6,br:.35+r()*.4}); } return out; })();
     function faceXform(center,a,b,s){ var S0=proj(center), Sa=proj(add(center,mul(a,s))), Sb=proj(add(center,mul(b,s)));
       ctx.setTransform(DPR*(Sb.x-S0.x),DPR*(Sb.y-S0.y),-DPR*(Sa.x-S0.x),-DPR*(Sa.y-S0.y),DPR*S0.x,DPR*S0.y); }
     // 画像を貼ったダイスの面（数字はインクで直接書く）
-    var TEXA={tri:[[.4992,.0478],[.9721,.8644],[.0263,.8644]],sq:[[.0415,.0423],[.9585,.0423],[.9585,.9569],[.0415,.9569]],kite:[[.4988,.0399],[.8684,.6722],[.4988,.9545],[.1268,.6722]],
-      t2a:[[.499,.0118],[.9628,.9348],[.0351,.9333]],t2b:[[.4995,.0611],[.9679,.8763],[.0299,.8769]],t2d4:[[.499,.0364],[.9709,.8559],[.0251,.8601]],
+    var TEXA={t2a:[[.499,.0118],[.9628,.9348],[.0351,.9333]],t2b:[[.4995,.0611],[.9679,.8763],[.0299,.8769]],t2d4:[[.499,.0364],[.9709,.8559],[.0251,.8601]],
       sq2:[[.0391,.0377],[.9593,.0378],[.9609,.9569],[.0373,.9574]],kite2:[[.4992,.0093],[.8855,.5844],[.4983,.9882],[.1122,.5849]],
       pent2:[[.4984,.0141],[.9563,.379],[.7902,.9123],[.201,.9126],[.0394,.3799]]};
-    function texKey(d,f){ if(DS().tex2){ if(d.sides===4) return 't2d4'; if(d.sides===6) return 'sq2'; if(d.sides===10) return 'kite2'; if(d.sides===12) return 'pent2'; return d.sh.faces.indexOf(f)%2?'t2b':'t2a'; }
-      if(d.sides===10&&TEX.kite) return 'kite'; return d.sides===4||d.sides===8||d.sides===20?'tri':'sq'; }
+    function texKey(d,f){ if(d.sides===4) return 't2d4'; if(d.sides===6) return 'sq2'; if(d.sides===10) return 'kite2'; if(d.sides===12) return 'pent2'; return d.sh.faces.indexOf(f)%2?'t2b':'t2a'; }
     // 浮き出た数字（左上に光、右下に影、縁取りつき）
-    function emboss(size,str,ink){
-      ctx.font='700 '+size.toFixed(1)+'px "Shippori Mincho","Hiragino Mincho ProN",serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineJoin='round';
-      var y=size*.05;
-      ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillText(str,size*.07,y+size*.09);
-      ctx.fillStyle='rgba(0,0,0,.35)'; ctx.fillText(str,size*.04,y+size*.05);
-      ctx.fillStyle='rgba(255,244,215,.75)'; ctx.fillText(str,-size*.035,y-size*.045);
-      var g=ctx.createLinearGradient(0,y-size*.45,0,y+size*.45); g.addColorStop(0,shade(ink,2.2)); g.addColorStop(.5,ink); g.addColorStop(1,shade(ink,.6));
-      ctx.fillStyle=g; ctx.fillText(str,0,y);
-      ctx.lineWidth=Math.max(.6,size*.025); ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.strokeText(str,0,y);
-      if(str==='6'||str==='9'){ ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(-size*.2,size*.5,size*.44,size*.08); ctx.fillStyle=ink; ctx.fillRect(-size*.22,size*.47,size*.44,size*.07); }
-    }
     // 彫り込んだ数字（骨の面に深く刻んだ黒い溝。下側の縁に光）
     function carveNum(size,str){
       ctx.font='600 '+size.toFixed(1)+'px "Shippori Mincho","Hiragino Mincho ProN","Times New Roman",serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineJoin='round';
@@ -661,7 +453,7 @@
       else up=sub(Vw[f.ix[0]],c);
       var a=norm(sub(up,mul(n,dot(up,n)))), b=cross(a,n);
       var L=outer.map(function(p,k){ var q2=sub(p,c); return {x:dot(q2,b),y:dot(q2,a),s:outerS[k],w:p}; });
-      var key=texKey(d,f), img=TEX[key]||TEX.sq, TA=(TEXA[key]||TEXA.sq).map(function(t){ return [t[0]*img.width,t[1]*img.height]; }), top=null;
+      var key=texKey(d,f), img=TEX[key], TA=TEXA[key].map(function(t){ return [t[0]*img.width,t[1]*img.height]; }), top=null;
       if(TA.length===L.length){
         // 一番上の角から時計回りに、画像の角と面の角を合わせて貼る
         L.forEach(function(p){ var v=d.sides===6?p.y-p.x:p.y; if(!top||v>top.v){ top=p; top.v=v; } });
@@ -677,89 +469,17 @@
       ctx.lineWidth=1.1; ctx.strokeStyle='rgba(18,12,6,.95)'; ctx.stroke();
       var str=d.label?d.label(f.val):String(f.val);
       if(d.sides===4){ f.ix.forEach(function(i){ var corner=Vw[i]; inkText(o,lerp(c,corner,.5),sub(corner,c),String(d.sh.vval[i]),inrad(c,outer)*.42); }); }
-      else if(DS().tex2 && d.sides!==6){ var tv=d.sides===10?Vw[f.ix[ai]]:Vw[f.ix[0]], k2=d.sides===10?.3:d.sides===12?.3:.24; inkText(o,lerp(c,tv,k2),up,str,inrad(c,outer)*(d.sides===10?.6:d.sides===12?.52:.56)); }
+      else if(d.sides!==6){ var tv=d.sides===10?Vw[f.ix[ai]]:Vw[f.ix[0]], k2=d.sides===10?.3:d.sides===12?.3:.24; inkText(o,lerp(c,tv,k2),up,str,inrad(c,outer)*(d.sides===10?.6:d.sides===12?.52:.56)); }
       else inkText(o,pos,up,str,inrad(pos,outer)*(d.sides===6?.62:d.sides===10?.68:.66));
       if(d.glow && d.glow.f===f){ polyS(outerS); ctx.lineWidth=3.2; ctx.strokeStyle=d.glow.color; ctx.stroke(); }
     }
     function drawFace(o){
-      var d=o.d, f=o.f, Vw=o.V, n=o.n, c=o.c, isD4=d.sides===4, big=d.r*pxPerUnit()>13, S=DS(), GM=GEMS[S.gem];
-      var m=envMetal(n,c), diff=Math.max(0,dot(n,LIGHT)), Hh=norm(add(LIGHT,norm(sub(CAM.C,c)))), sp=Math.pow(Math.max(0,dot(n,Hh)),50);
-      var outer=f.ix.map(function(i){ return Vw[i]; }), N=outer.length, outerS=f.ix.map(function(i){ return o.P[i]; });
-      if(S.tex && TEX.tri && TEX.sq){ drawTexFace(o,outer,outerS,diff,sp); return; }
-      // 金属の面
-      polyS(outerS); ctx.fillStyle=shade(d.metal,m); ctx.fill();
-      // 面取り（角が丸く削れた感じ）
-      var bev=outer.map(function(p){ return lerp(c,p,.9); }), bevS=bev.map(proj);
-      for(var k=0;k<N;k++){ var k2=(k+1)%N, em=lerp(outer[k],outer[k2],.5), nn=norm(add(n,mul(norm(sub(em,c)),.9)));
-        polyS([outerS[k],outerS[k2],bevS[k2],bevS[k]]); ctx.fillStyle=shade(d.metal,envMetal(nn,em)*.92); ctx.fill(); }
-      // エナメルのくぼみ（内側の壁は暗く汚れている）
-      var kin=isD4?.84:d.sides===6?.78:.75, kr=kin+.045, rim=outer.map(function(p){ return lerp(c,p,kr); }), rimS=rim.map(proj), inner=outer.map(function(p){ return lerp(c,p,kin); }), innerS=inner.map(proj);
-      for(var j=0;j<N;j++){ var j2=(j+1)%N, em2=lerp(rim[j],rim[j2],.5), nw=norm(sub(n,mul(norm(sub(em2,c)),1.1)));
-        polyS([rimS[j],rimS[j2],innerS[j2],innerS[j]]); ctx.fillStyle=shade(d.metal,envMetal(nw,em2)*.55); ctx.fill(); }
-      polyS(innerS);
-      if(S.irid && d.role!=='tens'){ var hu=(190+dot(n,R3)*140+dot(n,U3)*90+360)%360, ia=innerS[0], ib=innerS[Math.floor(N/2)], ig=ctx.createLinearGradient(ia.x,ia.y,ib.x,ib.y), lv=Math.round(20+22*diff);
-        ig.addColorStop(0,'hsl('+hu.toFixed(0)+',26%,'+lv+'%)'); ig.addColorStop(.5,'hsl('+((hu+70)%360).toFixed(0)+',22%,'+(lv+8)+'%)'); ig.addColorStop(1,'hsl('+((hu+150)%360).toFixed(0)+',26%,'+lv+'%)'); ctx.fillStyle=ig; }
-      else ctx.fillStyle=shade(d.enamel,.36+.62*diff);
-      ctx.fill();
-      ctx.save(); polyS(innerS); ctx.clip();
-      if(sp>.02){ ctx.fillStyle='rgba(255,255,240,'+Math.min(.5,sp*.6).toFixed(3)+')'; ctx.fill(); }
-      polyS(innerS); ctx.lineWidth=3.5; ctx.strokeStyle='rgba(0,0,0,.45)'; ctx.stroke();
-      ctx.restore();
-      // 角から伸びるとげ（両側に光を当てて立体に）
-      if(!isD4){
-        for(var q2=0;q2<N;q2++){ var Ik=inner[q2], Ip=inner[(q2+N-1)%N], In=inner[(q2+1)%N], T=lerp(Ik,c,.34), Lp=lerp(Ik,Ip,.22), Rp=lerp(Ik,In,.22), mid=lerp(Ik,T,.5);
-          var sT=proj(T), sI=proj(Ik), sL=proj(Lp), sR=proj(Rp);
-          if(big){ ctx.fillStyle='rgba(0,0,0,.4)'; polyS([{x:sL.x+1.2,y:sL.y+1.4},{x:sT.x+1.2,y:sT.y+1.4},{x:sR.x+1.2,y:sR.y+1.4}]); ctx.fill(); }
-          var nL=norm(add(n,mul(norm(sub(Lp,mid)),.8))), nR=norm(add(n,mul(norm(sub(Rp,mid)),.8)));
-          polyS([sL,sI,sT]); ctx.fillStyle=shade(d.metal,envMetal(nL,mid)); ctx.fill();
-          polyS([sR,sI,sT]); ctx.fillStyle=shade(d.metal,envMetal(nR,mid)); ctx.fill();
-          polyS([sL,sI,sR,sT]); ctx.lineWidth=.6; ctx.strokeStyle='rgba(15,12,6,.8)'; ctx.stroke();
-          if(big && q2===0) gemDot(sT.x,sT.y,Math.max(1.3,d.r*pxPerUnit()*(d.sides===20?.05:.065)),GM); }
-      } else if(big){ var cs=proj(c); gemDot(cs.x,cs.y,Math.max(1.5,d.r*pxPerUnit()*.09),GM); }
-      // 古びた傷と曇り
-      if(big){ var w=WEAR[(d.sides*7+d.sh.faces.indexOf(f)*3)%WEAR.length], ax0=norm(sub(outer[0],c)), bx0=cross(ax0,n), s0=inrad(c,outer);
-        ctx.save(); faceXform(c,ax0,bx0,s0);
-        var tg=ctx.createRadialGradient(w.bx,w.by,0,w.bx,w.by,w.br); tg.addColorStop(0,S.grime); tg.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=tg; ctx.fillRect(-1.2,-1.2,2.4,2.4);
-        var tg2=ctx.createRadialGradient(-w.by,w.bx,0,-w.by,w.bx,w.br*.8); tg2.addColorStop(0,S.grime2); tg2.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=tg2; ctx.fillRect(-1.2,-1.2,2.4,2.4);
-        ctx.lineWidth=.02; ctx.strokeStyle='rgba(255,250,235,.28)'; ctx.beginPath(); w.s.forEach(function(l){ ctx.moveTo(l[0],l[1]); ctx.lineTo(l[2],l[3]); }); ctx.stroke();
-        if(S.crack){ ctx.lineWidth=.035; ctx.strokeStyle='rgba(40,22,6,.75)'; ctx.beginPath(); ctx.moveTo(w.s[0][0],w.s[0][1]); ctx.lineTo(w.s[0][2],w.s[0][3]); ctx.lineTo(w.s[1][0],w.s[1][1]); ctx.lineTo(w.s[1][2],w.s[1][3]); ctx.stroke(); }
-        ctx.restore(); }
-      // 擦れて光る縁
-      polyS(outerS); ctx.lineWidth=1.1; ctx.strokeStyle='rgba(18,14,8,.95)'; ctx.stroke();
-      if(big){ polyS(bevS); ctx.lineWidth=.7; ctx.strokeStyle='rgba(255,248,225,.18)'; ctx.stroke(); }
-      // 数字（浮き出たメダルの上）
-      var up, pos=c, str=d.label?d.label(f.val):String(f.val);
-      if(isD4){
-        f.ix.forEach(function(i){ var corner=Vw[i], ps=lerp(c,corner,.52), mr=inrad(c,inner)*.42; medal(o,ps,sub(corner,c),String(d.sh.vval[i]),mr,m,big); });
-      } else {
-        if(d.sides===6){ up=sub(add(Vw[f.ix[0]],Vw[f.ix[1]]),mul(c,2)); }
-        else if(d.sides===10){ var ai=0; f.ix.forEach(function(ix,k3){ if(ix>=10) ai=k3; }); var apex=Vw[f.ix[ai]], far=Vw[f.ix[(ai+2)%4]]; up=sub(apex,far); pos=lerp(c,far,.18); }
-        else { up=sub(Vw[f.ix[0]],c); }
-        var mr=inrad(pos,inner)*(d.sides===6?.72:d.sides===10?.8:.78);
-        medal(o,pos,up,str,mr,m,big);
-      }
-      if(d.glow && d.glow.f===f){ polyS(outerS); ctx.lineWidth=3.2; ctx.strokeStyle=d.glow.color; ctx.stroke(); }
-    }
-    function medal(o,center,up,str,mr,m,big){
-      var d=o.d, n=o.n, a=norm(sub(up,mul(n,dot(up,n)))), b=cross(a,n), S=DS(), mc=(d.role==='tens'?null:S.medal)||d.metal;
-      var ld=sub(LIGHT,mul(n,dot(LIGHT,n))), ll=len(ld); ld=ll>1e-3?mul(ld,1/ll):a;
-      var pts=circleOnFace(center,a,b,mr,20);
-      if(big){ ctx.save(); ctx.translate(1.3,1.6); polyS(pts); ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fill(); ctx.restore(); }
-      // 縁：光の来る側が明るく、反対が暗い
-      var L1=proj(add(center,mul(ld,mr))), L2=proj(add(center,mul(ld,-mr)));
-      var g=ctx.createLinearGradient(L1.x,L1.y,L2.x,L2.y); g.addColorStop(0,shade(mc,m*1.45)); g.addColorStop(.5,shade(mc,m*1.0)); g.addColorStop(1,shade(mc,m*.5));
-      polyS(pts); ctx.fillStyle=g; ctx.fill(); ctx.lineWidth=1; ctx.strokeStyle='rgba(14,10,6,.9)'; ctx.stroke();
-      // 中の面：少し沈ませて逆向きの陰
-      var pin=circleOnFace(center,a,b,mr*.8,20);
-      var g2=ctx.createLinearGradient(L1.x,L1.y,L2.x,L2.y); g2.addColorStop(0,shade(mc,m*.8)); g2.addColorStop(1,shade(mc,m*1.12));
-      polyS(pin); ctx.fillStyle=g2; ctx.fill();
-      // 数字（彫り込み：暗い溝＋光の反対側に細い光）
-      var u=d.r/100, size=(mr/u)*(str.length>1?.95:1.3);
-      ctx.save(); faceXform(center,a,b,u); emboss(size,str,S.ink);
-      ctx.restore();
+      var d=o.d, f=o.f, n=o.n, c=o.c, diff=Math.max(0,dot(n,LIGHT)), Hh=norm(add(LIGHT,norm(sub(CAM.C,c)))), sp=Math.pow(Math.max(0,dot(n,Hh)),50);
+      drawTexFace(o,f.ix.map(function(i){ return o.V[i]; }),f.ix.map(function(i){ return o.P[i]; }),diff,sp);
     }
     function draw(){
       ctx.setTransform(DPR,0,0,DPR,0,0); ctx.clearRect(0,0,W,H);
+      if(!texReady()) return;
       ctx.drawImage(bgC,0,0,W,H);
       // 影（フェルトの上だけ）
       ctx.save(); pathW(ctx,hexPts(TRAY.R,0)); ctx.clip();
@@ -866,7 +586,8 @@
     function pointerAt(e){ return atHeight(e.clientX,e.clientY,TRAY.h+1.6); }
     cv.addEventListener('pointerdown',function(e){
       ac(); if(opts.onGrab) opts.onGrab();
-      if(locked||settling.length) return;
+      // 転がっている間・結果を出す前は触っても振り直せない
+    if(locked||settling.length||state==='roll'||state==='settle'||(state==='done'&&!resultShown)) return;
       clearTimeout(resTimer);
       state='hold'; hold={id:e.pointerId}; trail=[{p:pointerAt(e),t:performance.now()}];
       $('res').className='hd-res'; $('mark').style.opacity=0; $('hint').style.display='none'; resultShown=false;
