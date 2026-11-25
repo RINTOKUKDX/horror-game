@@ -6,7 +6,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>深淵の胎動（仮） v0.3.2 - Cthulhu Horror Novel Engine</title>
+  <title>深淵の胎動（仮） v0.4.0 - Cthulhu Horror Novel Engine</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Shippori+Mincho:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1018,6 +1018,13 @@
     }
 
     #dice-ready[hidden] { display: none; }
+    #dice-3d { position: absolute; inset: 0; z-index: 2; }
+    #dice-3d[hidden] { display: none; }
+    #dice-overlay.three-d .dice-hud-top { display: none; }
+    /* 3Dダイスの結果は右側に大きく出るので、ここは「結果を受け入れる」ボタンだけを右下に置く */
+    #dice-overlay.three-d .dice-hud-bottom { position: absolute; right: max(1.5vw, var(--safe-right)); bottom: 8dvh; width: 25vw; max-width: none; }
+    #dice-overlay.three-d .dice-result-panel { background: none; border: none; box-shadow: none; padding: 0; }
+    #dice-overlay.three-d .dice-total-line { display: none; }
     #dice-skill-options { overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem; }
     #dice-skill-options button[aria-pressed="true"] { border-color: #d28c81; background: #562729; }
     #dice-throw-area {
@@ -1338,6 +1345,8 @@
   <!-- 5. 禍々しい2x10面ダイス オーバーレイ（z-index: 70） -->
   <div id="dice-overlay" aria-live="polite">
     <canvas id="dice-canvas"></canvas>
+    <!-- 3Dダイス部品（assets/dice/dice-engine.js）の置き場所 -->
+    <div id="dice-3d" hidden></div>
     <div class="dice-hud-top">
       <div class="dice-skill-banner" id="dice-skill-label">危機脱出判定：隠密（目標値 65 以下）</div>
     </div>
@@ -1345,7 +1354,7 @@
       <div id="dice-skill-options" aria-label="技能"></div>
       <button type="button" id="dice-throw-area">
         <span aria-hidden="true">⬟  ⬟</span>
-        <strong>スワイプして振る</strong>
+        <strong>タップしてダイスを出す</strong>
         <small id="dice-risk"></small>
       </button>
     </div>
@@ -1490,6 +1499,7 @@
   <div id="toast-msg"></div>
 </div>
 
+<script src="assets/dice/dice-engine.js"></script>
 <script>
 (() => {
   'use strict';
@@ -1497,8 +1507,9 @@
   /* ============================================================================
      SECTION 0: バージョン・変更履歴定義（更新時にここを編集）
      ============================================================================ */
-  const APP_VERSION = 'v0.3.2';
+  const APP_VERSION = 'v0.4.0';
   const CHANGELOG = [
+    'ダイスを部品化：判定で、ダイス見本と同じ3Dダイス（クトゥルフの遺物と青銅の祭具）を指でつかんで投げるように変更',
     '技能を選んでスワイプで投げるダイス、判定前の心音・振動、旧診察室の扉の分岐を追加',
     '第壱話に雨、扉、廊下の気配、引きずる音、怪物の効果音を追加',
     '起動時のバージョン情報・変更点表示（×ボタンで閉じるまで表示維持）を追加',
@@ -3286,13 +3297,18 @@
       const silence = () => { stopPulse(); vibrate(0); };
       const onEscape = event => { if (event.key === 'Escape') cancel(); };
 
-      function finish() {
-        if (finished) return false;
-        finished = true;
-        ready.hidden = true;
+      function stopPulse3 () {
         clearInterval(timer);
         silence();
         document.removeEventListener('visibilitychange', silence);
+      }
+
+      // keepPulse: 3Dダイスを投げるまで心音を続ける
+      function finish(keepPulse) {
+        if (finished) return false;
+        finished = true;
+        ready.hidden = true;
+        if (!keepPulse) stopPulse3();
         document.removeEventListener('keydown', onEscape);
         throwArea.onpointerdown = null;
         throwArea.onpointerup = null;
@@ -3334,6 +3350,11 @@
       update();
       document.addEventListener('visibilitychange', silence);
       document.addEventListener('keydown', onEscape);
+      if (window.HorrorDice) {
+        // 部品の3Dダイスを使う（タップで卓を出し、ダイスを指でつかんで投げる）
+        throwArea.onclick = () => { if (finish(true)) roll3D(selected, onComplete, stopPulse3); };
+        return;
+      }
       throwArea.onpointerdown = event => {
         if (!event.isPrimary || event.button !== 0) return;
         pointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
@@ -3349,6 +3370,43 @@
       };
       // A keyboard or assistive-technology activation has no pointer gesture.
       throwArea.onclick = event => { if (event.detail === 0 && finish()) roll(selected, onComplete); };
+    }
+
+    /* 3Dダイス部品（assets/dice/dice-engine.js）で判定する。見た目・動き・音の調整はその部品側で行う */
+    const host3d = document.getElementById('dice-3d');
+    let dice3d = null;
+    let onThrow3d = null;
+    function seVolume() {
+      const s = SaveSystem.loadSettings();
+      return Math.max(0, Math.min(1, (s.volMaster ?? 80) / 100 * (s.volSe ?? 90) / 100));
+    }
+    function roll3D(check, onComplete, stopPulse) {
+      resultPanel.classList.remove('show');
+      overlay.classList.add('active', 'three-d');
+      host3d.hidden = false;
+      onThrow3d = stopPulse;
+      if (!dice3d) {
+        dice3d = HorrorDice.create({ root: host3d, volume: seVolume(), onThrow: () => { if (onThrow3d) { onThrow3d(); onThrow3d = null; } } });
+      } else {
+        dice3d.setVolume(seVolume());
+        dice3d.start();
+      }
+      // ゲームのルール：1はクリティカル、100はファンブル
+      dice3d.roll({ skill: check.skill, target: check.target, critMax: 1, fumbleMin: 100 }).then(r => {
+        dice3d.lock(true);
+        const labels = { critical: 'クリティカル', success: '成功', fail: '失敗', fumble: 'ファンブル' };
+        resultLabel.textContent = `出目 ${r.total}（目標 ${check.target}） — ${labels[r.outcome]}`;
+        resultLabel.className = `dice-total-line ${r.success ? (r.outcome === 'critical' ? 'critical' : 'success') : (r.outcome === 'fumble' ? 'fumble' : 'fail')}`;
+        resultPanel.classList.add('show');
+        proceedBtn.onclick = (e) => {
+          e.stopPropagation();
+          if (onThrow3d) { onThrow3d(); onThrow3d = null; }
+          dice3d.stop();
+          host3d.hidden = true;
+          overlay.classList.remove('active', 'three-d');
+          onComplete(check[r.outcome] ?? (r.success ? check.success : check.fail));
+        };
+      });
     }
 
     function roll(check, onComplete, gesture) {
