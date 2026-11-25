@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ダイス 見本 v1.17</title>
+<title>ダイス 見本 v1.18</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* ダイスだけを試す見本。ゲーム本体・ゲーム画面見本には影響しない */
@@ -77,11 +77,12 @@
   </div>
   <button type="button" id="toggle">☰ 設定</button>
 </div>
-<div class="ver">ダイス 見本 v1.17</div>
-<div id="start"><b>タップして始める</b><span>全画面・横向きになります（音が出ます）</span><span>ダイスを指でつかんで、はじくように投げる</span><span style="font-size:2.4dvh;color:#6c6455">ダイス 見本 v1.17</span></div>
+<div class="ver">ダイス 見本 v1.18</div>
+<div id="start"><b>タップして始める</b><span>全画面・横向きになります（音が出ます）</span><span>ダイスを指でつかんで、はじくように投げる</span><span style="font-size:2.4dvh;color:#6c6455">ダイス 見本 v1.18</span></div>
 
 <script src="../assets/manifest.js"></script>
-<script src="../assets/dice/dice-engine.js"></script>
+<!-- 部品を直したら ?v= を上げる（スマホに古い部品が残るのを防ぐ） -->
+<script src="../assets/dice/dice-engine.js?v=1.4.1"></script>
 <script>
 (function(){
   'use strict';
@@ -106,7 +107,7 @@
     ['camB','rYaw','全体を回す（度）',-180,180,1],['camB','rFocus','ダイスに寄せる',0,1,.01],['camB','rTime','動く時間（秒）',0,3,.05],
     ['sndSliders','vol','音量',0,1,.01],['sndSliders','wet','響きの量',0,1,.01],['sndSliders','decay','響きの長さ（秒）',.2,6,.1],['sndSliders','rollVol','転がる音（ゴロゴロ）',0,1,.01],['sndSliders','lowVol','低い音（ドン・ブォン）',0,1,.01],['cutSliders','cutinAlpha','カットインの濃さ（不透明度）',0,1,.01],['sndSliders','cutinVol','カットインの音',0,1,.01],['sndSliders','resVol','結果の音',0,1,.01]];
   var inputs={};
-  function fmt(v,st){ return st>=1?String(Math.round(v)):st>=.1?v.toFixed(1):v.toFixed(2); }
+  function fmt(v,st){ v=+v||0; return st>=1?String(Math.round(v)):st>=.1?v.toFixed(1):v.toFixed(2); }
   SL.forEach(function(s){
     var lb=document.createElement('label'); lb.innerHTML='<span class="n">'+s[2]+'</span><input type="range" min="'+s[3]+'" max="'+s[4]+'" step="'+s[5]+'"><span class="v"></span>';
     var inp=lb.querySelector('input'), out=lb.querySelector('.v'); inp.value=CFG[s[1]]; out.textContent=fmt(CFG[s[1]],s[5]);
@@ -127,7 +128,7 @@
   selBtns('rooms',ROOMS,'room',function(it){ CFG.decay=it[2]; CFG.wet=it[3]; ['decay','wet'].forEach(function(k){ inputs[k].inp.value=CFG[k]; inputs[k].out.textContent=fmt(CFG[k],inputs[k].st); }); });
   refreshSel();
   function onCfg(k){ E.changed(k); if(k==='room') ['decay','wet'].forEach(function(n){ E.changed(n); }); showCfg(); }
-  function showCfg(){ var o={}; Object.keys(DEF).forEach(function(k){ o[k]=typeof CFG[k]==='number'?Math.round(CFG[k]*100)/100:CFG[k]; }); $('cfgtxt').value='ダイス設定 v1.17 '+JSON.stringify(o); }
+  function showCfg(){ var o={}; Object.keys(DEF).forEach(function(k){ o[k]=typeof CFG[k]==='number'?Math.round(CFG[k]*100)/100:CFG[k]; }); $('cfgtxt').value='ダイス設定 v1.18 '+JSON.stringify(o); }
   showCfg();
   $('viewA').addEventListener('click',function(){ E.view('start'); });
   $('viewB').addEventListener('click',function(){ E.view('result'); });
