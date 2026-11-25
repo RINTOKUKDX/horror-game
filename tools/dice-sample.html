@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ダイス 見本 v1.3</title>
+<title>ダイス 見本 v1.4</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* ダイスだけを試す見本。ゲーム本体・ゲーム画面見本には影響しない */
@@ -80,7 +80,7 @@
 <div id="hint">ダイスをつかんで<br>投げる ➚</div>
 <div id="tool">
   <div id="panel">
-    <div class="tabs"><button type="button" data-t="f" class="on">式</button><button type="button" data-t="l">見た目</button><button type="button" data-t="m">動き</button><button type="button" data-t="t">トレイ</button><button type="button" data-t="s">音</button><button type="button" data-t="c">保存</button></div>
+    <div class="tabs"><button type="button" data-t="f" class="on">式</button><button type="button" data-t="l">見た目</button><button type="button" data-t="m">動き</button><button type="button" data-t="v">カメラ</button><button type="button" data-t="t">トレイ</button><button type="button" data-t="s">音</button><button type="button" data-t="c">保存</button></div>
     <div class="tab on" id="tab-f">
       <div class="g" id="forms"></div>
       <label><span class="n" style="flex-basis:5em">目標値</span><input type="range" id="target" min="1" max="99" value="60"><span class="v" id="tv">60</span></label>
@@ -90,6 +90,9 @@
     </div>
     <div class="tab" id="tab-l"><h4>ダイス</h4><div class="g3" id="dStyles"></div><h4>トレイ</h4><div class="g3" id="tStyles" style="grid-template-columns:repeat(2,1fr)"></div><p>どれも「古くから眠っていた発掘品」のつもりです。宝石だけは光を失っていません。</p></div>
     <div class="tab" id="tab-m"></div>
+    <div class="tab" id="tab-v"><h4>最初（投げるとき）</h4><div id="camA"></div><h4>結果（数字を見せるとき）</h4><div id="camB"></div>
+      <div class="row"><button type="button" id="viewA">最初の位置を見る</button><button type="button" id="viewB">結果の位置を見る</button></div>
+      <p>ダイスが止まると、結果の位置へ自動でなめらかに動いてから数字が光ります。次にダイスをつかむと最初の位置に戻ります。</p></div>
     <div class="tab" id="tab-t"></div>
     <div class="tab" id="tab-s">
       <h4>音の種類</h4><div class="g3" id="tones"></div>
@@ -105,8 +108,8 @@
   </div>
   <button type="button" id="toggle">☰ 設定</button>
 </div>
-<div class="ver">ダイス 見本 v1.3</div>
-<div id="start"><b>タップして始める</b><span>全画面・横向きになります（音が出ます）</span><span>ダイスを指でつかんで、はじくように投げる</span><span style="font-size:2.4dvh;color:#6c6455">ダイス 見本 v1.3</span></div>
+<div class="ver">ダイス 見本 v1.4</div>
+<div id="start"><b>タップして始める</b><span>全画面・横向きになります（音が出ます）</span><span>ダイスを指でつかんで、はじくように投げる</span><span style="font-size:2.4dvh;color:#6c6455">ダイス 見本 v1.4</span></div>
 
 <script src="../assets/manifest.js"></script>
 <script>
@@ -118,7 +121,7 @@
   // ===== 調整できる値（右下の設定で変えられる。端末に保存） =====
   var DEF={friction:.15,rollDamp:.1,bounce:.5,wallBounce:.7,power:1.2,speed:.8,
     trayR:7.2,trayRot:0,pitch:58,dist:35,offY:.06,
-    vol:.8,tone:'metal',room:'hall',wet:.45,decay:2.2,rollVol:.7,lowVol:.5,resVol:.8,diceStyle:'silver',trayStyle:'bronze'};
+    vol:.8,tone:'metal',room:'hall',wet:.45,decay:2.2,rollVol:.7,lowVol:.5,resVol:.8,diceStyle:'silver',trayStyle:'bronze',rPitch:84,rDist:22,rOffY:0,rFocus:.85,rTime:1.1};
   var CFG={}; Object.keys(DEF).forEach(function(k){ CFG[k]=DEF[k]; });
   try{ var sv=JSON.parse(localStorage.getItem('diceCfg1')||'{}'); Object.keys(DEF).forEach(function(k){ if(sv[k]!==undefined && typeof sv[k]===typeof DEF[k]) CFG[k]=sv[k]; }); }catch(_){ }
   function saveCfg(){ try{ localStorage.setItem('diceCfg1',JSON.stringify(CFG)); }catch(_){ } }
@@ -188,11 +191,22 @@
   var CAM={C:v3(0,27,5),T:v3(0,0,0),fov:30}, R3, U3, F3, FOC;
   var PLANES=[], TRAY={R:7,rim:.85,h:1.5,ap:6};
   var bgC=document.createElement('canvas'), bgx=bgC.getContext('2d'), fgC=document.createElement('canvas'), fgx=fgC.getContext('2d');
+  // カメラ：最初の位置（投げるとき）と結果の位置（数字を見せるとき）の間をなめらかに動く
+  var VIEW=null, camAnim=null;
+  function startView(){ return {pitch:CFG.pitch,dist:CFG.dist,offY:CFG.offY,tx:0,tz:0}; }
+  function resultView(){ var cx=0, cz=0, n=Math.max(1,dice.length); dice.forEach(function(d){ cx+=d.p.x; cz+=d.p.z; });
+    return {pitch:CFG.rPitch,dist:CFG.rDist,offY:CFG.rOffY,tx:cx/n*CFG.rFocus,tz:cz/n*CFG.rFocus}; }
+  function isStart(){ var a=VIEW, b=startView(); return Math.abs(a.pitch-b.pitch)+Math.abs(a.dist-b.dist)+Math.abs(a.offY-b.offY)+Math.abs(a.tx)+Math.abs(a.tz)<1e-3; }
+  function moveCam(to,dur,done){ if(dur<=.02){ VIEW=to; camAnim=null; setupCamera(); buildLayers(); if(done) done(); return; } camAnim={from:VIEW,to:to,t:0,dur:dur,done:done}; }
+  function stepCam(dt){ if(!camAnim) return; var a=camAnim; a.t=Math.min(1,a.t+dt/a.dur); var e=a.t*a.t*(3-2*a.t), v={};
+    ['pitch','dist','offY','tx','tz'].forEach(function(k){ v[k]=a.from[k]+(a.to[k]-a.from[k])*e; }); VIEW=v; setupCamera();
+    if(a.t>=1){ camAnim=null; buildLayers(); if(a.done) a.done(); } else buildLayers(.5); }
   function setupCamera(){
-    var th=CFG.pitch*PI/180, D=CFG.dist;
-    CAM.C=v3(0,D*Math.sin(th),D*Math.cos(th)); CAM.T=v3(0,0,0);
+    if(!VIEW) VIEW=startView();
+    var th=VIEW.pitch*PI/180, D=VIEW.dist, T=v3(VIEW.tx,0,VIEW.tz);
+    CAM.C=add(T,v3(0,D*Math.sin(th),D*Math.cos(th))); CAM.T=T;
     F3=norm(sub(CAM.T,CAM.C)); R3=norm(cross(F3,v3(0,1,0))); U3=cross(R3,F3);
-    FOC=(H/2)/Math.tan(CAM.fov*PI/360); CY=H*(.5+CFG.offY);
+    FOC=(H/2)/Math.tan(CAM.fov*PI/360); CY=H*(.5+VIEW.offY);
   }
   function proj(P){ var d=sub(P,CAM.C), zc=dot(d,F3); return {x:W/2+dot(d,R3)/zc*FOC, y:CY-dot(d,U3)/zc*FOC, z:zc}; }
   function screenRay(sx,sy){ return add(F3,add(mul(R3,(sx-W/2)/FOC),mul(U3,-(sy-CY)/FOC))); }
@@ -218,7 +232,7 @@
   function pathW(c,pts,close){ c.beginPath(); for(var k=0;k<pts.length;k++){ var s=proj(pts[k]); if(k) c.lineTo(s.x,s.y); else c.moveTo(s.x,s.y); } if(close!==false) c.closePath(); }
   function ringPts(cx,cz,r,y,n){ var a=[]; n=n||72; for(var i=0;i<n;i++){ var t=i/n*2*PI; a.push(v3(cx+r*Math.cos(t),y,cz+r*Math.sin(t))); } return a; }
   function hexPts(rad,y){ var a=[]; for(var i=0;i<6;i++) a.push(hexPt(i,rad,y)); return a; }
-  function pxPerUnit(){ return FOC/CFG.dist; }
+  function pxPerUnit(){ return FOC/VIEW.dist; }
   var GLYPHS=(function(){ var r=rng(7), out=[]; for(var g=0;g<24;g++){ var s=[], n=2+Math.floor(r()*3);
     for(var k=0;k<n;k++){ var m=2+Math.floor(r()*2), st=[]; for(var j=0;j<m;j++) st.push([r()*2-1,r()*2-1]); s.push(st); }
     if(r()<.45) s.push('o'); out.push(s); } return out; })();
@@ -285,9 +299,9 @@
       var g=c.createRadialGradient(p.x-rr*.3,p.y-rr*.3,0,p.x,p.y,rr); g.addColorStop(0,'#d8d4c4'); g.addColorStop(1,'#5a564a'); c.fillStyle=g; c.beginPath(); c.arc(p.x,p.y,rr,0,2*PI); c.fill();
       c.fillStyle='#14120e'; c.beginPath(); c.arc(p.x,p.y,rr*.35,0,2*PI); c.fill(); } }
   function wallLocal(wl,rad,u,v){ var A=hexPt(wl.i,rad,0), B=hexPt(wl.i+1,rad,0); return add(lerp(A,B,u),v3(0,v*TRAY.h,0)); }
-  function buildLayers(){
-    [bgC,fgC].forEach(function(cc){ cc.width=W*DPR; cc.height=H*DPR; });
-    var b=bgx, f=fgx, T=TT(); [b,f].forEach(function(c){ c.setTransform(DPR,0,0,DPR,0,0); c.clearRect(0,0,W,H); c.lineJoin='round'; c.lineCap='round'; });
+  function buildLayers(q){
+    var sc=DPR*(q||1); [bgC,fgC].forEach(function(cc){ cc.width=Math.round(W*sc); cc.height=Math.round(H*sc); });
+    var b=bgx, f=fgx, T=TT(); [b,f].forEach(function(c){ c.setTransform(sc,0,0,sc,0,0); c.clearRect(0,0,W,H); c.lineJoin='round'; c.lineCap='round'; });
     var R=TRAY.R, rim=TRAY.rim, Ro=R+rim, h=TRAY.h, ppu=pxPerUnit();
     b.save(); b.shadowColor='rgba(0,0,0,.95)'; b.shadowBlur=ppu*1.6; b.shadowOffsetY=ppu*.5; pathW(b,hexPts(Ro+.3,0)); b.fillStyle='rgba(0,0,0,.9)'; b.fill(); b.restore();
     // 床
@@ -296,7 +310,7 @@
     var g=b.createRadialGradient(c0.x,c0.y,0,c0.x,c0.y,rr); g.addColorStop(0,T.felt[0]); g.addColorStop(.55,T.felt[1]); g.addColorStop(1,T.felt[2]);
     b.fillStyle=g; b.fillRect(0,0,W,H);
     var r=rng(11);
-    for(var i=0;i<3200;i++){ var x=(r()*2-1)*R, z=(r()*2-1)*R; var s=proj(v3(x,0,z)); b.fillStyle=r()<.5?T.speck:'rgba(0,0,0,.18)'; b.fillRect(s.x,s.y,1.2,1.2); }
+    for(var i=0;i<(q?800:3200);i++){ var x=(r()*2-1)*R, z=(r()*2-1)*R; var s=proj(v3(x,0,z)); b.fillStyle=r()<.5?T.speck:'rgba(0,0,0,.18)'; b.fillRect(s.x,s.y,1.2,1.2); }
     var G=GT(), gg=b.createRadialGradient(c0.x,c0.y,0,c0.x,c0.y,rr*.6); gg.addColorStop(0,G.glow.replace(/[\d.]+\)$/,'.12)')); gg.addColorStop(1,'rgba(0,0,0,0)'); b.fillStyle=gg; b.fillRect(0,0,W,H);
     blotches(b,hexPts(R*.9,0),31,12,'rgba(5,0,0,.5)',.9); blotches(b,hexPts(R*.7,0),37,5,'rgba(150,110,80,.08)',1.4);
     if(T.style==='bone'){ cracks(b,function(u,v){ return v3((u*2-1)*R*.8,0,(v*2-1)*R*.7); },41,6); }
@@ -754,6 +768,7 @@
       else virtualRolls.push(s);
     });
     applyDiceStyle(); placeHome();
+    camAnim=null; if(VIEW && !isStart()){ VIEW=startView(); setupCamera(); buildLayers(); }
     state='idle'; resultShown=false; $('res').className=''; $('mark').style.opacity=0; $('hint').style.display='block';
     var b=$('band'); b.classList.remove('in'); void b.offsetWidth; b.classList.add('in');
     if(isCheck()){ $('bandT').textContent='目星（技能の判定）'; $('bandC').textContent='出目が '+target+' 以下で成功（1〜100）'; $('scale').style.display='block'; $('fill').style.width=target+'%'; }
@@ -793,6 +808,7 @@
     state='hold'; hold={id:e.pointerId}; trail=[{p:pointerAt(e),t:performance.now()}];
     $('res').className=''; $('mark').style.opacity=0; $('hint').style.display='none'; resultShown=false;
     dice.forEach(function(d){ sleep(d); d.glow=null; });
+    if(camAnim||!isStart()) moveCam(startView(),.45);
     try{ cv.setPointerCapture(e.pointerId); }catch(_){ }
   });
   cv.addEventListener('pointermove',function(e){ if(state!=='hold') return; trail.push({p:pointerAt(e),t:performance.now()}); if(trail.length>14) trail.shift(); });
@@ -847,7 +863,8 @@
       settling.forEach(function(s){ s.t=Math.min(1,s.t+dt/.28); var e=s.t*s.t*(3-2*s.t); s.d.q=qslerp(s.from,s.to,e); if(s.onFloor) s.d.p.y+=-lowest(s.d); if(s.t>=1 && !s.done){ s.done=true; hit('floor',.12); } });
       settling=settling.filter(function(s){ return s.t<1; });
     }
-    if(state==='settle' && !settling.length && !resultShown){ state='done'; resTimer=setTimeout(showResult,220); }
+    if(state==='settle' && !settling.length && !resultShown){ state='done'; moveCam(resultView(),CFG.rTime,function(){ resTimer=setTimeout(showResult,120); }); }
+    stepCam(dt);
     draw(); requestAnimationFrame(frame);
   }
 
@@ -858,8 +875,10 @@
   var SL=[
     ['tab-m','friction','床のすべりにくさ',.05,.9,.01],['tab-m','rollDamp','転がりの止まりやすさ',0,1.5,.01],['tab-m','bounce','床の跳ね返り',0,.8,.01],
     ['tab-m','wallBounce','壁の跳ね返り',0,.9,.01],['tab-m','power','投げる強さ',.4,2,.01],['tab-m','speed','動きの速さ（小さいほどスロー）',.4,1.2,.01],
-    ['tab-t','trayR','トレイの大きさ',4.5,10,.1],['tab-t','trayRot','トレイの回転（度）',0,59,1],['tab-t','pitch','見下ろす角度（度）',35,88,1],
-    ['tab-t','dist','カメラの距離（全体の大きさ）',18,50,.5],['tab-t','offY','上下の位置',-.2,.3,.01],
+    ['tab-t','trayR','トレイの大きさ',4.5,10,.1],['tab-t','trayRot','トレイの回転（度）',0,59,1],
+    ['camA','pitch','見下ろす角度（度）',35,88,1],['camA','dist','距離（大きいほど小さく見える）',12,50,.5],['camA','offY','上下の位置',-.2,.3,.01],
+    ['camB','rPitch','見下ろす角度（度）',35,88,1],['camB','rDist','距離（大きいほど小さく見える）',8,50,.5],['camB','rOffY','上下の位置',-.3,.3,.01],
+    ['camB','rFocus','ダイスに寄せる',0,1,.01],['camB','rTime','動く時間（秒）',0,3,.05],
     ['sndSliders','vol','音量',0,1,.01],['sndSliders','wet','響きの量',0,1,.01],['sndSliders','decay','響きの長さ（秒）',.2,6,.1],['sndSliders','rollVol','転がる音（ゴロゴロ）',0,1,.01],['sndSliders','lowVol','低い音（ドン・ブォン）',0,1,.01],['sndSliders','resVol','結果の音',0,1,.01]];
   var inputs={};
   function fmt(v,st){ return st>=1?String(Math.round(v)):st>=.1?v.toFixed(1):v.toFixed(2); }
@@ -886,7 +905,9 @@
   var trayTimer=0;
   function onCfg(k){
     saveCfg(); showCfg();
-    if(['trayR','trayRot','pitch','dist','offY'].indexOf(k)>=0){
+    if(['pitch','dist','offY'].indexOf(k)>=0){ camAnim=null; VIEW=startView(); }
+    if(['rPitch','rDist','rOffY','rFocus'].indexOf(k)>=0){ camAnim=null; VIEW=resultView(); }
+    if(['trayR','trayRot','pitch','dist','offY','rPitch','rDist','rOffY','rFocus'].indexOf(k)>=0){
       setupCamera(); buildTray(); clearTimeout(trayTimer); trayTimer=setTimeout(buildLayers,30);
       if(state==='idle'||state==='done'){ dice.forEach(function(d){ d.p=clampIn(d.p,d.r*.9); }); if(k==='trayR'||k==='trayRot') placeHome(); }
     }
@@ -895,13 +916,15 @@
     if(['vol','wet','room','lowVol','resVol'].indexOf(k)>=0) applyAudio();
     if(k==='decay'||k==='room'){ clearTimeout(irTimer); irTimer=setTimeout(function(){ buildIR(); applyAudio(); },250); }
   }
-  function showCfg(){ var o={}; Object.keys(DEF).forEach(function(k){ o[k]=typeof CFG[k]==='number'?Math.round(CFG[k]*100)/100:CFG[k]; }); $('cfgtxt').value='ダイス設定 v1.3 '+JSON.stringify(o); }
+  function showCfg(){ var o={}; Object.keys(DEF).forEach(function(k){ o[k]=typeof CFG[k]==='number'?Math.round(CFG[k]*100)/100:CFG[k]; }); $('cfgtxt').value='ダイス設定 v1.4 '+JSON.stringify(o); }
   showCfg();
+  $('viewA').addEventListener('click',function(){ moveCam(startView(),CFG.rTime); });
+  $('viewB').addEventListener('click',function(){ moveCam(resultView(),CFG.rTime); });
   $('copy').addEventListener('click',function(){ var tx=$('cfgtxt'), s=tx.value, btn=this;
     function done(){ btn.textContent='コピーしました'; setTimeout(function(){ btn.textContent='設定をコピー'; },1500); }
     try{ navigator.clipboard.writeText(s).then(done,function(){ tx.select(); try{ document.execCommand('copy'); done(); }catch(_){ } }); }catch(_){ tx.select(); try{ document.execCommand('copy'); done(); }catch(__){ } } });
   $('reset').addEventListener('click',function(){ Object.keys(DEF).forEach(function(k){ CFG[k]=DEF[k]; if(inputs[k]){ inputs[k].inp.value=CFG[k]; inputs[k].out.textContent=fmt(CFG[k],inputs[k].st); } });
-    refreshSel(); saveCfg(); showCfg(); setupCamera(); buildTray(); buildLayers(); applyDiceStyle(); placeHome(); if(AC){ buildIR(); applyAudio(); } });
+    refreshSel(); saveCfg(); showCfg(); camAnim=null; VIEW=startView(); setupCamera(); buildTray(); buildLayers(); applyDiceStyle(); placeHome(); if(AC){ buildIR(); applyAudio(); } });
   $('testSnd').addEventListener('click',function(){ ac(); hit('wall',.8); setTimeout(function(){ hit('dice',.9); },180); setTimeout(function(){ hit('floor',.7); },360); setTimeout(function(){ hit('dice',.5); },470); });
   document.querySelectorAll('.tabs button').forEach(function(b){ b.addEventListener('click',function(){
     document.querySelectorAll('.tabs button').forEach(function(x){ x.classList.toggle('on',x===b); });
