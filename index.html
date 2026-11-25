@@ -6,7 +6,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>深淵の胎動（仮） v0.4.2 - Cthulhu Horror Novel Engine</title>
+  <title>深淵の胎動（仮） v0.4.3 - Cthulhu Horror Novel Engine</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Shippori+Mincho:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1019,7 +1019,7 @@
     #dice-skill-options button { font-size: clamp(0.75rem, 2.8dvh, 0.95rem); padding: 0.8dvh 0.8rem; }
     #dice-skill-options button[aria-pressed="true"] { border-color: #d28c81; background: #562729; }
 
-    /* 右下：「結果を受け入れる」（結果は右側に大きく出る） */
+    /* 部品が読み込めなかったときだけ使う、数字だけの結果表示 */
     .dice-result-panel {
       position: absolute;
       z-index: 5;
@@ -1282,7 +1282,6 @@
     <div id="dice-skill-options" aria-label="技能" hidden></div>
     <div class="dice-result-panel" id="dice-result-panel">
       <div class="dice-total-line" id="dice-result-label"></div>
-      <button type="button" class="primary-action-btn" id="btn-dice-proceed">結果を受け入れる</button>
     </div>
   </div>
 
@@ -1427,8 +1426,9 @@
   /* ============================================================================
      SECTION 0: バージョン・変更履歴定義（更新時にここを編集）
      ============================================================================ */
-  const APP_VERSION = 'v0.4.2';
+  const APP_VERSION = 'v0.4.3';
   const CHANGELOG = [
+    'ダイス：「結果を受け入れる」ボタンを廃止。結果が出て1秒後から、画面のどこかをタップでフェードアウトして次へ',
     'ダイス：止まる前に触っても振り直せないように修正。読み込み中に別のトレーが一瞬出る問題を修正（使わないダイス・トレーを部品から削除）',
     '古い2Dダイスと技能選択の画面を削除。判定ではすぐ3Dダイスが出る（技能が2つ以上のときは左下で切り替え）',
     'ダイスを部品化：判定で、ダイス見本と同じ3Dダイス（クトゥルフの遺物と青銅の祭具）を指でつかんで投げるように変更',
@@ -3075,14 +3075,14 @@
     const options = document.getElementById('dice-skill-options');
     const resultPanel = document.getElementById('dice-result-panel');
     const resultLabel = document.getElementById('dice-result-label');
-    const proceedBtn = document.getElementById('btn-dice-proceed');
     const LABELS = { critical: 'クリティカル', success: '成功', fail: '失敗', fumble: 'ファンブル' };
     // ゲームのルール：1はクリティカル、100はファンブル
     const RULE = { critMax: 1, fumbleMin: 100 };
 
     let dice3d = null;
     let onThrow = null;
-    const createDice = () => HorrorDice.create({ root: host3d, onThrow: () => { if (onThrow) { onThrow(); onThrow = null; } } });
+    // tapToClose：結果の1秒後からタップで背景ごとフェードアウトして閉じる（部品側の機能）
+    const createDice = () => HorrorDice.create({ root: host3d, tapToClose: true, fadeEl: overlay, onThrow: () => { if (onThrow) { onThrow(); onThrow = null; } } });
     // 画像を先に読み込んでおく（判定になったらすぐ出せるように）
     if (window.HorrorDice) { dice3d = createDice(); dice3d.stop(); }
 
@@ -3135,18 +3135,14 @@
       }
       function cancel() { close(); onCancel(); }
 
-      function finishWith(total) {
+      // 結果で次の場面へ進む
+      function proceed(total) {
         settled = true;
-        const outcome = outcomeOf(total, selected.target);
+        const check = selected;
+        const outcome = outcomeOf(total, check.target);
         const success = outcome === 'critical' || outcome === 'success';
-        resultLabel.textContent = dice3d ? '' : `出目 ${total}（目標 ${selected.target}） — ${LABELS[outcome]}`;
-        resultPanel.classList.add('show');
-        proceedBtn.onclick = (e) => {
-          e.stopPropagation();
-          const check = selected;
-          close();
-          onComplete(check[outcome] ?? (success ? check.success : check.fail));
-        };
+        close();
+        onComplete(check[outcome] ?? (success ? check.success : check.fail));
       }
 
       function setSkill(check) {
@@ -3155,10 +3151,8 @@
           button.setAttribute('aria-pressed', String(checks[Number(button.dataset.skill)] === selected));
         }
         if (dice3d) {
-          dice3d.roll({ skill: check.skill, target: check.target, ...RULE }).then(r => {
-            dice3d.lock(true);
-            finishWith(r.total);
-          });
+          // 閉じ終わったら結果が返ってくる
+          dice3d.roll({ skill: check.skill, target: check.target, ...RULE }).then(r => proceed(r.total));
         }
       }
 
@@ -3199,7 +3193,13 @@
         rollBtn.type = 'button';
         rollBtn.className = 'hud-btn';
         rollBtn.textContent = 'ダイスを振る';
-        rollBtn.onclick = () => { onThrow(); finishWith(Math.floor(Math.random() * 100) + 1); };
+        rollBtn.onclick = () => {
+          onThrow();
+          const total = Math.floor(Math.random() * 100) + 1;
+          resultLabel.textContent = `出目 ${total}（目標 ${selected.target}） — ${LABELS[outcomeOf(total, selected.target)]}　タップで閉じる`;
+          resultPanel.classList.add('show');
+          setTimeout(() => { overlay.onclick = () => { overlay.onclick = null; proceed(total); }; }, 1000);
+        };
         options.prepend(rollBtn);
         setSkill(selected);
       }

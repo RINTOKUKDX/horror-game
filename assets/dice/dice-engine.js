@@ -1,5 +1,5 @@
 /* ============================================================================
-   ダイス部品（HorrorDice） v1.1.0
+   ダイス部品（HorrorDice） v1.2.0
    ----------------------------------------------------------------------------
    ゲーム本編・ダイス見本・戦闘盤など、どの画面からも同じダイスを呼ぶための部品。
    見た目・動き・音を直すときは、このファイルだけを直せば全部の画面に反映される。
@@ -20,12 +20,15 @@
      onThrow     ダイスを投げた瞬間に呼ばれる
      onGrab      ダイスに触れた瞬間に呼ばれる
      onSetup     式を変えたときに呼ばれる（見本の画面用）
+     tapToClose  true にすると、結果が出て1秒後からどこかをタップでフェードアウトして閉じる（ゲーム用）。
+                 このとき roll() は閉じ終わった時点で結果を返す。false（見本）は結果のあともう一度投げられる
+     fadeEl      フェードアウトさせる要素（省略するとダイスの置き場所。ゲームは背景ごと消すため外枠を渡す）
 
    決まった設定（初期値）は下の DEFAULTS を直す。
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.1.0';
+  var VERSION='1.2.0';
   // この部品と同じフォルダの画像を使う（どの画面から読み込んでも場所がずれない）
   var BASE=(function(){ var s=document.currentScript&&document.currentScript.src; return s?s.replace(/[^\/]*$/,''):'assets/dice/'; })();
 
@@ -57,9 +60,27 @@
     if(SK){ try{ var sv=JSON.parse(localStorage.getItem(SK)||'{}'); Object.keys(DEF).forEach(function(k){ if(sv[k]!==undefined && typeof sv[k]===typeof DEF[k]) CFG[k]=sv[k]; }); }catch(_){ } }
     function saveCfg(){ if(!SK) return; try{ localStorage.setItem(SK,JSON.stringify(CFG)); }catch(_){ } }
     var locked=false, running=false, raf=0, pending=null;
+    // 結果のあと「タップで閉じる」（tapToClose のとき）
+    var CLOSE_DELAY=1000, FADE_MS=500, closeAt=0, closing=false, lastResult=null, closeTimer=0;
+    var HINT_THROW='ダイスをつかんで<br>投げる ➚';
     function critText(tate){ if(tate) return critMax<=1?'一':kanji(critMax)+'以下'; return critMax<=1?'1':'1〜'+critMax; }
     function fumText(tate){ if(tate) return fumbleMin>=100?'百':kanji(fumbleMin)+'以上'; return fumbleMin>=100?'100':fumbleMin+'〜100'; }
-    function report(r){ if(opts.onResult) opts.onResult(r); if(pending){ var p=pending; pending=null; p(r); } }
+    function report(r){
+      if(opts.onResult) opts.onResult(r);
+      if(opts.tapToClose){
+        // 1秒後から閉じられる。そのとき「タップで閉じる」を出す
+        lastResult=r; closeAt=performance.now()+CLOSE_DELAY; clearTimeout(closeTimer);
+        closeTimer=setTimeout(function(){ var h=$('hint'); h.textContent='タップで閉じる'; h.style.display='block'; },CLOSE_DELAY);
+        return;
+      }
+      if(pending){ var p=pending; pending=null; p(r); }
+    }
+    function closeNow(){
+      closing=true; var el=opts.fadeEl||host, r=lastResult;
+      el.style.transition='opacity '+FADE_MS+'ms ease'; el.style.opacity='0';
+      setTimeout(function(){ closing=false; lastResult=null; if(pending){ var p=pending; pending=null; p(r); }
+        setTimeout(function(){ el.style.transition=''; el.style.opacity=''; },50); },FADE_MS);
+    }
 
     // ===== 小さな3D計算 =====
     function v3(x,y,z){ return {x:x,y:y,z:z}; }
@@ -534,7 +555,8 @@
       });
       applyDiceStyle(); placeHome();
       camAnim=null; if(VIEW && !isStart()){ VIEW=startView(); setupCamera(); buildLayers(); }
-      state='idle'; resultShown=false; $('res').className='hd-res'; $('mark').style.opacity=0; $('hint').style.display='block';
+      state='idle'; resultShown=false; $('res').className='hd-res'; $('mark').style.opacity=0; $('hint').innerHTML=HINT_THROW; $('hint').style.display='block';
+      lastResult=null; closeAt=0; clearTimeout(closeTimer);
       var b=$('band'); b.classList.remove('in'); void b.offsetWidth; b.classList.add('in');
       bandText();
       if(opts.onSetup) opts.onSetup(formula);
@@ -586,6 +608,7 @@
     function pointerAt(e){ return atHeight(e.clientX,e.clientY,TRAY.h+1.6); }
     cv.addEventListener('pointerdown',function(e){
       ac(); if(opts.onGrab) opts.onGrab();
+      if(opts.tapToClose && lastResult){ if(!closing && performance.now()>=closeAt) closeNow(); return; }
       // 転がっている間・結果を出す前は触っても振り直せない
     if(locked||settling.length||state==='roll'||state==='settle'||(state==='done'&&!resultShown)) return;
       clearTimeout(resTimer);
