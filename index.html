@@ -6,7 +6,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>深淵の胎動（仮） v0.4.1 - Cthulhu Horror Novel Engine</title>
+  <title>深淵の胎動（仮） v0.4.2 - Cthulhu Horror Novel Engine</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Shippori+Mincho:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1427,8 +1427,9 @@
   /* ============================================================================
      SECTION 0: バージョン・変更履歴定義（更新時にここを編集）
      ============================================================================ */
-  const APP_VERSION = 'v0.4.1';
+  const APP_VERSION = 'v0.4.2';
   const CHANGELOG = [
+    'ダイス：止まる前に触っても振り直せないように修正。読み込み中に別のトレーが一瞬出る問題を修正（使わないダイス・トレーを部品から削除）',
     '古い2Dダイスと技能選択の画面を削除。判定ではすぐ3Dダイスが出る（技能が2つ以上のときは左下で切り替え）',
     'ダイスを部品化：判定で、ダイス見本と同じ3Dダイス（クトゥルフの遺物と青銅の祭具）を指でつかんで投げるように変更',
     '技能を選んでスワイプで投げるダイス、判定前の心音・振動、旧診察室の扉の分岐を追加',
@@ -3081,6 +3082,9 @@
 
     let dice3d = null;
     let onThrow = null;
+    const createDice = () => HorrorDice.create({ root: host3d, onThrow: () => { if (onThrow) { onThrow(); onThrow = null; } } });
+    // 画像を先に読み込んでおく（判定になったらすぐ出せるように）
+    if (window.HorrorDice) { dice3d = createDice(); dice3d.stop(); }
 
     function seVolume() {
       const s = SaveSystem.loadSettings();
@@ -3184,12 +3188,9 @@
       onThrow = () => { options.hidden = true; stopPulse(); };
 
       if (window.HorrorDice) {
-        if (!dice3d) {
-          dice3d = HorrorDice.create({ root: host3d, volume: seVolume(), onThrow: () => { if (onThrow) { onThrow(); onThrow = null; } } });
-        } else {
-          dice3d.setVolume(seVolume());
-          dice3d.start();
-        }
+        if (!dice3d) dice3d = createDice();
+        dice3d.setVolume(seVolume());
+        dice3d.start();
         setSkill(selected);
       } else {
         // 部品が読み込めなかったとき（通信エラーなど）は、数字だけで判定して進める
