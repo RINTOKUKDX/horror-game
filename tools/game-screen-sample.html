@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ゲーム画面 見本 v1.7</title>
+<title>ゲーム画面 見本 v1.8</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* ゲーム画面の動く見本。ゲーム本体（index.html）には影響しない */
@@ -140,16 +140,30 @@
   #eat{position:absolute;inset:0;pointer-events:none;z-index:31;opacity:0;transition:opacity 1.5s}
   #eat.on{opacity:1}
 
-  /* ダイスのカットイン */
-  #dice{position:absolute;inset:0;z-index:40;display:none;align-items:center;justify-content:center;flex-direction:column;
-    background:rgba(0,0,0,.72)}
-  #dice.on{display:flex}
-  #dice .band{width:100%;padding:3dvh 0;background:linear-gradient(90deg,transparent,rgba(80,10,10,.85),transparent);
-    text-align:center;animation:band .35s ease-out}
-  @keyframes band{from{transform:scaleX(0)}to{transform:none}}
-  #dice .sk{font-size:4dvh;color:var(--gold)}
-  #dice .num{font-size:16dvh;font-variant-numeric:tabular-nums;line-height:1.1}
-  #dice .res{font-size:6dvh;height:8dvh}
+  /* ダイスのカットイン（シックでレトロ） */
+  #dice{position:absolute;inset:0;z-index:40;display:none;background:rgba(0,0,0,.6);touch-action:none;user-select:none}
+  #dice.on{display:block}
+  #dice.fail{animation:dfail .5s ease-out}
+  @keyframes dfail{0%{background:rgba(90,0,0,.8)}100%{background:rgba(0,0,0,.6)}}
+  #dice .dband{position:absolute;left:0;right:0;top:4dvh;padding:1.6dvh 6vw 1.4dvh;text-align:center;color:#e8d9b0;
+    background:linear-gradient(180deg,#1b130b,#2a1c0e 50%,#1b130b);border-top:2px solid #a8864a;border-bottom:2px solid #a8864a;
+    box-shadow:0 0 0 1px #3a2a14,0 1dvh 3dvh rgba(0,0,0,.8);animation:dband .35s ease-out}
+  @keyframes dband{from{transform:translateX(-100%)}to{transform:none}}
+  #dice .dsk{font-size:4.2dvh;letter-spacing:.3em;color:var(--gold)}
+  #dice .dcond{font-size:2.8dvh;margin-top:.4dvh;color:#cdbb90}
+  #dice .dscale{position:relative;height:1.2dvh;margin:1.2dvh auto 0;width:60vw;background:#3a1010;border:1px solid #a8864a}
+  #dice .dfill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#8a6a2a,#d4b060)}
+  #dice .dmark{position:absolute;top:-.8dvh;bottom:-.8dvh;width:3px;background:#fff;left:0;opacity:0;box-shadow:0 0 6px #fff}
+  #dcv{position:absolute;inset:0;width:100%;height:100%}
+  #dhint{position:absolute;left:5vw;bottom:5dvh;font-size:3.2dvh;color:#cdbb90;letter-spacing:.2em;animation:dhint 1.4s ease-in-out infinite;pointer-events:none}
+  @keyframes dhint{50%{opacity:.35}}
+  #dres{position:absolute;left:0;right:0;top:34dvh;text-align:center;opacity:0;pointer-events:none}
+  #dres.on{opacity:1;animation:dres .35s ease-out}
+  @keyframes dres{from{transform:scale(1.25);opacity:0}to{transform:none;opacity:1}}
+  #dres .dnum{display:block;font-size:17dvh;line-height:1;font-weight:600;font-variant-numeric:tabular-nums}
+  #dres .dtxt{display:block;font-size:6dvh;letter-spacing:.5em;margin-top:.5dvh}
+  #dres.ok .dnum,#dres.ok .dtxt{color:#e6c877;text-shadow:0 0 2.5dvh rgba(230,200,110,.6)}
+  #dres.ng .dnum,#dres.ng .dtxt{color:#b83a3a;text-shadow:0 0 2.5dvh rgba(150,20,20,.7)}
 
   /* パネル（メニュー・抗う・ログ） */
   .panel{position:absolute;inset:0;z-index:50;background:rgba(4,3,3,.94);display:none;
@@ -270,7 +284,7 @@
 <div id="vig"></div>
 <svg id="eat" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
 
-<div id="dice"><div class="band"><div class="sk"></div><div class="num">00</div><div class="res"></div></div></div>
+<div id="dice"><div class="dband"><div class="dsk"></div><div class="dcond"></div><div class="dscale"><i class="dfill"></i><i class="dmark"></i></div></div><canvas id="dcv"></canvas><div id="dhint">スワイプで投げる ➚</div><div id="dres"><b class="dnum"></b><span class="dtxt"></span></div></div>
 
 <div class="panel" id="pMenu">
   <button type="button" class="close" data-close>閉じる</button>
@@ -283,7 +297,7 @@
     <button type="button" class="item" data-open="pTune">見本の調整</button>
     <button type="button" class="item" data-open="pAssets">素材を見る</button>
   </div>
-  <p class="small">ゲーム画面 見本 v1.7</p>
+  <p class="small">ゲーム画面 見本 v1.8</p>
 </div>
 <div class="panel" id="pSheet"><button type="button" class="close" data-back>戻る</button>
   <div id="book">
@@ -313,7 +327,7 @@
   <div class="row"><input type="text" id="free" placeholder="技能名や行動を入力（例：目星）" autocomplete="off"><button type="button" class="item" id="freeGo">決定</button></div>
 </div>
 
-<div id="start" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプでログ／長押しで絵だけ</span><span class="ver">ゲーム画面 見本 v1.7</span></div>
+<div id="start" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプでログ／長押しで絵だけ</span><span class="ver">ゲーム画面 見本 v1.8</span></div>
 <div id="portrait">スマホを横向きにしてください</div>
 
 <script src="../assets/manifest.js"></script>
@@ -581,17 +595,103 @@
     resultBack = back;
   }
   var resultBack=null;
+  // ---- ダイス：スワイプで投げる（2個・跳ね返り・成功失敗の演出） ----
+  var actx=null;
+  function ac(){ try{ if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended') actx.resume(); }catch(_){ } return actx; }
+  function tone(f,t0,dur,vol,type,f2){ var c=ac(); if(!c) return; var o=c.createOscillator(), g=c.createGain(); o.type=type||'sine'; o.frequency.setValueAtTime(f,c.currentTime+t0);
+    if(f2) o.frequency.exponentialRampToValueAtTime(f2,c.currentTime+t0+dur);
+    g.gain.setValueAtTime(vol,c.currentTime+t0); g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+t0+dur); o.connect(g); g.connect(c.destination); o.start(c.currentTime+t0); o.stop(c.currentTime+t0+dur+.05); }
+  function clack(v){ var c=ac(); if(!c) return; var n=c.createBufferSource(), len=Math.floor(c.sampleRate*.05), buf=c.createBuffer(1,len,c.sampleRate), d=buf.getChannelData(0);
+    for(var i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3); n.buffer=buf; var g=c.createGain(); g.gain.value=Math.min(.7,.15+v*.5); var f=c.createBiquadFilter(); f.type='bandpass'; f.frequency.value=1500+Math.random()*900;
+    n.connect(f); f.connect(g); g.connect(c.destination); n.start(); tone(180,0,.08,Math.min(.4,.1+v*.3),'sine',90); }
+  function sfxOk(crit){ tone(659,0,1.3,.25,'sine'); tone(988,.08,1.3,.18,'sine'); tone(1319,.16,1.5,.12,'sine'); if(crit){ tone(1976,.3,1.6,.1,'sine'); tone(2637,.4,1.6,.07,'sine'); } }
+  function sfxNg(fumble){ tone(80,0,1.4,.4,'sawtooth',45); tone(60,0,1.6,.35,'sine',40); if(fumble){ tone(233,.05,1.2,.12,'square',220); tone(247,.05,1.2,.12,'square',233); } }
+
   function rollDice(name,val,cb){
-    var d=$('dice'); d.querySelector('.sk').textContent=name+'（'+val+'）';
-    var num=d.querySelector('.num'), res=d.querySelector('.res'); res.textContent='';
-    d.classList.add('on'); var n=0;
-    var t=setInterval(function(){ num.textContent=String(1+Math.floor(Math.random()*100)).padStart(2,'0'); if(++n>18){
-      clearInterval(t); var v=1+Math.floor(Math.random()*100); num.textContent=String(v).padStart(2,'0');
-      var ok=v<=val; res.textContent=ok?'成功':'失敗'; res.style.color=ok?'#c7b07c':'#c23a3a';
-      setTimeout(function(){ d.classList.remove('on'); cb(ok); },1100);
-    }},55);
+    var d=$('dice'), cv=$('dcv'), res=$('dres'), mark=d.querySelector('.dmark');
+    d.querySelector('.dsk').textContent=name;
+    d.querySelector('.dcond').textContent='出目が '+val+' 以下で成功（1〜100）';
+    d.querySelector('.dfill').style.width=Math.min(100,val)+'%';
+    mark.style.opacity=0; res.className=''; d.classList.remove('fail'); $('dhint').style.display='block';
+    d.classList.add('on');
+    var dpr=window.devicePixelRatio||1, W=d.clientWidth, H=d.clientHeight; cv.width=W*dpr; cv.height=H*dpr;
+    var ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
+    var S=Math.max(34,Math.min(64,H*.15)), R=S*.7, TOP=d.querySelector('.dband').getBoundingClientRect().bottom+4;
+    var dice=[{x:W*.09,y:H*.78},{x:W*.09+S*1.5,y:H*.78}].map(function(p){ return {x:p.x,y:p.y,vx:0,vy:0,rot:0,w:0,txt:'0',stop:false}; });
+    var v=1+Math.floor(Math.random()*100), tens=Math.floor((v===100?0:v)/10)*10, ones=v%10;
+    var state='ready', pts=[], raf=0, lastT=0, flipT=0, finished=false, alive=true;
+    function draw(){
+      ctx.clearRect(0,0,W,H);
+      dice.forEach(function(q,i){
+        ctx.save(); ctx.translate(q.x,q.y); ctx.rotate(q.rot);
+        ctx.shadowColor='rgba(0,0,0,.7)'; ctx.shadowBlur=14; ctx.shadowOffsetY=6;
+        var g=ctx.createLinearGradient(-S/2,-S/2,S/2,S/2); g.addColorStop(0,'#e9dcb8'); g.addColorStop(1,'#b9a475');
+        ctx.fillStyle=g; ctx.beginPath(); var r=S*.16, h=S/2;
+        ctx.moveTo(-h+r,-h); ctx.arcTo(h,-h,h,h,r); ctx.arcTo(h,h,-h,h,r); ctx.arcTo(-h,h,-h,-h,r); ctx.arcTo(-h,-h,h,-h,r); ctx.closePath(); ctx.fill();
+        ctx.shadowColor='transparent'; ctx.strokeStyle='#5a4420'; ctx.lineWidth=2; ctx.stroke();
+        ctx.fillStyle='#6b1510'; ctx.font='bold '+(S*.5)+'px "Hiragino Mincho ProN","Yu Mincho",serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(q.txt,0,S*.03); ctx.restore();
+      });
+    }
+    function setTxt(){ dice[0].txt=tens===0?'00':String(tens); dice[1].txt=String(ones); }
+    dice[0].txt='00'; dice[1].txt='0'; draw();
+    function finish(){
+      if(finished) return; finished=true; setTxt(); draw();
+      var ok=v<=val, crit=v<=5, fumble=v>=96;
+      setTimeout(function(){
+        var shown=String(v); $('dres').querySelector('.dnum').textContent=shown;
+        $('dres').querySelector('.dtxt').textContent=ok?(crit?'大成功':'成功'):(fumble?'大失敗':'失敗');
+        res.className='on '+(ok?'ok':'ng'); mark.style.left=v+'%'; mark.style.opacity=1;
+        if(ok){ sfxOk(crit); } else { d.classList.add('fail'); sfxNg(fumble); }
+        var done=false; function end(){ if(done) return; done=true; alive=false; cancelAnimationFrame(raf); d.classList.remove('on'); d.removeEventListener('pointerdown',tapEnd); cb(ok); }
+        function tapEnd(){ end(); }
+        setTimeout(function(){ d.addEventListener('pointerdown',tapEnd); },900);
+        setTimeout(end,2800);
+      },450);
+    }
+    function step(t){
+      if(!alive) return; var dt=Math.min(.033,(t-(lastT||t))/1000); lastT=t; flipT+=dt;
+      var moving=false;
+      dice.forEach(function(q){
+        if(q.stop) return;
+        q.x+=q.vx*dt; q.y+=q.vy*dt; q.rot+=q.w*dt;
+        var damp=Math.exp(-1.7*dt); q.vx*=damp; q.vy*=damp; q.w*=Math.exp(-2.1*dt);
+        var m=R*.75;
+        if(q.x<m){ q.x=m; if(Math.abs(q.vx)>60) clack(Math.abs(q.vx)/2200); q.vx=-q.vx*.72; q.w*=.8; }
+        if(q.x>W-m){ q.x=W-m; if(Math.abs(q.vx)>60) clack(Math.abs(q.vx)/2200); q.vx=-q.vx*.72; q.w*=.8; }
+        if(q.y<TOP+m*.6){ q.y=TOP+m*.6; if(Math.abs(q.vy)>60) clack(Math.abs(q.vy)/2200); q.vy=-q.vy*.72; q.w*=.8; }
+        if(q.y>H-m){ q.y=H-m; if(Math.abs(q.vy)>60) clack(Math.abs(q.vy)/2200); q.vy=-q.vy*.72; q.w*=.8; }
+        if(Math.hypot(q.vx,q.vy)<22 && Math.abs(q.w)<.8){ q.stop=true; q.vx=q.vy=q.w=0; q.rot=Math.round(q.rot/(Math.PI/2))*(Math.PI/2)+(Math.random()-.5)*.12; clack(.12); }
+        else moving=true;
+      });
+      // ダイス同士の衝突
+      var a=dice[0], b=dice[1], dx=b.x-a.x, dy=b.y-a.y, dist=Math.hypot(dx,dy), min=S*.95;
+      if(dist<min && dist>0){ var nx=dx/dist, ny=dy/dist, push=(min-dist)/2; a.x-=nx*push; a.y-=ny*push; b.x+=nx*push; b.y+=ny*push;
+        var rv=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny; if(rv<0){ var j=-rv*.85; a.vx-=j*nx; a.vy-=j*ny; b.vx+=j*nx; b.vy+=j*ny; a.stop=b.stop=false; clack(Math.min(1,-rv/2000)); } }
+      // 回っている間は数字がめまぐるしく変わる
+      if(flipT>.06){ flipT=0; dice.forEach(function(q,i){ if(!q.stop) q.txt=i===0?String(Math.floor(Math.random()*10)*10||'00').replace(/^0$/,'00'):String(Math.floor(Math.random()*10)); }); }
+      dice.forEach(function(q,i){ if(q.stop){ q.txt=i===0?(tens===0?'00':String(tens)):String(ones); } });
+      draw();
+      if(!moving){ finish(); return; }
+      raf=requestAnimationFrame(step);
+    }
+    function throwDice(vx,vy){
+      state='rolling'; $('dhint').style.display='none'; ac();
+      var sp=Math.max(500,Math.min(2600,Math.hypot(vx,vy))), ang=Math.atan2(vy,vx);
+      if(Math.hypot(vx,vy)<150){ ang=-0.6; }
+      dice.forEach(function(q,i){ var a2=ang+(i?.14:-.14)+(Math.random()-.5)*.1, s2=sp*(i?1:.9)*(.92+Math.random()*.16);
+        q.vx=Math.cos(a2)*s2; q.vy=Math.sin(a2)*s2; q.w=(Math.random()<.5?-1:1)*(6+s2/160); q.stop=false; });
+      raf=requestAnimationFrame(step);
+    }
+    function pd(e){ if(state!=='ready') return; pts=[{x:e.clientX,y:e.clientY,t:performance.now()}]; }
+    function pm(e){ if(state!=='ready'||!pts.length) return; pts.push({x:e.clientX,y:e.clientY,t:performance.now()}); if(pts.length>8) pts.shift();
+      var p=pts[pts.length-1], q=pts[0]; var k=Math.min(1,Math.hypot(p.x-q.x,p.y-q.y)/120); dice[0].x=W*.09+(p.x-q.x)*.15; dice[1].x=W*.09+S*1.5+(p.x-q.x)*.15; draw(); }
+    function pu(e){ if(state!=='ready'||!pts.length) return; var p=pts[pts.length-1], q=pts[0], dt=Math.max(30,p.t-q.t);
+      var vx=(p.x-q.x)/dt*1000, vy=(p.y-q.y)/dt*1000; pts=[]; dice[0].x=W*.09; dice[1].x=W*.09+S*1.5; throwDice(vx,vy); }
+    cv.onpointerdown=pd; cv.onpointermove=pm; cv.onpointerup=pu; cv.onpointercancel=pu;
   }
 
+  ['pointerdown','pointerup','pointermove','touchstart','touchend','touchmove','click','mousedown','mouseup'].forEach(function(ev){ $('dice').addEventListener(ev,function(e){ e.stopPropagation(); },false); });
   // ---- 血の魔法陣（時間経過）：血のついた指で書いたような線 ----
   var seed=7; function rnd(){ seed=(seed*16807)%2147483647; return (seed-1)/2147483646; }
   function ringPts(r,cx,cy){ var a0=rnd()*6.28, sweep=6.0+rnd()*0.5, n=40, pts=[];
