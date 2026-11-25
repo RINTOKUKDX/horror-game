@@ -1,5 +1,5 @@
 /* ============================================================================
-   ダイス部品（HorrorDice） v1.3.0
+   ダイス部品（HorrorDice） v1.4.0
    ----------------------------------------------------------------------------
    ゲーム本編・ダイス見本・戦闘盤など、どの画面からも同じダイスを呼ぶための部品。
    見た目・動き・音を直すときは、このファイルだけを直せば全部の画面に反映される。
@@ -29,14 +29,14 @@
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.3.0';
+  var VERSION='1.4.0';
   // この部品と同じフォルダの画像を使う（どの画面から読み込んでも場所がずれない）
   var BASE=(function(){ var s=document.currentScript&&document.currentScript.src; return s?s.replace(/[^\/]*$/,''):'assets/dice/'; })();
 
   // ===== 決まった設定（初期値）。ここを直すと全部の画面のダイスが変わる =====
   var DEFAULTS={friction:.11,rollDamp:.21,bounce:.4,wallBounce:.58,power:1.24,speed:.58,
     trayR:7.1,trayRot:29,pitch:45,dist:31,offY:-.03,
-    vol:1,tone:'bone',room:'cathedral',wet:1,decay:6,rollVol:.23,lowVol:1,resVol:.8,diceStyle:'img2',trayStyle:'img1',layout:'sides',rPitch:84,rDist:32.5,rOffY:.01,rFocus:0,rTime:.7,rYaw:-29,rOffX:0,cutinAlpha:1};
+    vol:1,tone:'bone',room:'cathedral',wet:1,decay:6,rollVol:.23,lowVol:1,resVol:.8,diceStyle:'img2',trayStyle:'img1',layout:'sides',rPitch:84,rDist:32.5,rOffY:.01,rFocus:0,rTime:.7,rYaw:-29,rOffX:0,cutinAlpha:.52,cutinVol:.7};
 
   var CSS=".hdice{position:absolute;inset:0;overflow:hidden;--gold:#c7b07c;color:#e8e2da;font-family:'Shippori Mincho','Noto Serif JP','Hiragino Mincho ProN',serif;touch-action:none;user-select:none;-webkit-user-select:none}\n.hdice *,.hdice *::before,.hdice *::after{box-sizing:border-box;margin:0;padding:0}\n.hdice .hd-cv{position:absolute;inset:0;width:100%;height:100%;touch-action:none}\n/* カットイン（シックでレトロ） */\n.hdice .hd-band{position:absolute;left:0;right:0;top:2dvh;padding:.9dvh 6vw .9dvh;text-align:center;color:#e8d9b0;pointer-events:none;\nbackground:linear-gradient(180deg,#1b130b,#2a1c0e 50%,#1b130b);border-top:2px solid #a8864a;border-bottom:2px solid #a8864a;\nbox-shadow:0 0 0 1px #3a2a14,0 1dvh 3dvh rgba(0,0,0,.8)}\n.hdice .hd-band.in{animation:hd-bandIn .4s ease-out}\n@keyframes hd-bandIn{from{transform:translateX(-100%)}to{transform:none}}\n.hdice .hd-band .t{font-size:3.6dvh;letter-spacing:.3em;color:var(--gold)}\n.hdice .hd-band .c{font-size:2.4dvh;margin-top:.2dvh;color:#cdbb90}\n.hdice .hd-scale{position:relative;height:1dvh;margin:.8dvh auto 0;width:46vw;background:#3a1010;border:1px solid #a8864a}\n.hdice .hd-fill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#8a6a2a,#d4b060)}\n.hdice .hd-mark{position:absolute;top:-.8dvh;bottom:-.8dvh;width:3px;margin-left:-1px;background:#fff;opacity:0;box-shadow:0 0 6px #fff;transition:left .3s}\n/* 結果は左側に出す（真ん中はトレイ） */\n.hdice .hd-res{position:absolute;left:calc(1vw + env(safe-area-inset-left,0px));width:27vw;top:30dvh;text-align:center;opacity:0;pointer-events:none}\n.hdice .hd-res.on{opacity:1;animation:hd-resIn .4s ease-out}\n@keyframes hd-resIn{from{transform:scale(1.3);opacity:0}to{transform:none;opacity:1}}\n.hdice .hd-res b{display:block;font-size:14dvh;line-height:1;font-weight:600;font-variant-numeric:tabular-nums}\n.hdice .hd-res span{display:block;font-size:5dvh;letter-spacing:.4em;margin-top:.6dvh}\n.hdice .hd-res small{display:block;font-size:2.6dvh;margin-top:.6dvh;color:#cdbb90;letter-spacing:.05em;line-height:1.4}\n.hdice .hd-res.ok b,.hdice .hd-res.ok span{color:#e6c877;text-shadow:0 0 .5dvh #000,0 0 1.4dvh #000,0 0 3dvh rgba(230,200,110,.6)}\n.hdice .hd-res.ng b,.hdice .hd-res.ng span{color:#d84444;text-shadow:0 0 .5dvh #000,0 0 1.4dvh #000,0 0 3dvh rgba(150,20,20,.75)}\n.hdice .hd-res.sum b{color:#efe3c4;text-shadow:0 0 .5dvh #000,0 0 1.4dvh #000,0 0 2dvh rgba(0,0,0,.9)}\n/* 表示タイプ：左に基準・右に結果 */\n.hdice.L-sides .hd-band{left:calc(1.5vw + env(safe-area-inset-left,0px));right:auto;top:20dvh;width:max-content;max-width:30vw;padding:2dvh 2.2vw;white-space:nowrap;border:2px solid #a8864a;border-radius:3px}\n.hdice.L-sides .hd-band.in,.hdice.L-tate .hd-band.in{animation:hd-fadeIn .5s ease-out}\n@keyframes hd-fadeIn{from{opacity:0}to{opacity:1}}\n.hdice.L-sides .hd-band .t{font-size:3.4dvh;letter-spacing:.2em}\n.hdice.L-sides .hd-scale{display:none!important}\n.hdice.L-sides .hd-res{left:auto;right:calc(1.5vw + env(safe-area-inset-right,0px));width:25vw;top:24dvh}\n.hdice .hd-band .big{display:block;font-size:10dvh;line-height:1.1;color:#efe3c4;font-variant-numeric:tabular-nums;margin-top:.6dvh}\n.hdice .hd-band .note{display:block;font-size:2.1dvh;color:#9a8c72;margin-top:1dvh;line-height:1.5}\n/* 表示タイプ：真ん中に浮かぶ */\n.hdice.L-center .hd-band{left:26vw;right:26vw;padding:.6dvh 2vw}\n.hdice.L-center .hd-band .t{font-size:3dvh}\n.hdice.L-center .hd-band .c{font-size:2.2dvh}\n.hdice.L-center .hd-scale{width:80%}\n.hdice.L-center .hd-res{left:0;right:0;width:auto;top:20dvh;padding:6dvh 0}\n.hdice.L-center .hd-res.on{background:radial-gradient(ellipse 30vw 32dvh at center,rgba(0,0,0,.8),rgba(0,0,0,0))}\n.hdice.L-center .hd-res b{font-size:20dvh}\n/* 表示タイプ：縦書きの札 */\n.hdice.L-tate .hd-band{left:auto;right:calc(2vw + env(safe-area-inset-right,0px));top:3dvh;height:76dvh;padding:2.6dvh 1.2vw;writing-mode:vertical-rl;text-align:start;color:#3a0c08;\nbackground:linear-gradient(90deg,#bba878,#dccda4 30%,#d2c194 70%,#b29e6e);border:none;border-top:4px double #5a1a10;border-bottom:4px double #5a1a10;box-shadow:0 1dvh 3dvh rgba(0,0,0,.85),inset 0 0 3dvh rgba(80,40,10,.5)}\n.hdice.L-tate .hd-band .t{font-size:4.8dvh;letter-spacing:.4em;color:#5a0e08;font-weight:700}\n.hdice.L-tate .hd-band .c{font-size:2.9dvh;color:#3a1c10;margin:0 .8vw 0 0;letter-spacing:.25em}\n.hdice.L-tate .hd-band .note{color:#5a3a20;font-size:2.3dvh;margin:0 .8vw 0 0}\n.hdice.L-tate .hd-scale{display:none!important}\n.hdice .tcu{text-combine-upright:all;-webkit-text-combine:horizontal}\n.hdice.L-tate .hd-res{left:auto;right:calc(12.5vw + env(safe-area-inset-right,0px));width:13vw;top:14dvh}\n.hdice.L-tate .hd-res b{font-size:12dvh}\n.hdice.L-tate .hd-res span{writing-mode:vertical-rl;margin:1.6dvh auto 0;letter-spacing:.35em;font-size:5.5dvh}\n.hdice .hd-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,rgba(120,0,0,.0),rgba(120,0,0,.65))}\n.hdice .hd-flash.on{animation:hd-flash .9s ease-out}\n@keyframes hd-flash{0%{opacity:1}100%{opacity:0}}\n.hdice .hd-hint{position:absolute;left:calc(2vw + env(safe-area-inset-left,0px));bottom:7dvh;width:26vw;text-align:center;font-size:2.8dvh;color:#cdbb90;letter-spacing:.15em;pointer-events:none;animation:hd-hint 1.4s ease-in-out infinite}\n@keyframes hd-hint{50%{opacity:.35}}.hdice .hd-cut{position:absolute;left:0;right:0;top:50%;z-index:6;pointer-events:none;opacity:0;transform:translate(0,-50%)}.hdice .hd-cut img{display:block;width:100%;height:auto}.hdice .hd-cut.in{animation:hd-cutIn var(--cin) ease-out forwards}.hdice .hd-cut.out{animation:hd-cutOut var(--cout) ease-in forwards}@keyframes hd-cutIn{from{opacity:0;transform:translate(-30%,-50%)}to{opacity:var(--ca);transform:translate(0,-50%)}}@keyframes hd-cutOut{from{opacity:var(--ca);transform:translate(0,-50%)}to{opacity:0;transform:translate(30%,-50%)}}.hdice>.hd-cv,.hdice>.hd-band,.hdice>.hd-res,.hdice>.hd-hint{transition:opacity var(--cout) ease}.hdice.hd-intro>.hd-cv,.hdice.hd-intro>.hd-band,.hdice.hd-intro>.hd-res,.hdice.hd-intro>.hd-hint{opacity:0!important;transition:none}";
   function injectCss(){ if(document.getElementById('hdice-css')) return; var st=document.createElement('style'); st.id='hdice-css'; st.textContent=CSS; document.head.appendChild(st); }
@@ -78,11 +78,11 @@
       if(pending){ var p=pending; pending=null; p(r); }
     }
     // ===== カットイン「Dice Roll」：左から右へスライドしながらフェードイン→少し止まる→右へフェードアウトしながらダイス画面へ =====
-    var CUT_IN=600, CUT_HOLD=900, CUT_OUT=600, cutBusy=false, cutTimers=[];
+    var CUT_IN=600, CUT_HOLD=1600, CUT_OUT=600, cutBusy=false, cutTimers=[];
     function playCutin(done){
       var el=$('cut'); cutTimers.forEach(clearTimeout); cutTimers=[];
       host.style.setProperty('--cin',CUT_IN+'ms'); host.style.setProperty('--cout',CUT_OUT+'ms'); host.style.setProperty('--ca',String(CFG.cutinAlpha));
-      cutBusy=true; host.classList.add('hd-intro'); el.className='hd-cut'; void el.offsetWidth; el.classList.add('in');
+      sndCutin(); cutBusy=true; host.classList.add('hd-intro'); el.className='hd-cut'; void el.offsetWidth; el.classList.add('in');
       cutTimers.push(setTimeout(function(){ el.className='hd-cut'; void el.offsetWidth; el.classList.add('out'); host.classList.remove('hd-intro'); },CUT_IN+CUT_HOLD));
       cutTimers.push(setTimeout(function(){ el.className='hd-cut'; cutBusy=false; if(done) done(); },CUT_IN+CUT_HOLD+CUT_OUT));
     }
@@ -370,6 +370,22 @@
       if(crit){ ring(1568,[1,2.01],2.6,.06,t+.34,RESB); ring(2093,[1,2],2.6,.05,t+.48,RESB); } }
     function sndNg(fumble){ tone(98,0,1.6,.28,'sawtooth',55); tone(73,0,1.9,.3,'sine',41); tone(104,.02,1.5,.05,'triangle',92);
       if(fumble){ tone(233,.05,1.3,.06,'square',220); tone(247,.05,1.3,.06,'square',230); if(AC&&BUS) burst(900,'lowpass',180,.7,.5,AC.currentTime,RESB); } }
+    // カットインの音：低いうなりがふくらみ、かすかな息と半音ずれた細い響きが残る（控えめな不穏さ）
+    function sndCutin(){
+      var c=ac(); if(!c||!BUS) return; var v=CFG.cutinVol; if(v<=0) return; var t=c.currentTime+.02;
+      // 低いうなり（少しずつ下がる）
+      [55,55.7].forEach(function(f,k){ var o=c.createOscillator(), g=c.createGain(); o.type='sine'; o.frequency.setValueAtTime(f,t); o.frequency.exponentialRampToValueAtTime(f*.93,t+2.6);
+        g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.32*v,t+.7); g.gain.exponentialRampToValueAtTime(.0001,t+2.8);
+        o.connect(g); g.connect(LOWB); o.start(t); o.stop(t+2.9); });
+      // かすかな息（こもった風のような音がふくらんで消える）
+      var n=c.createBufferSource(), nf=c.createBiquadFilter(), ng=c.createGain(); n.buffer=NOISE; nf.type='bandpass'; nf.frequency.setValueAtTime(420,t); nf.frequency.linearRampToValueAtTime(700,t+.8); nf.Q.value=1.2;
+      ng.gain.setValueAtTime(.0001,t); ng.gain.exponentialRampToValueAtTime(.09*v,t+.6); ng.gain.exponentialRampToValueAtTime(.0001,t+1.9);
+      n.connect(nf); nf.connect(ng); ng.connect(BUS); n.start(t,Math.random()*1.5,2);
+      // 半音ずれた細い響き（遠くで鳴るように小さく）
+      [[740,.022],[784,.018]].forEach(function(a){ var o=c.createOscillator(), g=c.createGain(); o.type='sine'; o.frequency.value=a[0];
+        g.gain.setValueAtTime(.0001,t+.25); g.gain.exponentialRampToValueAtTime(a[1]*v,t+.9); g.gain.exponentialRampToValueAtTime(.0001,t+3.2);
+        o.connect(g); g.connect(RESB); o.start(t+.25); o.stop(t+3.3); });
+    }
     function sndSum(){ if(!ac()||!BUS) return; var t=AC.currentTime; ring(392,[1,2,3.01],1.4,.08,t,RESB); ring(587,[1,2],1.4,.06,t+.06,RESB); }
 
     // ===== ダイス本体と物理 =====
