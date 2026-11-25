@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ダイス 見本 v1.8</title>
+<title>ダイス 見本 v1.9</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* ダイスだけを試す見本。ゲーム本体・ゲーム画面見本には影響しない */
@@ -136,8 +136,8 @@
   </div>
   <button type="button" id="toggle">☰ 設定</button>
 </div>
-<div class="ver">ダイス 見本 v1.8</div>
-<div id="start"><b>タップして始める</b><span>全画面・横向きになります（音が出ます）</span><span>ダイスを指でつかんで、はじくように投げる</span><span style="font-size:2.4dvh;color:#6c6455">ダイス 見本 v1.8</span></div>
+<div class="ver">ダイス 見本 v1.9</div>
+<div id="start"><b>タップして始める</b><span>全画面・横向きになります（音が出ます）</span><span>ダイスを指でつかんで、はじくように投げる</span><span style="font-size:2.4dvh;color:#6c6455">ダイス 見本 v1.9</span></div>
 
 <script src="../assets/manifest.js"></script>
 <script>
@@ -707,14 +707,21 @@
     ctx.setTransform(DPR*(Sb.x-S0.x),DPR*(Sb.y-S0.y),-DPR*(Sa.x-S0.x),-DPR*(Sa.y-S0.y),DPR*S0.x,DPR*S0.y); }
   // 画像を貼ったダイスの面（数字はインクで直接書く）
   var TEXA={tri:[[.4992,.0478],[.9721,.8644],[.0263,.8644]],sq:[[.0415,.0423],[.9585,.0423],[.9585,.9569],[.0415,.9569]],kite:[[.4988,.0399],[.8684,.6722],[.4988,.9545],[.1268,.6722]]};
+  // 浮き出た数字（左上に光、右下に影、縁取りつき）
+  function emboss(size,str,ink){
+    ctx.font='700 '+size.toFixed(1)+'px "Shippori Mincho","Hiragino Mincho ProN",serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineJoin='round';
+    var y=size*.05;
+    ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillText(str,size*.07,y+size*.09);
+    ctx.fillStyle='rgba(0,0,0,.35)'; ctx.fillText(str,size*.04,y+size*.05);
+    ctx.fillStyle='rgba(255,244,215,.75)'; ctx.fillText(str,-size*.035,y-size*.045);
+    var g=ctx.createLinearGradient(0,y-size*.45,0,y+size*.45); g.addColorStop(0,shade(ink,2.2)); g.addColorStop(.5,ink); g.addColorStop(1,shade(ink,.6));
+    ctx.fillStyle=g; ctx.fillText(str,0,y);
+    ctx.lineWidth=Math.max(.6,size*.025); ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.strokeText(str,0,y);
+    if(str==='6'||str==='9'){ ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(-size*.2,size*.5,size*.44,size*.08); ctx.fillStyle=ink; ctx.fillRect(-size*.22,size*.47,size*.44,size*.07); }
+  }
   function inkText(o,center,up,str,mr){
-    var d=o.d, n=o.n, a=norm(sub(up,mul(n,dot(up,n)))), b=cross(a,n), u=d.r/100, size=(mr/u)*(str.length>1?.95:1.25), S=DS();
-    ctx.save(); faceXform(center,a,b,u);
-    ctx.font='700 '+size.toFixed(1)+'px "Shippori Mincho","Hiragino Mincho ProN",serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillStyle='rgba(255,245,220,.35)'; ctx.fillText(str,size*.03,size*.09);
-    ctx.fillStyle=S.ink; ctx.fillText(str,0,size*.05);
-    if(str==='6'||str==='9'){ ctx.fillRect(-size*.22,size*.44,size*.44,size*.07); }
-    ctx.restore();
+    var d=o.d, n=o.n, a=norm(sub(up,mul(n,dot(up,n)))), b=cross(a,n), u=d.r/100, size=(mr/u)*(str.length>1?1.05:1.4), S=DS();
+    ctx.save(); faceXform(center,a,b,u); emboss(size,str,S.ink); ctx.restore();
   }
   function drawTexFace(o,outer,outerS,diff,sp){
     var d=o.d, f=o.f, n=o.n, c=o.c, Vw=o.V, up, pos=c, far=null;
@@ -737,8 +744,8 @@
     if(sp>.02){ ctx.fillStyle='rgba(255,235,200,'+Math.min(.3,sp*.45).toFixed(3)+')'; ctx.fill(); }
     ctx.lineWidth=1.1; ctx.strokeStyle='rgba(18,12,6,.95)'; ctx.stroke();
     var str=d.label?d.label(f.val):String(f.val);
-    if(d.sides===4){ f.ix.forEach(function(i){ var corner=Vw[i]; inkText(o,lerp(c,corner,.5),sub(corner,c),String(d.sh.vval[i]),inrad(c,outer)*.36); }); }
-    else inkText(o,pos,up,str,inrad(pos,outer)*(d.sides===6?.52:d.sides===10?.6:.55));
+    if(d.sides===4){ f.ix.forEach(function(i){ var corner=Vw[i]; inkText(o,lerp(c,corner,.5),sub(corner,c),String(d.sh.vval[i]),inrad(c,outer)*.42); }); }
+    else inkText(o,pos,up,str,inrad(pos,outer)*(d.sides===6?.62:d.sides===10?.68:.66));
     if(d.glow && d.glow.f===f){ polyS(outerS); ctx.lineWidth=3.2; ctx.strokeStyle=d.glow.color; ctx.stroke(); }
   }
   function drawFace(o){
@@ -814,12 +821,8 @@
     var g2=ctx.createLinearGradient(L1.x,L1.y,L2.x,L2.y); g2.addColorStop(0,shade(mc,m*.8)); g2.addColorStop(1,shade(mc,m*1.12));
     polyS(pin); ctx.fillStyle=g2; ctx.fill();
     // 数字（彫り込み：暗い溝＋光の反対側に細い光）
-    var u=d.r/100, size=(mr/u)*(str.length>1?.86:1.12);
-    ctx.save(); faceXform(center,a,b,u);
-    ctx.font='700 '+size.toFixed(1)+'px "Shippori Mincho","Hiragino Mincho ProN",serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    if(big){ ctx.fillStyle='rgba(255,250,230,.4)'; ctx.fillText(str,0,size*.1); }
-    ctx.fillStyle=S.ink; ctx.fillText(str,0,size*.05);
-    if(str==='6'||str==='9'){ ctx.fillRect(-size*.22,size*.44,size*.44,size*.07); }
+    var u=d.r/100, size=(mr/u)*(str.length>1?.95:1.3);
+    ctx.save(); faceXform(center,a,b,u); emboss(size,str,S.ink);
     ctx.restore();
   }
   function draw(){
@@ -1043,7 +1046,7 @@
     if(['vol','wet','room','lowVol','resVol'].indexOf(k)>=0) applyAudio();
     if(k==='decay'||k==='room'){ clearTimeout(irTimer); irTimer=setTimeout(function(){ buildIR(); applyAudio(); },250); }
   }
-  function showCfg(){ var o={}; Object.keys(DEF).forEach(function(k){ o[k]=typeof CFG[k]==='number'?Math.round(CFG[k]*100)/100:CFG[k]; }); $('cfgtxt').value='ダイス設定 v1.8 '+JSON.stringify(o); }
+  function showCfg(){ var o={}; Object.keys(DEF).forEach(function(k){ o[k]=typeof CFG[k]==='number'?Math.round(CFG[k]*100)/100:CFG[k]; }); $('cfgtxt').value='ダイス設定 v1.9 '+JSON.stringify(o); }
   showCfg();
   $('viewA').addEventListener('click',function(){ moveCam(startView(),CFG.rTime); });
   $('viewB').addEventListener('click',function(){ moveCam(resultView(),CFG.rTime); });
