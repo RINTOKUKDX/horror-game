@@ -6,7 +6,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>深淵の胎動（仮） v0.4.3 - Cthulhu Horror Novel Engine</title>
+  <title>深淵の胎動（仮） v0.4.4 - Cthulhu Horror Novel Engine</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Shippori+Mincho:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1426,8 +1426,9 @@
   /* ============================================================================
      SECTION 0: バージョン・変更履歴定義（更新時にここを編集）
      ============================================================================ */
-  const APP_VERSION = 'v0.4.3';
+  const APP_VERSION = 'v0.4.4';
   const CHANGELOG = [
+    'ダイス：判定の始めに「Dice Roll」のカットイン（左から右へスライドしながらフェードイン→フェードアウトしてダイス画面へ）',
     'ダイス：「結果を受け入れる」ボタンを廃止。結果が出て1秒後から、画面のどこかをタップでフェードアウトして次へ',
     'ダイス：止まる前に触っても振り直せないように修正。読み込み中に別のトレーが一瞬出る問題を修正（使わないダイス・トレーを部品から削除）',
     '古い2Dダイスと技能選択の画面を削除。判定ではすぐ3Dダイスが出る（技能が2つ以上のときは左下で切り替え）',
@@ -3081,8 +3082,8 @@
 
     let dice3d = null;
     let onThrow = null;
-    // tapToClose：結果の1秒後からタップで背景ごとフェードアウトして閉じる（部品側の機能）
-    const createDice = () => HorrorDice.create({ root: host3d, tapToClose: true, fadeEl: overlay, onThrow: () => { if (onThrow) { onThrow(); onThrow = null; } } });
+    // cutin：最初に「Dice Roll」のカットイン / tapToClose：結果の1秒後からタップで背景ごとフェードアウトして閉じる（部品側の機能）
+    const createDice = () => HorrorDice.create({ root: host3d, tapToClose: true, fadeEl: overlay, cutin: true, onThrow: () => { if (onThrow) { onThrow(); onThrow = null; } } });
     // 画像を先に読み込んでおく（判定になったらすぐ出せるように）
     if (window.HorrorDice) { dice3d = createDice(); dice3d.stop(); }
 
@@ -3145,6 +3146,7 @@
         onComplete(check[outcome] ?? (success ? check.success : check.fail));
       }
 
+      let firstRoll = true; // カットイン「Dice Roll」は最初の1回だけ（技能の切り替えでは出さない）
       function setSkill(check) {
         selected = check;
         for (const button of options.querySelectorAll('[data-skill]')) {
@@ -3152,7 +3154,8 @@
         }
         if (dice3d) {
           // 閉じ終わったら結果が返ってくる
-          dice3d.roll({ skill: check.skill, target: check.target, ...RULE }).then(r => proceed(r.total));
+          dice3d.roll({ skill: check.skill, target: check.target, cutin: firstRoll, ...RULE }).then(r => proceed(r.total));
+          firstRoll = false;
         }
       }
 
