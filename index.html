@@ -1,4014 +1,782 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>深淵の胎動（仮） v0.4.7 - Cthulhu Horror Novel Engine</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Shippori+Mincho:wght@400;600;700&display=swap" rel="stylesheet">
-  <style>
-    /* ==========================================================================
-       1. 基本リセット & デザイントークン（transform: scale() / 100vh 固定は一切不使用）
-       ========================================================================== */
-    :root {
-      --font-serif: 'Shippori Mincho', 'Noto Serif JP', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
-      --bg-void: #020204;
-      --text-main: #e8e2da;
-      --text-dim: #928b82;
-      --accent-blood: #8c1414;
-      --accent-blood-bright: #e02020;
-      --accent-gold: #c7b07c;
-      --safe-top: env(safe-area-inset-top, 0px);
-      --safe-bottom: env(safe-area-inset-bottom, 0px);
-      --safe-left: env(safe-area-inset-left, 0px);
-      --safe-right: env(safe-area-inset-right, 0px);
-    }
-
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      -webkit-tap-highlight-color: transparent;
-      user-select: none;
-    }
-
-    html, body {
-      width: 100vw;
-      height: 100dvh;
-      overflow: hidden;
-      background-color: var(--bg-void);
-      color: var(--text-main);
-      font-family: var(--font-serif);
-      line-height: 1.65;
-      letter-spacing: 0.05em;
-      touch-action: manipulation;
-    }
-
-    /* アプリ全体ルート */
-    #app-root {
-      position: fixed;
-      inset: 0;
-      width: 100vw;
-      height: 100dvh;
-      overflow: hidden;
-      background: #000;
-    }
-
-    /* 各画面レイヤー：非アクティブ時は厳格に display: none */
-    .screen-layer {
-      position: fixed;
-      inset: 0;
-      width: 100vw;
-      height: 100dvh;
-      display: none;
-      overflow: hidden;
-    }
-
-    .screen-layer.active {
-      display: flex;
-    }
-
-    /* ==========================================================================
-       2. 縦向き（ポートレート）ガード（z-index: 99999）
-       ========================================================================== */
-    #portrait-guard {
-      position: fixed;
-      inset: 0;
-      width: 100vw;
-      height: 100dvh;
-      z-index: 99999;
-      background: #020204;
-      color: #e6e0d8;
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 2rem;
-      gap: 1.3rem;
-    }
-
-    @media (orientation: portrait) {
-      #portrait-guard {
-        display: flex !important;
-      }
-    }
-
-    #portrait-guard.force-portrait {
-      display: flex !important;
-    }
-
-    .rotate-icon {
-      width: 68px;
-      height: 68px;
-      color: #b82828;
-      animation: rotateHint 2.6s ease-in-out infinite;
-    }
-
-    @keyframes rotateHint {
-      0%, 20% { transform: rotate(0deg); }
-      55%, 80% { transform: rotate(-90deg); }
-      100% { transform: rotate(0deg); }
-    }
-
-    .portrait-guard-title {
-      font-size: 1.15rem;
-      letter-spacing: 0.16em;
-      font-weight: 600;
-    }
-
-    .portrait-guard-sub {
-      font-size: 0.84rem;
-      color: #918a82;
-      line-height: 1.8;
-      max-width: 320px;
-    }
-
-    /* ==========================================================================
-       3. 起動時バージョン情報・変更点オーバーレイ（z-index: 5000）
-          ※ × ボタンを押すまで絶対に閉じない
-       ========================================================================== */
-    #version-changelog-modal {
-      position: fixed;
-      inset: 0;
-      width: 100vw;
-      height: 100dvh;
-      z-index: 5000;
-      background: rgba(2, 2, 5, 0.94);
-      backdrop-filter: blur(6px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: max(0.75rem, var(--safe-top)) max(1rem, var(--safe-right)) max(0.75rem, var(--safe-bottom)) max(1rem, var(--safe-left));
-    }
-
-    #version-changelog-modal.dismissed {
-      display: none;
-    }
-
-    .changelog-panel {
-      position: relative;
-      width: 100%;
-      max-width: 640px;
-      max-height: calc(100dvh - 24px);
-      overflow-y: auto;
-      background: linear-gradient(180deg, #101016 0%, #09090d 100%);
-      border: 1px solid rgba(190, 44, 44, 0.52);
-      border-radius: 10px;
-      padding: clamp(0.9rem, 2.8dvh, 1.4rem) clamp(1rem, 3.2vw, 1.6rem);
-      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.96), 0 0 28px rgba(140, 20, 20, 0.18);
-    }
-
-    .changelog-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 0.75rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-      padding-bottom: 0.65rem;
-      margin-bottom: 0.85rem;
-    }
-
-    .changelog-title-group {
-      display: flex;
-      align-items: baseline;
-      flex-wrap: wrap;
-      gap: 0.55rem;
-    }
-
-    .changelog-version-badge {
-      display: inline-block;
-      padding: 0.16rem 0.65rem;
-      background: rgba(155, 22, 22, 0.9);
-      border: 1px solid rgba(235, 80, 80, 0.7);
-      border-radius: 6px;
-      color: #fff6f2;
-      font-size: clamp(0.9rem, 2.7dvh, 1.12rem);
-      font-weight: 700;
-      letter-spacing: 0.12em;
-    }
-
-    .changelog-heading {
-      font-size: clamp(0.92rem, 2.6dvh, 1.1rem);
-      font-weight: 600;
-      letter-spacing: 0.14em;
-      color: #f0eae2;
-    }
-
-    .changelog-close-btn {
-      width: 44px;
-      height: 44px;
-      flex-shrink: 0;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.34);
-      border-radius: 8px;
-      color: #ffffff;
-      font-family: sans-serif;
-      font-size: 1.45rem;
-      line-height: 1;
-      cursor: pointer;
-      transition: background 0.2s ease, border-color 0.2s ease, transform 0.12s ease;
-    }
-
-    .changelog-close-btn:hover,
-    .changelog-close-btn:active {
-      background: rgba(180, 26, 26, 0.92);
-      border-color: #ff6b6b;
-      transform: scale(0.96);
-    }
-
-    .changelog-list {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 0.52rem;
-    }
-
-    .changelog-list li {
-      position: relative;
-      padding-left: 1.15rem;
-      font-size: clamp(0.8rem, 2.35dvh, 0.94rem);
-      color: #e4ddd4;
-      line-height: 1.62;
-    }
-
-    .changelog-list li::before {
-      content: '▪';
-      position: absolute;
-      left: 0;
-      top: 0.02rem;
-      color: #d63636;
-    }
-
-    .changelog-footer-note {
-      margin-top: 0.85rem;
-      padding-top: 0.55rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
-      font-size: clamp(0.72rem, 2dvh, 0.82rem);
-      color: #a79f95;
-      text-align: right;
-      letter-spacing: 0.08em;
-    }
-
-    /* ==========================================================================
-       4. 起動警告画面（z-index: 90）
-       ========================================================================== */
-    #screen-warning {
-      z-index: 90;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: #000;
-      cursor: pointer;
-      padding: max(1rem, var(--safe-top)) max(1.5rem, var(--safe-right)) max(1rem, var(--safe-bottom)) max(1.5rem, var(--safe-left));
-    }
-
-    .warning-box {
-      max-width: 660px;
-      width: 100%;
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: clamp(0.6rem, 2.5dvh, 1.3rem);
-    }
-
-    .warning-title {
-      font-size: clamp(1.1rem, 3.3dvh, 1.65rem);
-      font-weight: 600;
-      letter-spacing: 0.28em;
-      color: #f2ede6;
-    }
-
-    .warning-text {
-      font-size: clamp(0.82rem, 2.3dvh, 1rem);
-      color: #d2ccc4;
-      line-height: 1.88;
-    }
-
-    .warning-start-btn {
-      margin-top: 0.4rem;
-      min-height: 44px;
-      padding: 0.65rem 1.8rem;
-      background: transparent;
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      border-radius: 6px;
-      color: #eae4dc;
-      font-family: var(--font-serif);
-      font-size: clamp(0.85rem, 2.3dvh, 1rem);
-      letter-spacing: 0.2em;
-      cursor: pointer;
-      animation: pulseSlow 2.4s ease-in-out infinite;
-    }
-
-    .warning-start-btn:hover,
-    .warning-start-btn:active {
-      border-color: rgba(190, 35, 35, 0.85);
-      background: rgba(120, 14, 14, 0.28);
-    }
-
-    @keyframes pulseSlow {
-      0%, 100% { opacity: 0.55; }
-      50% { opacity: 1; }
-    }
-
-    /* ==========================================================================
-       5. タイトル画面
-       ========================================================================== */
-    #screen-title {
-      z-index: 40;
-      background: #020203;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-
-    #title-canvas {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      display: block;
-      z-index: 1;
-      pointer-events: none;
-    }
-
-    .title-top-bar {
-      position: relative;
-      z-index: 15;
-      width: 100%;
-      display: flex;
-      justify-content: flex-end;
-      padding: max(0.55rem, var(--safe-top)) max(0.85rem, var(--safe-right)) 0 max(0.85rem, var(--safe-left));
-      pointer-events: none;
-    }
-
-    .title-top-bar button {
-      pointer-events: auto;
-    }
-
-    .title-version-corner {
-      position: fixed;
-      left: max(0.85rem, var(--safe-left));
-      bottom: max(0.55rem, var(--safe-bottom));
-      z-index: 16;
-      font-size: 0.72rem;
-      color: rgba(168, 160, 150, 0.65);
-      letter-spacing: 0.12em;
-      pointer-events: none;
-      text-shadow: 0 1px 6px #000;
-    }
-
-    .title-ui-overlay {
-      position: relative;
-      z-index: 15;
-      width: 100%;
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      padding: 0 max(1rem, var(--safe-right)) max(0.85rem, calc(var(--safe-bottom) + 0.5rem)) max(1rem, var(--safe-left));
-    }
-
-    .title-ui-overlay.visible {
-      display: flex;
-      animation: fadeInSlow 1.2s ease forwards;
-    }
-
-    @keyframes fadeInSlow {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    .title-menu {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: clamp(0.8rem, 4vw, 3.2rem);
-      margin-bottom: 0.2rem;
-    }
-
-    .title-menu-btn {
-      min-height: 44px;
-      padding: 0.5rem 1.2rem;
-      background: transparent;
-      border: none;
-      color: var(--text-main);
-      font-family: var(--font-serif);
-      font-size: clamp(0.95rem, 2.8dvh, 1.2rem);
-      letter-spacing: 0.22em;
-      cursor: pointer;
-      position: relative;
-      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.96);
-      transition: color 0.25s ease, text-shadow 0.25s ease;
-    }
-
-    .title-menu-btn::after {
-      content: '';
-      position: absolute;
-      left: 50%;
-      bottom: 6px;
-      width: 0;
-      height: 1px;
-      background: rgba(196, 36, 36, 0.85);
-      transition: width 0.3s ease, left 0.3s ease;
-    }
-
-    .title-menu-btn:hover:not(:disabled),
-    .title-menu-btn:active:not(:disabled) {
-      color: #fff;
-      text-shadow: 0 0 16px rgba(196, 32, 32, 0.82);
-    }
-
-    .title-menu-btn:hover:not(:disabled)::after {
-      width: 80%;
-      left: 10%;
-    }
-
-    .title-menu-btn:disabled {
-      color: #4f4a45;
-      cursor: not-allowed;
-    }
-
-    .title-footnote {
-      font-size: 0.68rem;
-      color: #635e58;
-      letter-spacing: 0.14em;
-    }
-
-    /* ==========================================================================
-       6. 本編ノベル画面（厳格レイヤー階層：Tap=20 / Choices=35 / HUD=40）
-       ========================================================================== */
-    #screen-game {
-      z-index: 30;
-      background: #040406;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-
-    #scene-canvas {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      display: block;
-      z-index: 1;
-      pointer-events: none;
-    }
-
-    #madness-vignette {
-      position: absolute;
-      inset: 0;
-      z-index: 2;
-      pointer-events: none;
-      background: radial-gradient(circle at center, transparent 46%, rgba(0, 0, 0, 0.88) 100%);
-    }
-
-    #madness-stains {
-      position: absolute;
-      inset: 0;
-      z-index: 3;
-      pointer-events: none;
-      opacity: 0;
-      background-image:
-        radial-gradient(ellipse at 9% 16%, rgba(6, 0, 0, 0.86) 0%, transparent 40%),
-        radial-gradient(ellipse at 91% 82%, rgba(12, 0, 2, 0.88) 0%, transparent 45%),
-        radial-gradient(ellipse at 86% 14%, rgba(16, 2, 2, 0.76) 0%, transparent 32%);
-      transition: opacity 1s ease;
-    }
-
-    /* 上部HUD：z-index: 40 */
-    .game-top-hud {
-      position: relative;
-      z-index: 40;
-      width: 100%;
-      flex-shrink: 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 0.55rem;
-      padding: max(0.38rem, var(--safe-top)) max(0.7rem, var(--safe-right)) 0.42rem max(0.7rem, var(--safe-left));
-      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.88) 0%, rgba(0, 0, 0, 0.5) 72%, transparent 100%);
-      pointer-events: none;
-    }
-
-    .hud-left {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 0.45rem 0.85rem;
-      pointer-events: auto;
-      min-width: 0;
-    }
-
-    .hud-location {
-      font-size: clamp(0.74rem, 2.2dvh, 0.88rem);
-      color: #d0c9bf;
-      letter-spacing: 0.14em;
-      white-space: nowrap;
-      text-shadow: 0 1px 6px #000;
-    }
-
-    .status-bars {
-      display: flex;
-      gap: 0.6rem;
-      align-items: center;
-    }
-
-    .status-bar-group {
-      display: flex;
-      align-items: center;
-      gap: 0.3rem;
-    }
-
-    .status-label {
-      font-size: 0.68rem;
-      color: #969087;
-      letter-spacing: 0.08em;
-      white-space: nowrap;
-    }
-
-    .bar-track {
-      width: clamp(52px, 10.5vw, 94px);
-      height: 6px;
-      background: rgba(255, 255, 255, 0.14);
-      border-radius: 3px;
-      overflow: hidden;
-    }
-
-    .bar-fill {
-      height: 100%;
-      border-radius: 3px;
-      transition: width 0.5s ease;
-    }
-
-    .bar-fill.hp { background: linear-gradient(90deg, #541515, #a82b2b); }
-    .bar-fill.san { background: linear-gradient(90deg, #27394a, #6082a1); }
-
-    .bar-glitch {
-      animation: barGlitch 0.16s steps(2) infinite;
-    }
-
-    @keyframes barGlitch {
-      0% { transform: translate(0, 0); filter: hue-rotate(0deg); }
-      33% { transform: translate(-2px, 1px); filter: hue-rotate(140deg) contrast(1.7); }
-      66% { transform: translate(2px, -1px); filter: hue-rotate(-100deg); }
-      100% { transform: translate(0, 0); }
-    }
-
-    .hud-right {
-      display: flex;
-      align-items: center;
-      gap: 0.28rem;
-      flex-shrink: 0;
-      pointer-events: auto;
-    }
-
-    .hud-btn {
-      min-height: 36px;
-      min-width: 42px;
-      padding: 0 0.6rem;
-      background: rgba(12, 12, 16, 0.72);
-      border: 1px solid rgba(255, 255, 255, 0.17);
-      border-radius: 6px;
-      color: #d6d0c7;
-      font-family: var(--font-serif);
-      font-size: clamp(0.7rem, 1.95dvh, 0.8rem);
-      letter-spacing: 0.07em;
-      white-space: nowrap;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.2s, border-color 0.2s, color 0.2s;
-    }
-
-    .hud-btn:hover,
-    .hud-btn:active {
-      background: rgba(115, 18, 18, 0.78);
-      border-color: rgba(205, 50, 50, 0.8);
-      color: #fff;
-    }
-
-    /* テキスト送りタップ領域：z-index: 20 */
-    .novel-tap-layer {
-      position: relative;
-      z-index: 20;
-      flex: 1;
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      cursor: pointer;
-      min-height: 0;
-    }
-
-    /* シネマティックUI：枠なし・下部黒グラデーション直置き明朝体 */
-    .novel-bottom-gradient {
-      width: 100%;
-      padding: clamp(1.1rem, 4.8dvh, 2.6rem) max(1.2rem, var(--safe-right)) max(0.8rem, calc(var(--safe-bottom) + 0.55rem)) max(1.2rem, var(--safe-left));
-      background: linear-gradient(to top,
-        rgba(2, 2, 4, 0.96) 0%,
-        rgba(2, 2, 4, 0.88) 58%,
-        rgba(2, 2, 4, 0.44) 85%,
-        transparent 100%
-      );
-    }
-
-    .novel-content-wrap {
-      max-width: 820px;
-      width: 100%;
-      margin: 0 auto;
-    }
-
-    .speaker-name {
-      font-size: clamp(0.78rem, 2.2dvh, 0.92rem);
-      color: #b0a698;
-      letter-spacing: 0.16em;
-      margin-bottom: 0.18rem;
-      min-height: 1.2em;
-      text-shadow: 0 2px 8px #000;
-    }
-
-    .novel-text {
-      font-size: clamp(0.9rem, 2.9dvh, 1.16rem);
-      color: var(--text-main);
-      line-height: 1.72;
-      min-height: 3.4em;
-      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.95);
-      white-space: pre-wrap;
-    }
-
-    .novel-text.text-jitter {
-      animation: textJitter 3.2s infinite;
-    }
-
-    @keyframes textJitter {
-      0%, 92%, 100% { transform: translate(0, 0); }
-      94% { transform: translate(-1px, 0.5px); }
-      96% { transform: translate(1px, -0.5px); }
-      98% { transform: translate(-0.5px, 0); }
-    }
-
-    /* エンコード崩れ文字化けグリッチ用スパン */
-    .mojibake-char {
-      display: inline-block;
-      color: #e6d4d0;
-      text-shadow: -1px 0 rgba(200, 24, 24, 0.78), 1px 0 rgba(90, 22, 22, 0.55);
-      animation: mojibakeFlicker 1.9s steps(2) infinite;
-    }
-
-    @keyframes mojibakeFlicker {
-      0%, 84%, 100% { opacity: 1; transform: translate(0, 0); }
-      86% { opacity: 0.58; transform: translate(-0.8px, 0.5px); }
-      90% { opacity: 0.95; transform: translate(0.8px, -0.5px); }
-      94% { opacity: 0.68; transform: translate(0, 0.6px); }
-    }
-
-    .next-indicator {
-      display: inline-block;
-      margin-left: 0.35rem;
-      font-size: 0.8em;
-      color: #b83232;
-      opacity: 0;
-      animation: blinkCursor 1.2s infinite;
-    }
-
-    .next-indicator.show {
-      opacity: 1;
-    }
-
-    @keyframes blinkCursor {
-      0%, 100% { opacity: 0.2; }
-      50% { opacity: 0.95; }
-    }
-
-    /* 選択肢レイヤー：z-index: 35（非表示時は厳格に display: none） */
-    #choices-container {
-      position: fixed;
-      top: 50px;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 35;
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 0.55rem;
-      padding: 0.6rem max(1.2rem, var(--safe-right)) max(0.85rem, var(--safe-bottom)) max(1.2rem, var(--safe-left));
-      background: rgba(0, 0, 0, 0.56);
-      backdrop-filter: blur(2px);
-      overflow-y: auto;
-    }
-
-    #choices-container.active {
-      display: flex;
-    }
-
-    .choice-btn {
-      width: 100%;
-      max-width: 590px;
-      min-height: 44px;
-      background: rgba(8, 8, 12, 0.92);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-left: 3px solid rgba(165, 155, 145, 0.62);
-      color: var(--text-main);
-      font-family: var(--font-serif);
-      font-size: clamp(0.84rem, 2.4dvh, 1rem);
-      letter-spacing: 0.06em;
-      padding: 0.62rem 1.1rem;
-      border-radius: 6px;
-      text-align: left;
-      cursor: pointer;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 0.75rem;
-      box-shadow: 0 6px 22px rgba(0, 0, 0, 0.85);
-      transition: background 0.2s, border-color 0.2s;
-      flex-shrink: 0;
-    }
-
-    .choice-btn:hover:not(:disabled),
-    .choice-btn:active:not(:disabled) {
-      background: rgba(68, 14, 14, 0.94);
-      border-color: rgba(205, 45, 45, 0.85);
-      border-left-color: #e02020;
-    }
-
-    .choice-btn.silver-key {
-      border-color: rgba(199, 176, 124, 0.55);
-      border-left-color: var(--accent-gold);
-      background: linear-gradient(90deg, rgba(32, 26, 16, 0.95), rgba(12, 12, 18, 0.93));
-    }
-
-    .choice-btn.silver-key:hover:not(:disabled),
-    .choice-btn.silver-key:active:not(:disabled) {
-      background: linear-gradient(90deg, rgba(66, 54, 28, 0.96), rgba(24, 20, 16, 0.95));
-      border-color: #e4d4ab;
-    }
-
-    .choice-tag {
-      font-size: 0.72rem;
-      color: #b4aa9c;
-      white-space: nowrap;
-      padding: 0.14rem 0.46rem;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 4px;
-    }
-
-    .choice-btn.silver-key .choice-tag {
-      color: #e6d6ab;
-      border-color: rgba(230, 214, 171, 0.48);
-    }
-
-    /* ==========================================================================
-       7. 汎用モーダル（z-index: 60 / 非表示時は厳格に display: none）
-       ========================================================================== */
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      width: 100vw;
-      height: 100dvh;
-      z-index: 60;
-      background: rgba(2, 2, 4, 0.88);
-      backdrop-filter: blur(4px);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: max(0.65rem, var(--safe-top)) max(0.9rem, var(--safe-right)) max(0.65rem, var(--safe-bottom)) max(0.9rem, var(--safe-left));
-    }
-
-    .modal-overlay.active {
-      display: flex;
-    }
-
-    .modal-panel {
-      width: 100%;
-      max-width: 650px;
-      max-height: calc(100dvh - 20px);
-      overflow-y: auto;
-      background: #0b0b0f;
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      border-radius: 8px;
-      padding: clamp(0.8rem, 2.5dvh, 1.35rem) clamp(0.95rem, 3vw, 1.55rem);
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.94);
-    }
-
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-      padding-bottom: 0.55rem;
-      margin-bottom: 0.85rem;
-      gap: 0.6rem;
-    }
-
-    .modal-title {
-      font-size: clamp(0.95rem, 2.8dvh, 1.18rem);
-      letter-spacing: 0.18em;
-      font-weight: 600;
-    }
-
-    .modal-close {
-      min-height: 36px;
-      min-width: 62px;
-      padding: 0 0.8rem;
-      background: transparent;
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      color: #cdc7be;
-      font-family: var(--font-serif);
-      font-size: 0.82rem;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    .modal-close:hover,
-    .modal-close:active {
-      background: rgba(145, 20, 20, 0.58);
-      color: #fff;
-    }
-
-    .scenario-card {
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      background: rgba(255, 255, 255, 0.03);
-      border-radius: 8px;
-      padding: 0.8rem 0.95rem;
-      margin-bottom: 0.7rem;
-    }
-
-    .scenario-card.locked { opacity: 0.52; }
-
-    .scenario-card-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 0.5rem;
-      margin-bottom: 0.35rem;
-    }
-
-    .scenario-badge {
-      font-size: 0.7rem;
-      padding: 0.12rem 0.46rem;
-      border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      color: #dac58e;
-      white-space: nowrap;
-    }
-
-    .scenario-synopsis {
-      font-size: 0.82rem;
-      color: #b2aba2;
-      line-height: 1.65;
-      margin-bottom: 0.65rem;
-    }
-
-    .primary-action-btn {
-      min-height: 42px;
-      padding: 0.5rem 1.3rem;
-      background: rgba(128, 20, 20, 0.85);
-      border: 1px solid rgba(202, 50, 50, 0.8);
-      color: #f5f1eb;
-      font-family: var(--font-serif);
-      font-size: 0.88rem;
-      letter-spacing: 0.15em;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    .primary-action-btn:hover,
-    .primary-action-btn:active {
-      background: rgba(168, 24, 24, 0.96);
-    }
-
-    .save-slot {
-      min-height: 50px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 0.8rem;
-      padding: 0.65rem 0.9rem;
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      border-radius: 6px;
-      margin-bottom: 0.5rem;
-      background: rgba(255, 255, 255, 0.025);
-      cursor: pointer;
-    }
-
-    .save-slot:hover,
-    .save-slot:active {
-      border-color: rgba(190, 42, 42, 0.7);
-      background: rgba(110, 16, 16, 0.22);
-    }
-
-    .save-slot-meta {
-      font-size: 0.75rem;
-      color: #968f86;
-    }
-
-    .setting-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 0.7rem 1.05rem;
-    }
-
-    .setting-row { margin-bottom: 0.7rem; }
-
-    .setting-row label {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.82rem;
-      color: #d6d0c7;
-      margin-bottom: 0.25rem;
-    }
-
-    .setting-row input[type="range"] {
-      width: 100%;
-      height: 26px;
-      accent-color: #a82424;
-      cursor: pointer;
-    }
-
-    .setting-row select,
-    .setting-row input[type="password"],
-    .setting-row textarea {
-      width: 100%;
-      background: #060609;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: var(--text-main);
-      font-family: var(--font-serif);
-      font-size: 0.88rem;
-      padding: 0.52rem 0.72rem;
-      border-radius: 6px;
-      user-select: text;
-    }
-
-    .setting-note {
-      font-size: 0.72rem;
-      color: #958e85;
-      margin-top: 0.28rem;
-      line-height: 1.5;
-    }
-
-    /* 見下ろし間取り図 */
-    .map-paper {
-      background:
-        radial-gradient(circle at 20% 25%, rgba(110, 88, 60, 0.16), transparent 55%),
-        radial-gradient(circle at 80% 75%, rgba(80, 40, 30, 0.18), transparent 50%),
-        #1a1713;
-      border: 1px solid #4a3f31;
-      border-radius: 6px;
-      padding: 0.7rem;
-      box-shadow: inset 0 0 36px rgba(0, 0, 0, 0.86);
-    }
-
-    #map-svg {
-      width: 100%;
-      height: auto;
-      max-height: 55dvh;
-      display: block;
-    }
-
-    .map-legend {
-      display: flex;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      font-size: 0.74rem;
-      color: #aea292;
-      margin-top: 0.45rem;
-    }
-
-    /* ==========================================================================
-       8. ダイス判定オーバーレイ（z-index: 70）
-          ダイス本体は部品 assets/dice/dice-engine.js。ここは置き場所とボタンだけ
-       ========================================================================== */
-    #dice-overlay {
-      position: fixed;
-      inset: 0;
-      width: 100vw;
-      height: 100dvh;
-      z-index: 70;
-      display: none;
-      background: radial-gradient(circle at center, rgba(16, 4, 6, 0.78) 0%, rgba(2, 1, 3, 0.94) 100%);
-      backdrop-filter: blur(3px);
-    }
-    #dice-overlay.active { display: block; }
-    #dice-3d { position: absolute; inset: 0; z-index: 1; }
-    #dice-3d .hd-hint { bottom: 13dvh; } /* 左下のボタンと重ならないよう少し上へ */
-
-    /* 左下：技能の切り替えと「振らずに戻る」（投げたら消える） */
-    #dice-skill-options {
-      position: absolute;
-      z-index: 5;
-      left: max(1.5vw, var(--safe-left));
-      bottom: max(1.5dvh, var(--safe-bottom));
-      max-width: 34vw;
-      display: flex;
-      flex-wrap: wrap-reverse;
-      gap: 1dvh 0.8vw;
-    }
-    #dice-skill-options[hidden] { display: none; }
-    #dice-skill-options button { font-size: clamp(0.75rem, 2.8dvh, 0.95rem); padding: 0.8dvh 0.8rem; }
-    #dice-skill-options button[aria-pressed="true"] { border-color: #d28c81; background: #562729; }
-
-    /* 部品が読み込めなかったときだけ使う、数字だけの結果表示 */
-    .dice-result-panel {
-      position: absolute;
-      z-index: 5;
-      right: max(1.5vw, var(--safe-right));
-      bottom: 8dvh;
-      width: 25vw;
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.45rem;
-    }
-    .dice-result-panel.show { display: flex; animation: fadeInSlow 0.35s ease forwards; }
-    .dice-total-line { font-size: clamp(0.9rem, 3dvh, 1.2rem); letter-spacing: 0.12em; color: #dfd6cb; text-align: center; }
-    .dice-total-line:empty { display: none; }
-    /* ==========================================================================
-       9. 全画面赤文字侵食・振動・エンディング・トースト・暗転幕
-       ========================================================================== */
-    #red-text-flash {
-      position: fixed;
-      inset: 0;
-      z-index: 75;
-      pointer-events: none;
-      display: none;
-      background: rgba(74, 0, 0, 0.62);
-      color: rgba(242, 26, 26, 0.95);
-      font-family: var(--font-serif);
-      font-weight: 700;
-      font-size: clamp(1.1rem, 4dvh, 2.2rem);
-      line-height: 1.25;
-      letter-spacing: 0.16em;
-      overflow: hidden;
-      word-break: break-all;
-      padding: 1rem;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      text-shadow: 0 0 18px #000;
-    }
-
-    #red-text-flash.flash-active {
-      display: flex;
-      animation: redFlashAnim 0.85s ease-out forwards;
-    }
-
-    @keyframes redFlashAnim {
-      0% { opacity: 0; }
-      12% { opacity: 1; }
-      40% { opacity: 0.86; }
-      62% { opacity: 0.96; }
-      100% { opacity: 0; }
-    }
-
-    .shake-heavy {
-      animation: shakeHeavy 0.48s ease-out;
-    }
-
-    @keyframes shakeHeavy {
-      0%, 100% { transform: translate(0, 0); }
-      15% { transform: translate(-11px, 7px); }
-      30% { transform: translate(10px, -8px); }
-      45% { transform: translate(-8px, -5px); }
-      60% { transform: translate(7px, 5px); }
-      75% { transform: translate(-3px, 2px); }
-    }
-
-    #screen-ending {
-      z-index: 45;
-      background: #020204;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: max(1rem, var(--safe-top)) max(1.5rem, var(--safe-right)) max(1rem, var(--safe-bottom)) max(1.5rem, var(--safe-left));
-      text-align: center;
-      overflow-y: auto;
-    }
-
-    .ending-type {
-      font-size: 0.8rem;
-      color: #a33434;
-      letter-spacing: 0.28em;
-      margin-bottom: 0.45rem;
-    }
-
-    .ending-title {
-      font-size: clamp(1.3rem, 5dvh, 2rem);
-      letter-spacing: 0.22em;
-      margin-bottom: 1rem;
-    }
-
-    .ending-desc {
-      max-width: 600px;
-      font-size: clamp(0.84rem, 2.5dvh, 1rem);
-      color: #cdc7be;
-      line-height: 1.85;
-      margin-bottom: 1.4rem;
-      white-space: pre-wrap;
-    }
-
-    #fade-curtain {
-      position: fixed;
-      inset: 0;
-      z-index: 80;
-      background: #000;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.5s ease;
-    }
-
-    #fade-curtain.active {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    #toast-msg {
-      position: fixed;
-      top: max(3.3rem, calc(var(--safe-top) + 2.9rem));
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 85;
-      background: rgba(14, 12, 14, 0.96);
-      border: 1px solid rgba(199, 176, 124, 0.55);
-      color: #f0e9dd;
-      font-size: 0.82rem;
-      letter-spacing: 0.1em;
-      padding: 0.48rem 1.1rem;
-      border-radius: 6px;
-      display: none;
-      pointer-events: none;
-      white-space: nowrap;
-      max-width: 90vw;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    #toast-msg.show {
-      display: block;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>深淵の胎動（仮） v0.5.0</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
+<style>
+  /* ゲーム本体（11/25 に「ゲーム画面 見本 v1.8」を本体にした）。ダイスは部品 assets/dice/dice-engine.js */
+  :root{
+    --bg:#020204; --fg:#e8e2da; --dim:#928b82; --gold:#c7b07c; --blood:#8c1414;
+    --serif:'Shippori Mincho','Noto Serif JP','Hiragino Mincho ProN',serif;
+    --vigA:0; --vigR:0; color-scheme:dark;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
+  html,body{width:100vw;height:100dvh;overflow:hidden;background:var(--bg);color:var(--fg);font-family:var(--serif);letter-spacing:.05em;touch-action:none}
+  button{font-family:inherit;color:inherit}
+
+  /* 背景（絵の代わり）：ゆっくり動く */
+  #stage{position:fixed;inset:0;overflow:hidden;transition:filter 1.2s}
+  #bg{position:absolute;inset:0;background:#000 center/cover no-repeat;transition:opacity .8s;transform-origin:50% 50%}
+  #bg.fade{opacity:0}
+  /* 見せ方（場面ごとに変える） */
+  .cam-still{transform:none}
+  .cam-zoomin{animation:zoomin 16s ease-out forwards}
+  @keyframes zoomin{from{transform:scale(1)}to{transform:scale(1.18)}}
+  .cam-pullback{animation:pullback 4.5s cubic-bezier(.2,.7,.2,1) forwards}
+  @keyframes pullback{from{transform:scale(1.7)}to{transform:scale(1)}}
+  .cam-closeup{transform:scale(1.9)}
+  .cam-pan{inset:0 -12% !important;animation:pan 26s ease-in-out infinite alternate}
+  @keyframes pan{from{transform:translateX(5%)}to{transform:translateX(-5%)}}
+  #assetTabs{display:flex;gap:1.4vw;margin-bottom:2dvh}
+  #bgGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:1vw}
+  #bgGrid button{border:1px solid #3a3027;background:#000;padding:0;border-radius:2px;overflow:hidden;position:relative}
+  #bgGrid img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
+  #bgGrid span{position:absolute;left:0;right:0;bottom:0;font-size:11px;background:rgba(0,0,0,.7);padding:2px}
+  #sfxList{display:grid;grid-template-columns:repeat(4,1fr);gap:.8dvh .8vw}
+  #sfxList button{padding:1.2dvh .6vw;font-size:12px;background:#110d0b;border:1px solid #3a3027;border-radius:3px;text-align:left}
+  #sfxList button.playing{border-color:var(--gold);color:var(--gold)}
+  #shade{position:absolute;inset:0;background:rgba(0,0,0,.6);opacity:0;transition:opacity .9s}
+  #shade.on{opacity:1}
+
+  /* 全画面の文章 */
+  #text{position:absolute;top:calc(9dvh + env(safe-area-inset-top,0px));bottom:8dvh;
+    left:calc(9vw + env(safe-area-inset-left,0px));right:calc(9vw + env(safe-area-inset-right,0px));
+    font-size:clamp(14px,4.6dvh,22px);line-height:1.95;overflow:hidden;transition:opacity .6s;pointer-events:none}
+  #text p{margin-bottom:.4em;text-shadow:0 0 6px #000}
+  /* 回想などの「ふわっと」表示：ど真ん中に1文ずつ */
+  body.fadetext #text{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;top:12dvh;bottom:12dvh}
+  #text p.fin{opacity:0;animation:fin 1.8s ease forwards}
+  #text p.fout{animation:fout 1s ease forwards}
+  @keyframes fin{from{opacity:0;filter:blur(3px)}to{opacity:1;filter:none}}
+  @keyframes fout{from{opacity:1}to{opacity:0;filter:blur(3px)}}
+  #text .who{color:var(--gold);margin-right:.4em}
+  #text .me{color:#b9c7d8}
+  #next{position:absolute;right:calc(5vw + env(safe-area-inset-right,0px));bottom:4dvh;color:var(--dim);font-size:3dvh;
+    animation:blink 1.4s infinite;opacity:0}
+  #next.on{opacity:1}
+  @keyframes blink{50%{opacity:.2}}
+  .shake{animation:shake .45s}
+  @keyframes shake{20%{transform:translate(-1.2vw,.6dvh)}40%{transform:translate(1vw,-.8dvh)}60%{transform:translate(-.6vw,.4dvh)}80%{transform:translate(.4vw,0)}}
+  #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+  #flash.on{animation:flash .5s}
+  @keyframes flash{0%{opacity:.7}100%{opacity:0}}
+
+  /* 選択肢（文章と入れ替わる） */
+  #choices{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2.6dvh;
+    opacity:0;pointer-events:none;transition:opacity .5s;z-index:5}
+  #choices.on{opacity:1;pointer-events:auto}
+  .ch{width:min(56vw,560px);padding:2.2dvh 2vw;font-size:clamp(13px,4.2dvh,20px);background:rgba(8,6,5,.75);
+    border:1px solid #4a3f33;border-radius:3px;text-align:center}
+  .ch:active{background:rgba(60,20,20,.8)}
+  .ch.resist{border-color:#6b1b1b;color:#d8c2b0}
+
+  /* ▓▓抗う の隠し方 */
+  .g{display:inline-block;width:1em;text-align:center;position:relative}
+  .g.moji{color:#b8a898}
+  .g.block{color:transparent;background:
+    repeating-linear-gradient(0deg,#6a6058 0 2px,#151210 2px 4px),
+    repeating-linear-gradient(90deg,rgba(255,255,255,.15) 0 3px,transparent 3px 6px);animation:noise .15s steps(2) infinite}
+  @keyframes noise{50%{background-position:0 3px,4px 0}}
+  .g.black{color:transparent;background:#000;box-shadow:0 0 3px 1px #000;border-radius:2px}
+  .g.fade{opacity:.18;filter:blur(1.5px)}
+  .g.flick{animation:flick 2.3s steps(1) infinite}
+  @keyframes flick{0%{opacity:0}37%{opacity:.9}40%{opacity:0}71%{opacity:.5}73%{opacity:0}}
+  .g.scratch{color:rgba(232,226,218,.5)}
+  .g.scratch::after{content:"";position:absolute;inset:10% -5%;background:
+    linear-gradient(20deg,transparent 42%,#ddd 44%,transparent 47%),
+    linear-gradient(-15deg,transparent 52%,#bbb 54%,transparent 57%),
+    linear-gradient(35deg,transparent 30%,#999 32%,transparent 34%)}
+
+  /* 印のある場面で浮かぶ抗うボタン */
+  #floatResist{position:absolute;right:calc(4vw + env(safe-area-inset-right,0px));bottom:12dvh;padding:1.6dvh 2vw;
+    font-size:clamp(12px,3.6dvh,18px);background:rgba(20,6,6,.8);border:1px solid #6b1b1b;border-radius:3px;
+    opacity:0;transform:translateY(2dvh);pointer-events:none;transition:opacity 1.2s,transform 1.2s}
+  #floatResist.on{opacity:1;transform:none;pointer-events:auto}
+
+  /* 左上のメニュー */
+  #menuBtn{position:absolute;left:calc(2.4vw + env(safe-area-inset-left,0px));top:calc(3dvh + env(safe-area-inset-top,0px));
+    width:9dvh;height:9dvh;min-width:36px;min-height:36px;font-size:7dvh;line-height:1;background:rgba(0,0,0,.25);border:1px solid rgba(199,176,124,.25);
+    border-radius:4px;color:rgba(232,226,218,.55);z-index:20}
+
+  /* 右上の血の魔法陣 */
+  #circle{position:absolute;right:calc(3vw + env(safe-area-inset-right,0px));top:calc(3dvh + env(safe-area-inset-top,0px));
+    width:28dvh;height:28dvh;opacity:0;transition:opacity 1s;pointer-events:none;z-index:15;overflow:visible}
+  #circle.on{opacity:1}
+  #circle path{fill:none;stroke-linecap:round;stroke-linejoin:round}
+  #circle .st{display:none}
+  #circle .st.done{display:inline}
+  #circle .st.done path{stroke:#3d0507}
+  #circle .st.done .drip{stroke:#3d0507;fill:none}
+  #circle .st.done .drop{fill:#3d0507}
+  #circle .st.fresh path{stroke:#9a0d15}
+  #circle .st.fresh .drop{fill:#9a0d15}
+  #circle .st.fresh{filter:drop-shadow(0 0 1.2px rgba(255,60,60,.55))}
+  #circle .st.drawing .seg{opacity:0;animation:seg .14s forwards;animation-delay:calc(var(--i) * .11s)}
+  @keyframes seg{to{opacity:var(--o)}}
+  #circle .seg{opacity:var(--o)}
+  #circle .drip{stroke-dasharray:var(--len);stroke-dashoffset:0}
+  #circle .st.drawing .drip{stroke-dashoffset:var(--len);animation:drip 2.4s ease-in forwards;animation-delay:1.3s}
+  #circle .st.drawing .drop{opacity:0;animation:drop .3s forwards;animation-delay:3.5s}
+  @keyframes drip{to{stroke-dashoffset:0}}
+  @keyframes drop{to{opacity:1}}
+  #circle.glow .st.done path{animation:glow 1.8s ease-in-out infinite}
+  @keyframes glow{50%{stroke:#c0141c}}
+
+  /* 正気度：ビネット */
+  #vig{position:absolute;inset:0;pointer-events:none;z-index:30;
+    background:radial-gradient(ellipse 75% 70% at 50% 50%,transparent 45%,rgba(var(--vigR),0,0,var(--vigA)) 100%)}
+  #vig.pulse{animation:pulse 3.2s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.7}}
+  #vig.flicker{animation:pulse 3.2s ease-in-out infinite,vflick 5s steps(1) infinite}
+  #vig.flicker2{animation:pulse 2s ease-in-out infinite,vflick 1.6s steps(1) infinite}
+  @keyframes vflick{0%{filter:none}91%{filter:brightness(2.2)}93%{filter:none}96%{filter:brightness(1.6)}}
+  body.blur #text{animation:tblur 4s infinite}
+  @keyframes tblur{0%,90%,100%{filter:none;transform:none}92%{filter:blur(1.5px);transform:translateX(.4vw)}}
+  /* HP1：視界の欠け（押す場所は残す＝pointer-events:none） */
+  #eat{position:absolute;inset:0;pointer-events:none;z-index:31;opacity:0;transition:opacity 1.5s}
+  #eat.on{opacity:1}
+
+  /* ダイス判定（中身は部品 assets/dice/dice-engine.js が作る） */
+  #dice{position:absolute;inset:0;z-index:40;display:none;background:rgba(0,0,0,.6);touch-action:none;user-select:none}
+  #dice.on{display:block}
+
+  /* パネル（メニュー・抗う・ログ） */
+  .panel{position:absolute;inset:0;z-index:50;background:rgba(4,3,3,.94);display:none;
+    padding:calc(4dvh + env(safe-area-inset-top,0px)) calc(5vw + env(safe-area-inset-right,0px)) 4dvh calc(5vw + env(safe-area-inset-left,0px));
+    overflow-y:auto;touch-action:pan-y}
+  .panel.on{display:block}
+  .panel h2{font-size:5dvh;color:var(--gold);margin-bottom:2dvh;font-weight:600}
+  .panel .close{position:absolute;right:calc(3vw + env(safe-area-inset-right,0px));top:3dvh;font-size:4dvh;background:none;border:1px solid #4a3f33;padding:.6dvh 2vw;border-radius:3px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.6dvh 1.4vw}
+  .item{padding:2dvh 1vw;font-size:clamp(12px,3.6dvh,17px);background:#110d0b;border:1px solid #3a3027;border-radius:3px;text-align:center}
+  .item:active{background:#2a1010}
+  .sub{font-size:clamp(12px,3.4dvh,16px);line-height:1.8;color:#cfc6bb}
+  .row{display:flex;gap:1.4vw;margin-top:2dvh;align-items:center}
+  input[type=text]{flex:1;font-family:inherit;font-size:16px;padding:1.4dvh 1vw;background:#0c0a09;color:var(--fg);border:1px solid #4a3f33;border-radius:3px;user-select:text}
+  .tune label{display:flex;align-items:center;gap:1.4vw;font-size:clamp(12px,3.4dvh,16px);margin:1.2dvh 0}
+  .tune input[type=range]{flex:1}
+  .tune span{width:5em;text-align:right;font-variant-numeric:tabular-nums}
+  .small{font-size:clamp(11px,3dvh,14px);color:var(--dim);margin-top:1dvh}
+
+
+
+  /* 探索者シート（古びた羊皮紙の見開き） */
+  #pSheet{background:rgba(4,3,3,.94);padding:2dvh 3vw}
+  #pSheet.on{display:flex;align-items:center;justify-content:center}
+  #pSheet #book{width:100%;margin:0}
+  #book{position:relative;display:flex;height:80dvh;margin-top:1dvh;padding:1.6dvh 1.4vw;border-radius:5px;color:#2a1a08;overflow:hidden;
+    background:
+      radial-gradient(circle at 18% 22%,rgba(110,60,15,.28) 0,transparent 9%),
+      radial-gradient(circle at 78% 70%,rgba(90,45,10,.3) 0,transparent 12%),
+      radial-gradient(circle at 63% 18%,transparent 5.2%,rgba(95,50,12,.34) 5.6%,transparent 6.4%),
+      radial-gradient(circle at 36% 84%,rgba(70,35,8,.22) 0,transparent 7%),
+      radial-gradient(ellipse at 50% 50%,#dcc592 0%,#c9a96f 58%,#8a6535 100%);
+    box-shadow:inset 0 0 7dvh rgba(50,22,3,.85),0 0 3dvh #000}
+  #book::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;mix-blend-mode:multiply;opacity:.75;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.045' numOctaves='4' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 .25  0 0 0 0 .14  0 0 0 0 .04  0 0 0 .9 -.25'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  #book::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;
+    background:linear-gradient(90deg,transparent 48.6%,rgba(40,18,2,.38) 49.8%,rgba(255,235,190,.18) 50.4%,transparent 51.6%),
+      linear-gradient(180deg,rgba(40,18,2,.35),transparent 7%,transparent 93%,rgba(40,18,2,.4))}
+  #book .pg{position:relative;z-index:1;flex:1;padding:.4dvh 1.3vw;overflow-y:auto}
+  #book .pg+.pg{margin-left:1.2vw}
+  #book h3{font-size:3.6dvh;letter-spacing:.2em;text-align:center;margin:.4dvh 0 .8dvh;padding-bottom:.4dvh;border-bottom:2px double rgba(50,28,6,.7)}
+  #book .sec{font-size:2.8dvh;letter-spacing:.3em;text-align:center;margin:1.2dvh 0 .6dvh;background:linear-gradient(90deg,transparent,rgba(60,35,10,.22),transparent)}
+  #book .fl{display:flex;gap:.6vw;font-size:clamp(11px,3dvh,15px);line-height:1.5;border-bottom:1px solid rgba(50,28,6,.55)}
+  #book .fl b{font-weight:600;white-space:nowrap}
+  #book .fl span{flex:1;text-align:right;font-style:italic}
+  #book .abil{display:grid;grid-template-columns:repeat(3,1fr);gap:.8dvh .8vw}
+  #book .ab{display:flex;align-items:center;justify-content:space-between;font-size:clamp(11px,3dvh,15px);font-weight:700}
+  .bx{display:inline-block;min-width:2.6em;padding:.1em .3em;text-align:center;font-weight:700;font-variant-numeric:tabular-nums;
+    border:1.5px solid #3a2410;background:linear-gradient(90deg,rgba(255,240,200,.28) 66%,rgba(60,35,10,.12) 66%)}
+  #book .st{display:grid;grid-template-columns:repeat(4,1fr);gap:.8vw;text-align:center;font-size:clamp(10px,2.8dvh,14px)}
+  #book .st .bx{display:block;font-size:clamp(14px,4.2dvh,22px);margin-top:.3dvh}
+  #book .st small{display:block;font-weight:400}
+  #book .sk{display:grid;grid-template-columns:repeat(3,1fr);gap:.2dvh 1vw}
+  #book .sk div{display:flex;align-items:center;gap:.4vw;font-size:clamp(11px,3dvh,15px);border-bottom:1px solid rgba(50,28,6,.35);padding:.2dvh 0}
+  #book .sk i{width:1.1em;height:1.1em;border:1.5px solid #3a2410;flex:none;font-style:normal;font-weight:700;color:#5a140a;line-height:1em;text-align:center;font-size:1.25em;text-shadow:0 0 1px rgba(90,20,10,.6)}
+  #book .sk em{flex:1;font-style:normal;white-space:nowrap;letter-spacing:-.04em;font-size:.92em}
+  #book .wp{width:100%;border-collapse:collapse;font-size:clamp(10px,2.8dvh,14px)}
+  #book .wp td,#book .wp th{border-bottom:1px solid rgba(50,28,6,.5);padding:.2dvh .5vw;text-align:left;font-weight:500}
+  #book .wp th{font-weight:700}
+  #book .inv{columns:2;column-gap:1.5vw}
+  #book .inv div{break-inside:avoid;height:4.2dvh;line-height:4.2dvh;font-size:clamp(12px,3.2dvh,16px);border-bottom:1px solid rgba(50,28,6,.55)}
+  #book .flip{position:absolute;right:2vw;bottom:1.2dvh;z-index:3;font-size:clamp(11px,3dvh,15px);background:rgba(230,205,150,.85);border:1.5px solid #3a2410;color:#2a1a08;padding:.6dvh 2vw;border-radius:3px}
+
+  /* ---- 古いフィルム演出 ---- */
+  #film{position:absolute;inset:0;pointer-events:none;z-index:25;display:none;overflow:hidden}
+  body.film #film{display:block}
+  body.film #bg{filter:sepia(.95) contrast(1.2) brightness(.8) !important}
+  body.film #text{color:#e9dcc0}
+  #film .grain{position:absolute;inset:-50%;opacity:.1;animation:grain .5s steps(5) infinite;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  @keyframes grain{0%{transform:translate(0,0)}20%{transform:translate(-7%,4%)}40%{transform:translate(5%,-6%)}60%{transform:translate(-3%,8%)}80%{transform:translate(8%,2%)}}
+  #film .flick{position:absolute;inset:0;background:#000;animation:fflick .18s steps(2) infinite}
+  @keyframes fflick{0%{opacity:.04}50%{opacity:.13}}
+  #film .fvig{position:absolute;inset:0;background:radial-gradient(ellipse 70% 65% at 50% 50%,transparent 50%,rgba(20,10,0,.75) 100%)}
+  #film .scr{position:absolute;top:0;bottom:0;width:1px;background:rgba(240,230,210,.55);opacity:0}
+  #film .dust{position:absolute;border-radius:50%;background:rgba(15,10,5,.8)}
+  #film .hair{position:absolute;width:6vw;height:3dvh;border:1px solid rgba(20,12,5,.7);border-color:rgba(20,12,5,.7) transparent transparent transparent;border-radius:50%}
+  body.film #stage{animation:weave .25s steps(3) infinite}
+  @keyframes weave{0%{transform:translateY(0)}33%{transform:translateY(.25dvh)}66%{transform:translateY(-.15dvh)}}
+  #burn{position:absolute;inset:0;pointer-events:none;z-index:26;opacity:0;
+    background:radial-gradient(circle at 60% 40%,#fff6d0 0%,#ffb040 25%,#7a2a00 55%,#000 80%)}
+  #burn.on{animation:burn .7s ease-out}
+  @keyframes burn{0%{opacity:0}15%{opacity:1}30%{opacity:.2}40%{opacity:.9}100%{opacity:0}}
+
+  /* ---- 軽いムービーシーン ---- */
+  .lb{position:absolute;left:0;right:0;height:0;background:#000;z-index:24;transition:height .9s ease}
+  #lbT{top:0} #lbB{bottom:0}
+  body.movie .lb{height:13dvh}
+  body.movie #text{top:auto;bottom:15dvh;text-align:center;left:12vw;right:12vw}
+  body.movie #shade{background:rgba(0,0,0,.25)}
+  body.movie #menuBtn,body.movie #floatResist,body.movie #next{opacity:0 !important;pointer-events:none !important}
+  #skipHint{position:absolute;right:calc(3vw + env(safe-area-inset-right,0px));bottom:4dvh;z-index:27;font-size:2.8dvh;color:rgba(232,226,218,.45);display:none}
+  body.movie #skipHint{display:block}
+  #start{position:fixed;inset:0;z-index:90;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2dvh;text-align:center}
+  #start b{font-size:6dvh;font-weight:600}
+  #start span{font-size:3.4dvh;color:var(--dim)}
+  #start .ver{color:var(--gold)}
+  #start.hide{display:none}
+  #portrait{position:fixed;inset:0;z-index:100;background:var(--bg);display:none;align-items:center;justify-content:center;text-align:center;padding:24px;font-size:16px}
+  @media (orientation:portrait){#portrait{display:flex}}
+</style>
 </head>
 <body>
-<div id="app-root">
+<div id="stage">
+  <div id="bg"></div>
+  <div id="shade"></div>
+  <div id="text"></div>
+  <div id="next">▼</div>
+  <div id="choices"></div>
+  <button type="button" id="floatResist"></button>
+  <button type="button" id="menuBtn" aria-label="メニュー">≡</button>
+  <svg id="circle" viewBox="0 0 100 100" aria-hidden="true"></svg>
+  <div id="flash"></div>
+  <div class="lb" id="lbT"></div><div class="lb" id="lbB"></div>
+  <div id="skipHint">長押しでスキップ</div>
+</div>
+<div id="film"><div class="grain"></div><div class="flick"></div><div class="fvig"></div></div>
+<div id="burn"></div>
+<div id="vig"></div>
+<svg id="eat" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
 
-  <!-- 縦向きガード（z-index: 99999） -->
-  <div id="portrait-guard" role="alert" aria-live="assertive">
-    <svg class="rotate-icon" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <rect x="19" y="8" width="26" height="44" rx="4"></rect>
-      <circle cx="32" cy="45" r="2" fill="currentColor"></circle>
-      <path d="M51 22c4 4 6 9 6 15a20 20 0 0 1-20 20"></path>
-      <polyline points="56 17 51 22 57 25"></polyline>
-    </svg>
-    <div class="portrait-guard-title">画面を横向きにしてプレイしてください</div>
-    <p class="portrait-guard-sub">
-      本作は横画面（ランドスケープ）専用です。<br>
-      端末を横に回転させると、そのまま続きから操作できます。
-    </p>
+<div id="dice"></div>
+
+<div class="panel" id="pMenu">
+  <button type="button" class="close" data-close>閉じる</button>
+  <h2>メニュー</h2>
+  <div class="grid">
+    <button type="button" class="item" data-open="pSheet">探索者シート</button>
+    <button type="button" class="item" data-open="pNote">手帳</button>
+    <button type="button" class="item" data-open="pLog">ログ</button>
+    <button type="button" class="item" data-open="pSave">セーブ・ロード</button>
+    <button type="button" class="item" data-open="pTune">見本の調整</button>
+    <button type="button" class="item" data-open="pAssets">素材を見る</button>
   </div>
-
-  <!-- 0. 起動時バージョン情報・変更点オーバーレイ（z-index: 5000 / ×を押すまで維持） -->
-  <div id="version-changelog-modal" role="dialog" aria-modal="true" aria-labelledby="changelog-version-heading">
-    <div class="changelog-panel" id="changelog-panel">
-      <div class="changelog-header">
-        <div class="changelog-title-group">
-          <span class="changelog-version-badge" id="changelog-version-badge">v0.3.0</span>
-          <h2 class="changelog-heading" id="changelog-version-heading">更新内容・バージョン情報</h2>
-        </div>
-        <button type="button" class="changelog-close-btn" id="btn-close-changelog" aria-label="バージョン情報を閉じる">×</button>
-      </div>
-      <ul class="changelog-list" id="changelog-list"></ul>
-      <div class="changelog-footer-note">右上の「×」ボタンを押すと起動画面へ進みます</div>
-    </div>
-  </div>
-
-  <!-- 1. 起動警告画面（z-index: 90） -->
-  <section id="screen-warning" class="screen-layer active" role="button" tabindex="0" aria-label="警告画面をタップして開始">
-    <div class="warning-box">
-      <div class="warning-title">⚠️ 警告</div>
-      <p class="warning-text">
-        本作には急激な音量変化、および精神的・生理的嫌悪感を催す表現が含まれます。<br>
-        必ずヘッドホン・イヤホンを装着のうえ、横画面でプレイしてください。
-      </p>
-      <button type="button" class="warning-start-btn" id="btn-warning-start">[ 画面をタップして開始 ]</button>
-    </div>
-  </section>
-
-  <!-- 2. タイトル画面 -->
-  <section id="screen-title" class="screen-layer">
-    <canvas id="title-canvas"></canvas>
-    <div class="title-top-bar">
-      <button type="button" class="hud-btn" id="btn-title-fullscreen">全画面</button>
-    </div>
-    <div class="title-version-corner" id="title-version-corner">v0.3.0</div>
-    <div class="title-ui-overlay" id="title-ui-overlay">
-      <nav class="title-menu" aria-label="タイトルメニュー">
-        <button type="button" class="title-menu-btn" id="btn-new-game">はじめから</button>
-        <button type="button" class="title-menu-btn" id="btn-continue">つづきから</button>
-        <button type="button" class="title-menu-btn" id="btn-title-settings">設定</button>
-      </nav>
-      <div class="title-footnote">CTHULHU HORROR NOVEL ENGINE</div>
-    </div>
-  </section>
-
-  <!-- 3. 本編ノベル画面 -->
-  <section id="screen-game" class="screen-layer">
-    <canvas id="scene-canvas"></canvas>
-    <div id="madness-vignette"></div>
-    <div id="madness-stains"></div>
-
-    <!-- 上部HUD（z-index: 40） -->
-    <header class="game-top-hud">
-      <div class="hud-left">
-        <div class="hud-location" id="hud-location">玄関ホール</div>
-        <div class="status-bars">
-          <div class="status-bar-group">
-            <span class="status-label">体力</span>
-            <div class="bar-track"><div class="bar-fill hp" id="bar-hp" style="width:100%;"></div></div>
-          </div>
-          <div class="status-bar-group" id="san-bar-group">
-            <span class="status-label">精神</span>
-            <div class="bar-track"><div class="bar-fill san" id="bar-san" style="width:100%;"></div></div>
-          </div>
-        </div>
-      </div>
-      <div class="hud-right">
-        <button type="button" class="hud-btn" id="btn-open-map">地図</button>
-        <button type="button" class="hud-btn" id="btn-open-items">所持品</button>
-        <button type="button" class="hud-btn" id="btn-open-save">保存</button>
-        <button type="button" class="hud-btn" id="btn-game-fullscreen">全画面</button>
-        <button type="button" class="hud-btn" id="btn-open-settings">設定</button>
-      </div>
-    </header>
-
-    <!-- テキスト送りタップ領域（z-index: 20） -->
-    <div class="novel-tap-layer" id="novel-tap-area">
-      <div class="novel-bottom-gradient">
-        <div class="novel-content-wrap">
-          <div class="speaker-name" id="speaker-name"></div>
-          <div class="novel-text" id="novel-text-wrap">
-            <span id="novel-text-body"></span><span class="next-indicator" id="next-indicator">▼</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 選択肢レイヤー（z-index: 35） -->
-    <div id="choices-container"></div>
-  </section>
-
-  <!-- 4. エンディング画面 -->
-  <section id="screen-ending" class="screen-layer">
-    <div class="ending-type" id="ending-type">ENDING</div>
-    <h1 class="ending-title" id="ending-title">終幕</h1>
-    <p class="ending-desc" id="ending-desc"></p>
-    <button type="button" class="primary-action-btn" id="btn-ending-to-title">タイトルへ戻る</button>
-  </section>
-
-  <!-- 5. ダイス判定オーバーレイ（z-index: 70） -->
-  <div id="dice-overlay" aria-live="polite">
-    <!-- 3Dダイス部品（assets/dice/dice-engine.js）の置き場所 -->
-    <div id="dice-3d"></div>
-    <div id="dice-skill-options" aria-label="技能" hidden></div>
-    <div class="dice-result-panel" id="dice-result-panel">
-      <div class="dice-total-line" id="dice-result-label"></div>
-    </div>
-  </div>
-
-  <!-- 全画面赤文字侵食フラッシュ（z-index: 75） -->
-  <div id="red-text-flash" aria-hidden="true"></div>
-
-  <!-- モーダル：シナリオ選択（z-index: 60） -->
-  <div class="modal-overlay" id="modal-scenarios">
-    <div class="modal-panel">
-      <div class="modal-header">
-        <h2 class="modal-title">シナリオ選択</h2>
-        <button type="button" class="modal-close" data-close="modal-scenarios">閉じる</button>
-      </div>
-      <div id="scenario-list-body"></div>
-    </div>
-  </div>
-
-  <!-- モーダル：セーブ / ロード -->
-  <div class="modal-overlay" id="modal-save-load">
-    <div class="modal-panel">
-      <div class="modal-header">
-        <h2 class="modal-title" id="save-load-title">記録の読み込み</h2>
-        <button type="button" class="modal-close" data-close="modal-save-load">閉じる</button>
-      </div>
-      <div id="save-load-list"></div>
-    </div>
-  </div>
-
-  <!-- モーダル：設定 -->
-  <div class="modal-overlay" id="modal-settings">
-    <div class="modal-panel">
-      <div class="modal-header">
-        <h2 class="modal-title">設定</h2>
-        <button type="button" class="modal-close" data-close="modal-settings">閉じる</button>
-      </div>
-      <div class="setting-grid">
-        <div>
-          <div class="setting-row">
-            <label><span>マスター音量</span><span id="val-vol-master">80%</span></label>
-            <input type="range" id="opt-vol-master" min="0" max="100" value="80">
-          </div>
-          <div class="setting-row">
-            <label><span>BGM / 環境音</span><span id="val-vol-bgm">75%</span></label>
-            <input type="range" id="opt-vol-bgm" min="0" max="100" value="75">
-          </div>
-          <div class="setting-row">
-            <label><span>SE（足音・驚かし・ダイス）</span><span id="val-vol-se">90%</span></label>
-            <input type="range" id="opt-vol-se" min="0" max="100" value="90">
-          </div>
-          <div class="setting-row" style="display:flex; gap:0.45rem; flex-wrap:wrap;">
-            <button type="button" class="hud-btn" id="btn-audio-test">音量テスト（足音）</button>
-          </div>
-        </div>
-        <div>
-          <div class="setting-row">
-            <label><span>文字送り速度</span></label>
-            <select id="opt-text-speed">
-              <option value="55">遅い</option>
-              <option value="30" selected>普通</option>
-              <option value="14">速い</option>
-              <option value="0">一括表示</option>
-            </select>
-          </div>
-          <div class="setting-row">
-            <label><span>【銀の鍵】BYOK APIキー（任意）</span></label>
-            <input type="password" id="opt-api-key" placeholder="Gemini APIキー（端末ローカル保存）" autocomplete="off">
-            <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.4rem;">
-              <button type="button" class="hud-btn" id="btn-api-test">接続テスト</button>
-              <span id="api-status-label" style="font-size:0.74rem; color:#968f86;">未設定（オフライン完結可）</span>
-            </div>
-            <p class="setting-note">※未設定のままでもオフライン固定シナリオ＆専用分岐で最後まで遊べます。</p>
-          </div>
-        </div>
-      </div>
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.8rem; gap:0.6rem;">
-        <button type="button" class="hud-btn" id="btn-back-title-from-game" style="display:none;">タイトルへ戻る</button>
-        <button type="button" class="primary-action-btn" id="btn-save-settings" style="margin-left:auto;">設定を適用</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- モーダル：見下ろし間取り図 -->
-  <div class="modal-overlay" id="modal-map">
-    <div class="modal-panel">
-      <div class="modal-header">
-        <h2 class="modal-title">見取り図</h2>
-        <button type="button" class="modal-close" data-close="modal-map">閉じる</button>
-      </div>
-      <div class="map-paper">
-        <svg id="map-svg" viewBox="0 0 600 300" xmlns="http://www.w3.org/2000/svg"></svg>
-        <div class="map-legend">
-          <span>■ 黒塗り：未探索エリア</span>
-          <span style="color:#d43838;">● 赤印：現在地</span>
-          <span id="map-room-caption"></span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- モーダル：所持品 -->
-  <div class="modal-overlay" id="modal-items">
-    <div class="modal-panel">
-      <div class="modal-header">
-        <h2 class="modal-title">所持品</h2>
-        <button type="button" class="modal-close" data-close="modal-items">閉じる</button>
-      </div>
-      <div id="items-list-body"></div>
-    </div>
-  </div>
-
-  <!-- モーダル：【銀の鍵】自由入力 -->
-  <div class="modal-overlay" id="modal-silver-key">
-    <div class="modal-panel">
-      <div class="modal-header">
-        <h2 class="modal-title" style="color:#d9c28b;">【銀の鍵】自由行動</h2>
-        <button type="button" class="modal-close" data-close="modal-silver-key">閉じる</button>
-      </div>
-      <p style="font-size:0.83rem; color:#c6beb2; margin-bottom:0.65rem;">
-        残り使用回数：<strong id="silver-key-remain" style="color:#d9c28b;">2</strong> 回 ／ 所持品や周囲の状況を使い、取りたい行動を自由に記述してください。
-      </p>
-      <div class="setting-row">
-        <textarea id="silver-key-input" rows="3" placeholder="例：油缶を撒いて火をつけ、怪異の進路を塞いで階段を駆け上がる"></textarea>
-        <p class="setting-note" id="silver-key-mode-note"></p>
-      </div>
-      <div style="display:flex; justify-content:flex-end; gap:0.6rem;">
-        <button type="button" class="modal-close" data-close="modal-silver-key">やめる</button>
-        <button type="button" class="primary-action-btn" id="btn-silver-key-submit">運命を書き換える</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 暗転幕 & トースト通知 -->
-  <div id="fade-curtain"></div>
-  <div id="toast-msg"></div>
+  <p class="small">深淵の胎動（仮） v0.5.0</p>
+</div>
+<div class="panel" id="pSheet"><button type="button" class="close" data-back>戻る</button>
+  <div id="book">
+    <div class="pg" id="pgL"></div>
+    <div class="pg" id="pgR"></div>
+    <button type="button" class="flip" id="flip">次のページ ▶</button>
+  </div></div>
+<div class="panel" id="pNote"><button type="button" class="close" data-back>戻る</button><h2>手帳</h2><div class="sub">・女将は事件の夜、家にいなかった（見本）<br>・地下の鍵は古い鍵では開かない（見本）</div></div>
+<div class="panel" id="pLog"><button type="button" class="close" data-close>閉じる</button><h2>ログ</h2><div class="sub" id="logBody"></div></div>
+<div class="panel" id="pSave"><button type="button" class="close" data-back>戻る</button><h2>セーブ・ロード</h2><div class="sub">（見本なので中身はありません）</div></div>
+<div class="panel tune" id="pTune"><button type="button" class="close" data-back>戻る</button><h2>見本の調整</h2>
+  <label>正気度 <input type="range" id="tSan" min="0" max="100"><span id="vSan"></span></label>
+  <label>HP <input type="range" id="tHp" min="1" max="12"><span id="vHp"></span></label>
+  <label>クトゥルフ神話 <input type="range" id="tMy" min="0" max="40"><span id="vMy"></span></label>
+  <div class="row"><button type="button" class="item" id="tCircle">魔法陣を1画進める</button><button type="button" class="item" id="tReset">最初からやり直す</button></div>
+  <div class="row"><button type="button" class="item" id="tGrow">話の終わり（成長判定）</button></div><p class="small" id="growOut"></p>
+  <p class="small">神話技能を30以上にすると、次に画面が切り替わったときにコッソリ読めるようになります。</p>
+</div>
+<div class="panel" id="pAssets"><button type="button" class="close" data-back>戻る</button><h2>素材を見る</h2>
+  <div id="assetTabs"><button type="button" class="item" id="tabBg">背景</button><button type="button" class="item" id="tabSfx">効果音</button>
+    <input type="text" id="assetQ" placeholder="名前で絞り込み" autocomplete="off"></div>
+  <div id="bgGrid"></div><div id="sfxList" style="display:none"></div>
+  <p class="small">背景はタップでその絵に切り替え（文章はそのまま）。効果音はタップで再生。</p>
+</div>
+<div class="panel" id="pResist"><button type="button" class="close" data-close>閉じる</button><h2 id="resistTitle"></h2>
+  <div class="grid" id="skillList"></div>
+  <div class="row"><input type="text" id="free" placeholder="技能名や行動を入力（例：目星）" autocomplete="off"><button type="button" class="item" id="freeGo">決定</button></div>
 </div>
 
+<div id="start" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプでログ／長押しで絵だけ</span><span class="ver">深淵の胎動（仮） v0.5.0</span></div>
+<div id="portrait">スマホを横向きにしてください</div>
+
+<script src="assets/manifest.js"></script>
 <!-- 部品を直したら ?v= を上げる（スマホに古い部品が残るのを防ぐ） -->
 <script src="assets/dice/dice-engine.js?v=1.4.2"></script>
 <script>
-(() => {
-  'use strict';
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var S = { checks:{}, san:80, sanMax:80, hp:12, hpMax:12, mythos:0, revealed:false, strokes:0, maxStrokes:8 };
+  var SKILLS = {'近接':50,'銃火器':20,'回避':60,'防御':50,'目星':60,'聞き耳':55,'隠密':10,'医学':30,'製作':20,'説得':15,'心理学':45,'クトゥルフ神話':0,'教養':70,'アイデア':65,'幸運':50};
+  var SKILLS0=JSON.parse(JSON.stringify(SKILLS)); var NOGROW={'クトゥルフ神話':1,'アイデア':1,'幸運':1}; 
+  var log = [];
 
-  /* ============================================================================
-     SECTION 0: バージョン・変更履歴定義（更新時にここを編集）
-     ============================================================================ */
-  const APP_VERSION = 'v0.4.7';
-  const CHANGELOG = [
-    'ダイス：きんきんさんの決定設定を反映（滑りにくさ・止まりやすさ・カットインの音）',
-    'ダイス部品の読み込みに版番号を付け、古い部品が残って動かなくなる問題を防止',
-    'ダイス：カットインを薄め（濃さ0.52）にして止まる時間を長く、控えめに不穏なカットインの音を追加',
-    'ダイス：判定の始めに「Dice Roll」のカットイン（左から右へスライドしながらフェードイン→フェードアウトしてダイス画面へ）',
-    'ダイス：「結果を受け入れる」ボタンを廃止。結果が出て1秒後から、画面のどこかをタップでフェードアウトして次へ',
-    'ダイス：止まる前に触っても振り直せないように修正。読み込み中に別のトレーが一瞬出る問題を修正（使わないダイス・トレーを部品から削除）',
-    '古い2Dダイスと技能選択の画面を削除。判定ではすぐ3Dダイスが出る（技能が2つ以上のときは左下で切り替え）',
-    'ダイスを部品化：判定で、ダイス見本と同じ3Dダイス（クトゥルフの遺物と青銅の祭具）を指でつかんで投げるように変更',
-    '技能を選んでスワイプで投げるダイス、判定前の心音・振動、旧診察室の扉の分岐を追加',
-    '第壱話に雨、扉、廊下の気配、引きずる音、怪物の効果音を追加',
-    '起動時のバージョン情報・変更点表示（×ボタンで閉じるまで表示維持）を追加',
-    '音響の重厚化（40〜60Hzサブベース・ダーク歪み・地下残響リバーブを強化）',
-    '狂気時の文字化けをエンコード崩れ系（縺・繝・繧・半角カナ等）に変更し、本文の約2割に混入',
-    '1d100判定時に禍々しい2つの10面ダイス（十の位・一の位）が転がり跳ねるCanvas演出と衝突SEを追加',
-    '横画面固定・フルスクリーン化・タップ座標ズレ解消を維持'
-  ];
-
-  /* ============================================================================
-     SECTION 1: シナリオデータ部（データ駆動型：エンジン本体と完全分離）
-     ============================================================================ */
-  const SCENARIO_CATALOG = [
-    {
-      id: 'ep01_sanatorium',
-      title: '第壱話：廃療養所の地下室',
-      status: 'playable',
-      badge: '収録済',
-      synopsis: '大雨の夜、行方不明の妹の手がかりを追って辿り着いた山奥の廃療養所。軋む廊下の奥から響く「もう一人分」の足音と、地下室に封じられた名状しがたい胎動――。'
-    },
-    {
-      id: 'ep02_dlc_placeholder',
-      title: '第弐話：黒潮の灯台守（追加予定）',
-      status: 'locked',
-      badge: 'DLC枠',
-      synopsis: 'エンジンを変更せず、シナリオデータとアセットの追加のみで続編・DLCを配信できるデータ駆動型構造のプレースホルダーです。'
-    }
-  ];
-
-  function createClinicDoorEvents() {
-    const open = { label: '扉を開いて進む', next: 'evt_clinic_01' };
-    const inspect = { label: '扉を調べる', next: 'evt_clinic_inspect' };
-    const stairs = { label: '地下階段へ向かう', next: 'evt_stairs_01' };
-    const listen = { skill: '聞き耳', target: 65, risk: '室内の音を探る。判定を誤ると扉に体重を掛けてしまう。',
-      critical: 'evt_door_listen_critical', success: 'evt_door_listen_ok', fail: 'evt_door_listen_fail', fumble: 'evt_door_listen_fumble' };
-    const sneak = { skill: '隠密', target: 60, risk: '音を抑えて開ける。失敗すると蝶番が鳴る。',
-      success: 'evt_clinic_01', fail: 'evt_door_noise' };
-    const attacks = [
-      { skill: '拳', target: 65, risk: '扉が開いても廊下に物音が響く。',
-        success: 'evt_door_punch', fail: 'evt_door_break_fail', fumble: 'evt_door_break_fumble' },
-      { skill: '武器（古い斧）', item: 'rescue_axe', target: 78, risk: '板を割れるが、破壊音で気づかれる。',
-        success: 'evt_door_axe', fail: 'evt_door_break_fail', fumble: 'evt_door_break_fumble' },
-      { skill: '武器（鉄棒）', item: 'iron_bar', target: 78, risk: '腐った板を砕けるが、破壊音で気づかれる。',
-        success: 'evt_door_bar', fail: 'evt_door_break_fail', fumble: 'evt_door_break_fumble' }
-    ];
-    const roll = { label: 'ダイスを振る', diceChecks: [listen, sneak] };
-    const breakDoor = { label: '扉をぶち壊す', diceChecks: attacks };
-    const approach = [open, inspect, roll, breakDoor, stairs];
-    const proceed = [open, stairs];
-    const scene = (text, choices = proceed, step = {}, room = 'room_corridor', bg = 'corridor') =>
-      ({ room, bg, steps: [{ text, ...step }], choices });
-    const impact = { shake: 'heavy', sfx: { type: 'door_slam_jumpscare', level: 0.67, sample: 'iron-door' } };
-    const aftermath = scene('扉の破片が床を打った。廊下の奥で引きずる音が止まり、向きが変わる。こちらへ来る。',
-      [{ label: '音が迫る前に診察室の奥へ', next: 'evt_clinic_01' }, stairs],
-      { madnessAdd: 8, sfx: { type: 'footstep_drag', sample: 'drag', level: 0.6, pan: 0.6 } });
-    const broken = (text, effect = impact) => scene(text, [
-      { label: '破片を越えて進む', next: 'evt_door_aftermath' }
-    ], effect);
-    return {
-      evt_clinic_door: scene('診察室の木戸が半開きになっている。脇には壊れた防災箱と、鉄棒が外れかけた医療棚がある。', approach),
-      evt_clinic_inspect: scene('錠は掛かっていない。木戸の下半分は湿気で腐り、床には内側から伸びた引っかき傷がある。', [
-        ...approach.filter(choice => choice !== inspect),
-        { label: '防災箱の斧を取る', unlessItem: 'rescue_axe', next: 'evt_door_take_axe' },
-        { label: '医療棚から鉄棒を外す', unlessItem: 'iron_bar', next: 'evt_door_take_bar' }
-      ]),
-      evt_door_take_axe: scene('防災箱の奥に、手斧が残っていた。', approach, { addItem: 'rescue_axe' }),
-      evt_door_take_bar: scene('ぐらつく鉄棒を、棚からそっと外した。', approach, { addItem: 'iron_bar' }),
-      evt_door_listen_critical: scene('小さな引きずり音は、扉のすぐ右から室内の奥へ遠ざかっている。今なら左へ抜けられそうだ。', [open, breakDoor, stairs]),
-      evt_door_listen_ok: scene('室内で、湿った布を床に擦りつけるような音がする。何かいる。', [open, breakDoor, stairs]),
-      evt_door_listen_fail: scene('何も聞き取れない。中に何がいるかは分からない。', [open, breakDoor, stairs]),
-      evt_door_listen_fumble: scene('耳を当てた拍子に扉が開き、診察室の床に倒れ込んだ。奥の物音がぴたりと止まる。', proceed,
-        { ...impact, hpAdd: -5, madnessAdd: 5 }, 'room_clinic', 'clinic'),
-      evt_door_noise: scene('蝶番が鳴った。奥で何かが振り返り、こちらへ近づく。', proceed, { madnessAdd: 5 }),
-      evt_door_punch: broken('拳が当たった場所から板が陥没する。腐った木が裂け、扉が奥に倒れた。'),
-      evt_door_axe: broken('斧がめり込んだ。板が真っ二つに裂け、折れた木戸の隙間から診察室が見える。',
-        { ...impact, sfx: { type: 'door_slam_jumpscare', sample: 'door-split', level: 0.74 } }),
-      evt_door_bar: broken('鉄棒が腐った板を貫き、木片が砕け散った。床を跳ねる破片の音が廊下の奥まで響く。',
-        { ...impact, sfx: { type: 'door_slam_jumpscare', sample: 'door-shatter', level: 0.74 } }),
-      evt_door_aftermath: aftermath,
-      evt_door_break_fail: scene('鈍い衝撃が廊下に響いた。扉は開かず、奥から足音が近づく。'),
-      evt_door_break_fumble: scene('衝撃で手を痛めた。扉は開かず、暗がりで引きずる音がこちらを向く。', proceed,
-        { ...impact, hpAdd: -10, madnessAdd: 8 })
-    };
-  }
-
-  const SCENARIO_DATA = {
-    ep01_sanatorium: {
-      meta: {
-        id: 'ep01_sanatorium',
-        title: '第壱話：廃療養所の地下室',
-        silverKeyLimit: 2,
-        aiWorldTruth: '地下室には旧支配者の落とし子が封印されている。所持品「油缶」と「錆びた鍵」を併用して火を放つか防火扉を施錠すれば焼却生還（burn）へ到達できる。'
-      },
-      madnessThresholds: {
-        stage1: 25, // 画面端の黒いシミ・微細揺れ
-        stage2: 50, // Shift_JIS/UTF-8風文字化け(約20%)・精神バーグリッチ・赤文字侵食
-        stage3: 80  // 現実逃避（歪んだクレヨン画＋陽気なオルゴール、テキストとSEは冷徹な現実）
-      },
-      rooms: {
-        room_entrance: {
-          id: 'room_entrance',
-          name: '玄関ホール',
-          rect: { x: 35, y: 112, w: 112, h: 80 },
-          connectedTo: ['room_corridor']
-        },
-        room_corridor: {
-          id: 'room_corridor',
-          name: '暗い廊下',
-          rect: { x: 175, y: 122, w: 148, h: 60 },
-          connectedTo: ['room_entrance', 'room_clinic', 'room_stairs']
-        },
-        room_clinic: {
-          id: 'room_clinic',
-          name: '旧診察室',
-          rect: { x: 192, y: 24, w: 114, h: 70 },
-          connectedTo: ['room_corridor']
-        },
-        room_stairs: {
-          id: 'room_stairs',
-          name: '地下階段',
-          rect: { x: 352, y: 116, w: 96, h: 72 },
-          connectedTo: ['room_corridor', 'room_abyss']
-        },
-        room_abyss: {
-          id: 'room_abyss',
-          name: '深淵の間',
-          rect: { x: 472, y: 98, w: 102, h: 108 },
-          connectedTo: ['room_stairs']
-        }
-      },
-      itemsCatalog: {
-        rusty_key: {
-          id: 'rusty_key',
-          name: '錆びた鍵',
-          desc: '旧診察室の机から見つけた重い鉄鍵。「焼却・地下防火扉」と刻まれている。'
-        },
-        rescue_axe: { id: 'rescue_axe', name: '古い斧', desc: '廊下の防災箱に残っていた斧。' },
-        iron_bar: { id: 'iron_bar', name: '鉄棒', desc: '壊れた医療棚から外れた鉄棒。' },
-        oil_can: {
-          id: 'oil_can',
-          name: '油缶',
-          desc: 'まだ半分ほど灯油が残っている古いブリキ缶。鼻を突く強い臭いがする。'
-        }
-      },
-      startEvent: 'evt_entrance_01',
-      events: {
-        evt_entrance_01: {
-          room: 'room_entrance',
-          bg: 'entrance',
-          steps: [
-            {
-              bgm: 'drone_low',
-              sfx: { type: 'door_creak', sample: 'old-door', level: 0.58 },
-              text: '朽ちた木扉を押し開けると、カビと湿った鉄の臭いが肺の奥まで流れ込んできた。'
-            },
-            {
-              text: '懐中電灯の細い光が、剥がれ落ちた漆喰の壁と、黒ずんだ受付カウンターを照らし出す。'
-            },
-            {
-              sfx: { type: 'paper' },
-              showMapBrief: true,
-              text: 'ポケットから古い見取り図を取り出した。ここは一階の「玄関ホール」。奥へ延びる廊下の先に、旧診察室と地下への階段があるはずだ。'
-            },
-            {
-              text: '背後で重たい扉が勝手に閉まる気配がした。……もう引き返すことはできない。'
-            }
-          ],
-          choices: [
-            { label: '奥の「暗い廊下」へ進む', next: 'evt_corridor_01' }
-          ]
-        },
-
-        evt_corridor_01: {
-          room: 'room_corridor',
-          bg: 'corridor',
-          steps: [
-            {
-              sfx: { type: 'footstep_drag', sample: 'drag', level: 0.62, pan: 0.72, distance: 'far' },
-              madnessAdd: 16,
-              text: '廊下に足を踏み入れた瞬間――右側の暗い奥から、何か重たく湿ったものを引きずる音が聞こえた。'
-            },
-            {
-              text: '……ズリ、ズリッ。自分の足音が止まっているのに、湿った音だけは確実にこちらへ近づいてくる。'
-            },
-            {
-              sfx: { type: 'footstep_stop', pan: -0.95, distance: 'near' },
-              madnessAdd: 18,
-              text: '息を呑んだ刹那、すぐ左耳の真後ろで「ドンッ」と重たい何かが立ち止まった。――誰も、見えないのに。'
-            },
-            {
-              sfx: { type: 'door_creak', pan: 0.55 },
-              text: 'すぐ横の錆びた鉄扉が、勝手に……ギィィィィ……と腹の底に響く低い軋みを上げて開き始める。'
-            },
-            {
-              bgm: 'silence',
-              silenceWait: 1200,
-              text: '…………。'
-            },
-            {
-              sfx: { type: 'door_slam_jumpscare', sample: 'iron-door', level: 0.72, pan: -0.15 },
-              madnessAdd: 22,
-              redFlash: 'ミテイル ミテイル ウシロニイル ニゲロ ニゲロ ミテイル',
-              shake: 'heavy',
-              text: '鼓膜を突き破る爆音とともに鉄扉が叩きつけられ、闇の隙間から無数の節と濡れた眼球が覗き込んだ！'
-            },
-            {
-              bgm: 'heartbeat',
-              text: '腐敗した粘液の匂いが廊下を満たす。今すぐ動かなければ、ここで飲み込まれる――！'
-            }
-          ],
-          choices: [
-            {
-              label: '息を殺してスチールロッカーの影に隠れる',
-              tag: '隠密 65%',
-              diceCheck: { skill: '隠密', target: 65, success: 'evt_corridor_hide_ok', fail: 'evt_corridor_fail' }
-            },
-            {
-              label: '倒れかけた医療棚を蹴り倒して逃げる',
-              tag: '回避 55%',
-              diceCheck: { skill: '回避', target: 55, success: 'evt_corridor_dodge_ok', fail: 'evt_corridor_fail' }
-            },
-            {
-              label: '【銀の鍵】を使って自由に行動する',
-              tag: '銀の鍵',
-              useSilverKey: { context: 'corridor' }
-            }
-          ]
-        },
-
-        evt_corridor_hide_ok: {
-          room: 'room_corridor',
-          bg: 'corridor',
-          steps: [
-            {
-              bgm: 'drone_low',
-              sfx: { type: 'footstep_drag', pan: -0.65, distance: 'far' },
-              text: '呼吸を完全に殺し、錆びたロッカーの隙間に身を滑り込ませた。ずるずると肉塊を引きずる音は、やがて廊下の奥へと遠ざかっていった……。'
-            },
-            {
-              text: '震える手で懐中電灯を握り直す。横には「旧診察室」の扉、奥には「地下階段」へ続く暗い口が開いている。'
-            }
-          ],
-          choices: [
-            { label: '「旧診察室」を調べて手がかりを探す', next: 'evt_clinic_door' },
-            { label: 'そのまま「地下階段」へ降りる', next: 'evt_stairs_01' }
-          ]
-        },
-
-        evt_corridor_dodge_ok: {
-          room: 'room_corridor',
-          bg: 'corridor',
-          steps: [
-            {
-              bgm: 'drone_low',
-              text: '医療棚を渾身の力で押し倒した。割れた薬瓶と重い金属音が響き渡り、闇の中の「何か」が一瞬怯んで奥へ退く。'
-            },
-            {
-              text: '今のうちに先へ進まなければ。横の「旧診察室」へ飛び込むか、そのまま「地下階段」へ向かうか。'
-            }
-          ],
-          choices: [
-            { label: '「旧診察室」へ飛び込む', next: 'evt_clinic_door' },
-            { label: 'そのまま「地下階段」へ降りる', next: 'evt_stairs_01' }
-          ]
-        },
-
-        evt_corridor_fail: {
-          room: 'room_corridor',
-          bg: 'corridor',
-          steps: [
-            {
-              hpAdd: -30,
-              madnessAdd: 12,
-              shake: 'heavy',
-              redFlash: 'イタイ イタイ ミツカッタ サワラレタ',
-              text: '反応が一瞬遅れた！冷たくざらついた触手のようなものが肩を掠め、皮膚が焼けるような激痛が走る。'
-            },
-            {
-              bgm: 'drone_low',
-              text: '必死に振り払い、血の滲む肩を押さえながら廊下の端まで転がり込んだ。……このままでは持たない。'
-            }
-          ],
-          choices: [
-            { label: '「旧診察室」に逃げ込んで調べる', next: 'evt_clinic_door' },
-            { label: '強引に「地下階段」へ進む', next: 'evt_stairs_01' }
-          ]
-        },
-
-        ...createClinicDoorEvents(),
-
-        evt_clinic_01: {
-          room: 'room_clinic',
-          bg: 'clinic',
-          steps: [
-            {
-              sfx: { type: 'door_creak', pan: 0.0 },
-              text: '旧診察室の中は、割れたホルマリン瓶と散乱したカルテで埋め尽くされていた。視界の端で文字が歪み、頭が割れそうに痛む。'
-            },
-            {
-              madnessAdd: 16,
-              redFlash: 'ナカヲミルナ ナカヲミルナ カルテヲヨムナ',
-              text: '机の上に残された院長の記録には、人間とは思えない解剖図と「地下の胎児に餌を与え続けよ」という震えた筆跡がびっしりと書き連ねられていた。'
-            },
-            {
-              addItem: 'rusty_key',
-              text: '記録の下から、重たい【錆びた鍵】を見つけた。「焼却・地下防火扉」と刻まれている。'
-            },
-            {
-              addItem: 'oil_can',
-              text: 'さらに診察台の足元には、まだ灯油の入った古い【油缶】が転がっていた。いざという時の切り札になるかもしれない。'
-            },
-            {
-              sfx: { type: 'footstep_drag', pan: 0.72, distance: 'near' },
-              text: '廊下の向こうから、またあの粘着質な引きずる音が近づいてきた。残る道は「地下階段」だけだ。'
-            }
-          ],
-          choices: [
-            { label: '「地下階段」へ向かう', next: 'evt_stairs_01' }
-          ]
-        },
-
-        evt_stairs_01: {
-          room: 'room_stairs',
-          bg: 'stairs',
-          steps: [
-            {
-              madnessAdd: 30,
-              bgm: 'musicbox_happy',
-              text: '地下階段を降りた瞬間、視界がふいに眩しいほどの色で塗り潰された。……ああ、なんて綺麗なお花畑だろう。'
-            },
-            {
-              sfx: { type: 'footstep_drag', pan: 0.35, distance: 'near' },
-              text: '脳が現実を拒絶しているのに、足元だけは「ペチャ、ペチャ」と温かな肉片と粘液を踏み潰す生々しい感触を伝え続けてくる。'
-            },
-            {
-              text: '調律のわずかに狂った陽気なオルゴールが頭の中で鳴り響く。階段の先、「深淵の間」から巨大な胎動が響いてくる。'
-            }
-          ],
-          choices: [
-            { label: '「深淵の間」へ足を踏み入れる', next: 'evt_abyss_01' }
-          ]
-        },
-
-        evt_abyss_01: {
-          room: 'room_abyss',
-          bg: 'abyss',
-          steps: [
-            {
-              sfx: { type: 'door_creak', pan: -0.35 },
-              text: '目の前の「お城の門」に見えるそれは、無数の眼球と口が脈打つ巨大な肉の壁だった。'
-            },
-            {
-              sfx: { type: 'footstep_stop', sample: 'creature', level: 0.54, pan: 0.2 },
-              text: '肉の壁が裂け、こちらを丸呑みにしようと大きく開く。これが最後の選択だ――！'
-            }
-          ],
-          choices: [
-            {
-              label: '【銀の鍵】で所持品や環境を使い自由に行動する',
-              tag: '銀の鍵',
-              useSilverKey: { context: 'abyss' }
-            },
-            {
-              label: '狂気に抗い、非常階段の隙間へ死に物狂いで駆け抜ける',
-              tag: '回避 50%',
-              diceCheck: { skill: '回避', target: 50, success: 'evt_end_escape', fail: 'evt_end_devoured' }
-            },
-            {
-              label: '温かいお花畑の奥へ、そのまま歩み寄る',
-              tag: '受容',
-              next: 'evt_end_madness'
-            }
-          ]
-        },
-
-        evt_end_escape: {
-          room: 'room_abyss',
-          bg: 'abyss',
-          steps: [
-            {
-              bgm: 'drone_low',
-              text: '歪んだクレヨン画の視界を無理やり振り払い、錆びた非常扉を体当たりで蹴破った！'
-            },
-            {
-              text: '冷たい土砂降りの雨が顔を打つ。背後から響く名状しがたい咆哮を振り切り、あなたは夜の森へと這い出した。'
-            }
-          ],
-          ending: {
-            type: 'ENDING A — 生還',
-            title: '雨夜の脱出',
-            desc: 'あなたは廃療養所から辛うじて生還した。\nだが、時折イヤホンを外した静かな夜に、左耳のすぐ後ろから「ペチャ、ペチャ」と粘液を踏む音が聞こえるようになった気がしている。'
-          }
-        },
-
-        evt_end_madness: {
-          room: 'room_abyss',
-          bg: 'abyss',
-          steps: [
-            {
-              text: 'もう怖がる必要なんてなかったのだ。おひさまが笑っている。お花が歌っている。'
-            },
-            {
-              text: '柔らかな肉壁があなたを優しく包み込み、骨の砕ける音さえも、心地よい子守唄のように溶けていった。'
-            }
-          ],
-          ending: {
-            type: 'ENDING B — 狂気同化',
-            title: '永遠のお花畑',
-            desc: 'あなたの精神は完全に現実を手放した。\n地下室の胎動は少しだけ大きくなり、療養所には再び穏やかな静寂と、陽気なオルゴールの幻聴だけが残り続けた。'
-          }
-        },
-
-        evt_end_devoured: {
-          room: 'room_abyss',
-          bg: 'abyss',
-          steps: [
-            {
-              hpAdd: -100,
-              shake: 'heavy',
-              redFlash: 'オワリ オワリ オワリ オワリ オワリ',
-              sfx: { type: 'door_slam_jumpscare', pan: 0 },
-              text: '足元が粘液に滑った瞬間、無数の触手が四肢を絡め取り、深い闇の底へと引きずり込んだ――。'
-            }
-          ],
-          ending: {
-            type: 'BAD ENDING — 捕食',
-            title: '深淵の糧',
-            desc: 'あなたの叫び声は、分厚い地下室の壁に吸い込まれて誰にも届かなかった。\n旧診察室で手に入る道具や【銀の鍵】を使えば、別の運命を切り開けたかもしれない。'
-          }
-        },
-
-        evt_end_burn: {
-          room: 'room_abyss',
-          bg: 'abyss',
-          steps: [
-            {
-              bgm: 'drone_low',
-              sfx: { type: 'door_slam_jumpscare', pan: 0.1 },
-              shake: 'heavy',
-              text: '撒いた灯油に火が移り、紅蓮の炎が一気に深淵の間を飲み込んだ！名状しがたい怪異が耳を劈く断末魔を上げ、肉の壁が炭化して崩れ落ちていく。'
-            },
-            {
-              text: 'あなたは錆びた鍵で地下の防火扉を完全に施錠し、燃え上がる療養所を背に夜の闇へと生還した。'
-            }
-          ],
-          ending: {
-            type: 'TRUE ENDING — 焼却生還（銀の鍵）',
-            title: '灰燼の夜明け',
-            desc: '【銀の鍵】の選択と集めた手がかりによって、地下に潜んでいた忌まわしき胎動は灰と化した。\n燃え落ちた廃療養所の跡地に、もはやあの足音が響くことはない――おそらくは。'
-          }
-        }
-      }
-    }
+  // ---- シナリオ（見本） ----
+  // 各ページに bg（背景）, cam（見せ方）, amb（環境音）, se（効果音）を付けられる
+  var SCRIPT = {
+    start:{ bg:'mansion4', cam:'pullback', amb:'雨が降る1', se:'柱時計の鐘', pages:[
+      ['雨の音が、まだ耳の奥に残っている。','丘の上に、その洋館は建っていた。'],
+      {bg:'corridor3', cam:'still', se:'古びたドアを開ける', paras:['貴方は古い洋館の廊下に立っていた。湿った木の匂いに、どこか鉄錆に似た匂いが混じっている。']},
+      {cam:'zoomin', paras:[{who:'老人',t:'「……ようこそ。お待ちしておりました」'},'振り返ると、燭台を持った老人が立っていた。いつからそこにいたのか、貴方には分からない。',{mark:true,t:'老人の足元に、何か黒い染みがある。'}]},
+      {bg:'door4', cam:'closeup', paras:[{who:'老人',t:'「お部屋へご案内いたします。ただし、廊下の奥の扉だけは決して——',cut:true}]},
+      {bg:'corridor3', cam:'still', paras:[{who:'貴方',t:'「今の音は……？」'},{who:'老人',t:'「……お気になさらず」'}]}
+    ], choice:'c1' },
+    room:{ bg:'bathroom3', cam:'zoomin', amb:'雨が降る2', se:'古びたドアを開ける', pages:[
+      ['扉を開けた瞬間、むせ返るような臭いが鼻を突いた。','床一面に、赤黒い線が引かれている。それは、何かの図形のようにも見えた。'],
+      {cam:'closeup', se:'ゾンビの息遣い', paras:[{t:'——見てはいけないものを、見てしまった。',san:15}]}
+    ], choice:'c2' },
+    old:{ bg:'corridor', cam:'pan', amb:'雨が降る1', pages:[[{who:'老人',t:'「賢明なご判断です」'},'老人は満足そうに微笑んだ。その笑みは、どこか作り物めいていた。']], choice:'c2' },
+    back:{ bg:'door', cam:'still', se:'開かないドア1', pages:[['玄関の扉は、外から押さえつけられているかのように動かない。','背後で、老人がくすりと笑った気がした。']], choice:'c1' },
+    alley:{ bg:'dark_street32', cam:'pullback', amb:'雨で濡れた道路を歩く', pages:[['気がつくと、貴方は見知らぬ裏路地に立っていた。','洋館は、どこにも見当たらない。']], choice:'c2' },
+    memory:{ bg:'house2', cam:'pullback', film:true, fade:true, se:'テープ巻き戻し', pages:[
+      ['——あれは、まだ貴方が幼かった頃の記憶だ。','祖父の家。軋む床。閉ざされたままの、奥の部屋。'],
+      {cam:'zoomin', paras:[{who:'祖父',t:'「あの部屋には、決して入ってはいけないよ」'},'祖父はそう言って、少しだけ笑った。その笑い方を、貴方はどこかで見た気がする。']}
+    ], choice:'c2' },
+    movie:{ bg:'dark_street5', cam:'pan', movie:true, amb:'雨で濡れた道路を歩く', pages:[
+      ['雨の夜。','誰かが、路地の奥へ走っていく。','その手には、血に濡れた古い本が握られていた。'],
+      {bg:'mansion6', cam:'zoomin', film:true, paras:['——同じ夜。丘の上の洋館に、灯りがともった。']}
+    ], choice:'c2' },
+    school:{ bg:'empty_school33', cam:'zoomin', se:'時計の針1', pages:[['誰もいない教室。時計の針だけが、やけに大きく響いている。']], choice:'c2' }
+  };
+  var CHOICES = {
+    c1:[['音のした部屋へ向かう','room'],['老人について行く','old'],['玄関へ引き返す','back']],
+    c2:[['最初に戻る','start'],['もう一度、部屋を見る','room'],['裏路地（背景テスト）','alley'],['教室（背景テスト）','school'],['回想（フィルム演出）','memory'],['ムービーシーン','movie']]
+  };
+  var RESULTS = {
+    '目星':['床に、乾いた血の跡が点々と続いている。廊下の奥へ。','特に変わったものは見つからない。'],
+    '聞き耳':['扉の向こうから、かすかに何かを引きずる音がする。','雨の音しか聞こえない。'],
+    '心理学':['老人は何かを隠している。それも、ひどく楽しそうに。','老人の表情からは何も読み取れない。'],
+    '図書館':['ここには本がない。','ここには本がない。'],
+    'オカルト':['床の染みの形に、見覚えがある気がする。','何も思い当たらない。'],
+    '回避':['身構えたが、何も起きなかった。','身構えたが、何も起きなかった。']
   };
 
-  /* ============================================================================
-     SECTION 2: AudioEngine（重厚・地下残響・歪み・サブベース・立体音響・ダイスSE）
-     ============================================================================ */
-  const AudioEngine = (() => {
-    let ctx = null;
-    let masterGain = null;
-    let bgmGain = null;
-    let seGain = null;
-    let reverbNode = null;
-    let reverbSend = null;
-    let compressor = null;
-    let saturator = null;
-    let bgmNodes = [];
-    let bgmTimer = null;
-    let currentBgm = null;
-    let ambience = null;
-    let sceneSample = null;
-    const samples = new Map();
-    const sampleNames = ['rain', 'old-door', 'corridor', 'drag', 'iron-door', 'creature', 'door-split', 'door-shatter'];
+  var cur=null, pageI=0, paraI=0, typing=null, mode='text', resistFrom=null;
+  var textEl=$('text'), nextEl=$('next'), shade=$('shade');
 
-    function playDiceHeartbeat(period) {
-      if (!ctx || ctx.state !== 'running') return () => {};
-      const now = ctx.currentTime;
-      const nodes = [0, period * 0.22].map((offset, index) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        const start = now + offset;
-        osc.frequency.setValueAtTime(index === 0 ? 82 : 66, start);
-        osc.frequency.exponentialRampToValueAtTime(35, start + 0.075);
-        gain.gain.setValueAtTime(0.001, start);
-        gain.gain.linearRampToValueAtTime(index === 0 ? 0.27 : 0.18, start + 0.013);
-        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.09);
-        osc.connect(gain);
-        gain.connect(seGain);
-        osc.onended = () => { osc.disconnect(); gain.disconnect(); };
-        osc.start(start);
-        osc.stop(start + 0.1);
-        return osc;
-      });
-      return () => nodes.forEach(osc => osc.stop());
+  // ---- ▓▓抗う ----
+  var MOJI='縺譁繧螟髢邵蟄繝豁蝨鬮荵雜霑郢'.split('');
+  var moTimers=[];
+  function newHide(){
+    moTimers.forEach(clearInterval); moTimers=[];
+    if(S.mythos>=30) S.revealed=true; // 切り替わりのときだけ反映（告げない）
+    var a=['moji','block','black'][Math.floor(Math.random()*3)];
+    var b=['fade','flick','scratch'][Math.floor(Math.random()*3)];
+    S.hideA=a; S.hideB=b;
+  }
+  function resistLabel(el){
+    el.innerHTML='';
+    var g1=document.createElement('span'), g2=document.createElement('span');
+    g1.className='g'; g2.className='g';
+    if(S.revealed){ g1.textContent='賽'; g2.textContent='に'; }
+    else{
+      g1.classList.add(S.hideA); g2.classList.add(S.hideB); g2.textContent='に';
+      if(S.hideA==='moji'){
+        var f=function(){ g1.textContent=MOJI[Math.floor(Math.random()*MOJI.length)]; }; f();
+        moTimers.push(setInterval(f,140));
+      } else g1.textContent='賽';
     }
+    el.appendChild(g1); el.appendChild(g2); el.appendChild(document.createTextNode('抗う…'));
+  }
 
-    function preloadSamples() {
-      if (!ctx) return;
-      for (const name of sampleNames) {
-        if (samples.has(name)) continue;
-        samples.set(name, null);
-        fetch(`assets/se/${name}.mp3`).then((response) => {
-          if (!response.ok) throw new Error('Sound unavailable');
-          return response.arrayBuffer();
-        }).then((data) => ctx.decodeAudioData(data))
-          .then((buffer) => samples.set(name, buffer))
-          .catch(() => samples.delete(name));
-      }
+  // ---- 背景・音 ----
+  var curBg=null, ambEl=null;
+  function bgUrl(n){ return 'assets/bg/'+encodeURIComponent(n)+'.webp'; }
+  function setBg(name,cam){
+    var bg=$('bg'), apply=function(){ bg.style.backgroundImage='url("'+bgUrl(name)+'")'; bg.className=''; void bg.offsetWidth; bg.className='cam-'+(cam||'still'); };
+    if(name!==curBg && curBg){ bg.classList.add('fade'); setTimeout(apply,450); } else apply();
+    curBg=name;
+  }
+  function sfxUrl(n){ return 'assets/sfx/'+encodeURIComponent(n)+'.mp3'; }
+  function se(name,vol){ try{ var a=new Audio(sfxUrl(name)); a.volume=vol==null?.8:vol; a.play().catch(function(){}); return a; }catch(_){ } }
+  function amb(name){ try{ if(ambEl){ if(ambEl.dataset.n===name) return; ambEl.pause(); }
+    ambEl=new Audio(sfxUrl(name)); ambEl.dataset.n=name; ambEl.loop=true; ambEl.volume=.25; ambEl.play().catch(function(){}); }catch(_){ } }
+
+  // ---- 素材を見る ----
+  var assetsBuilt=false, playing=null;
+  function buildAssets(){
+    if(assetsBuilt||!window.ASSETS) return; assetsBuilt=true;
+    var g=$('bgGrid'), l=$('sfxList');
+    ASSETS.bg.forEach(function(n){ var b=document.createElement('button'); b.type='button'; b.dataset.n=n;
+      b.innerHTML='<img loading="lazy" alt="" src="'+bgUrl(n)+'"><span></span>'; b.querySelector('span').textContent=n;
+      b.addEventListener('click',function(){ setBg(n,'still'); closePanels(); }); g.appendChild(b); });
+    ASSETS.sfx.forEach(function(n){ var b=document.createElement('button'); b.type='button'; b.dataset.n=n; b.textContent=n;
+      b.addEventListener('click',function(){ if(playing){ playing.a.pause(); playing.b.classList.remove('playing'); }
+        var a=se(n,.9); if(a){ playing={a:a,b:b}; b.classList.add('playing'); a.onended=function(){ b.classList.remove('playing'); }; } });
+      l.appendChild(b); });
+  }
+  function filterAssets(){ var q=$('assetQ').value.trim();
+    document.querySelectorAll('#bgGrid button,#sfxList button').forEach(function(b){ b.style.display=(!q||b.dataset.n.indexOf(q)>=0)?'':'none'; }); }
+  document.addEventListener('DOMContentLoaded',function(){});
+  $('tabBg').addEventListener('click',function(){ $('bgGrid').style.display=''; $('sfxList').style.display='none'; });
+  $('tabSfx').addEventListener('click',function(){ $('bgGrid').style.display='none'; $('sfxList').style.display=''; });
+  $('assetQ').addEventListener('input',filterAssets);
+
+  // ---- フィルム・ムービー ----
+  var dustT=null;
+  function setFx(film,movie){
+    var b=document.body, wasFilm=b.classList.contains('film');
+    if(film!==wasFilm){ var bu=$('burn'); bu.classList.remove('on'); void bu.offsetWidth; bu.classList.add('on'); }
+    b.classList.toggle('film',!!film); b.classList.toggle('movie',!!movie);
+    clearInterval(dustT);
+    if(film) dustT=setInterval(filmSpecks,160);
+  }
+  function filmSpecks(){
+    var f=$('film');
+    if(Math.random()<.35){ var d=document.createElement('div'); d.className=Math.random()<.15?'hair':'dust';
+      if(d.className==='dust'){ var z=2+Math.random()*5; d.style.width=z+'px'; d.style.height=(z*(0.6+Math.random()))+'px'; }
+      else d.style.transform='rotate('+(Math.random()*360)+'deg)';
+      d.style.left=Math.random()*100+'%'; d.style.top=Math.random()*100+'%'; f.appendChild(d); setTimeout(function(){ d.remove(); },120+Math.random()*120); }
+    if(Math.random()<.3){ var sc=document.createElement('div'); sc.className='scr'; sc.style.left=Math.random()*100+'%'; sc.style.opacity=.3+Math.random()*.5;
+      f.appendChild(sc); setTimeout(function(){ sc.remove(); },200+Math.random()*500); }
+  }
+  function pageFx(pg){ document.body.classList.toggle('fadetext', !!(pg.fade!=null?pg.fade:cur.fade)); setFx(pg.film!=null?pg.film:!!cur.film, pg.movie!=null?pg.movie:!!cur.movie); }
+  var autoT=null;
+  function movieAuto(){ clearTimeout(autoT); if(!document.body.classList.contains('movie')) return;
+    var p=para(); var t=typeof p==='string'?p:p.t; autoT=setTimeout(function(){ if(mode==='text' && !typing) advance(); },1600+t.length*45); }
+  function skipMovie(){ clearTimeout(autoT); if(typing){ clearInterval(typing.timer); typing=null; } textEl.innerHTML=''; showChoices(cur.choice); }
+
+  // ---- 絵を先にしっかり見せる（タップで飛ばせる） ----
+  var waitSkip=null;
+  function showPicture(then){
+    mode='wait'; shade.classList.remove('on'); nextEl.classList.remove('on');
+    var done=false, t1=null, t2=null;
+    function finish(){ if(done) return; done=true; waitSkip=null; clearTimeout(t1); clearTimeout(t2);
+      shade.classList.add('on'); t2=setTimeout(function(){ mode='text'; then(); },600); }
+    waitSkip=finish; t1=setTimeout(finish,2800);
+  }
+  function isFade(){ return document.body.classList.contains('fadetext'); }
+
+  // ---- 進行 ----
+  function go(key){
+    cur=SCRIPT[key]; pageI=0; paraI=0;
+    cur.pages=cur.pages.map(function(pg){ return Array.isArray(pg)?{paras:pg}:pg; });
+    setBg(cur.pages[0].bg||cur.bg, cur.pages[0].cam||cur.cam);
+    if(cur.amb) amb(cur.amb); if(cur.se) se(cur.se); if(cur.pages[0].se) se(cur.pages[0].se);
+    hideChoices(); textEl.innerHTML=''; shade.classList.remove('on'); nextEl.classList.remove('on');
+    clearTimeout(autoT); pageFx(cur.pages[0]);
+    newHide(); refreshEat();
+    mode='wait';
+    // 先に絵を見せて、それから文章
+    showPicture(showPara);
+  }
+  function para(){ return cur.pages[pageI].paras[paraI]; }
+  function showPara(){
+    var p=para(); if(typeof p==='string') p={t:p};
+    if(p.mark){ $('floatResist').classList.add('on'); resistLabel($('floatResist')); }
+    if(document.body.classList.contains('movie')||isFade()) textEl.innerHTML='';
+    var el=document.createElement('p');
+    if(p.who){ var w=document.createElement('span'); w.className='who'+(p.who==='貴方'?' me':''); w.textContent=p.who; el.appendChild(w); }
+    var body=document.createElement('span'); el.appendChild(body); textEl.appendChild(el);
+    log.push((p.who?p.who+' ':'')+p.t);
+    if(isFade()){ body.textContent=p.t; el.classList.add('fin'); mode='wait';
+      setTimeout(function(){ mode='text'; nextEl.classList.add('on'); },1300); return; }
+    typeText(body,p.t,p);
+  }
+  function typeText(el,t,p){
+    var i=0; nextEl.classList.remove('on');
+    var stopAt = p.cut ? t.length : -1;
+    typing={el:el,t:t,p:p,timer:setInterval(function(){
+      i++; el.textContent=t.slice(0,i);
+      if(i>=t.length){ finishType(); }
+    },45)};
+  }
+  function finishType(){
+    if(!typing) return; clearInterval(typing.timer);
+    var p=typing.p; typing.el.textContent=typing.t; typing=null;
+    if(p.cut){ interrupt(); return; }
+    if(p.san){ loseSan(p.san); }
+    nextEl.classList.add('on'); movieAuto();
+  }
+  function interrupt(){
+    mode='wait';
+    setTimeout(function(){
+      $('flash').classList.remove('on'); void $('flash').offsetWidth; $('flash').classList.add('on');
+      $('stage').classList.remove('shake'); void $('stage').offsetWidth; $('stage').classList.add('shake');
+      se('ドアをドンドン叩く',1);
+      var el=document.createElement('p'); el.textContent='——ドンッ！！'; el.style.fontSize='1.6em'; el.style.color='#d9b0a0';
+      textEl.appendChild(el); log.push('——ドンッ！！');
+      setTimeout(function(){ mode='text'; nextEl.classList.add('on'); },600);
+    },250);
+  }
+  function advance(){
+    if(mode!=='text') return;
+    if(typing){ finishType(); return; }
+    if(isFade() && !advance.fading){ var last=textEl.lastElementChild;
+      if(last){ advance.fading=true; mode='wait'; nextEl.classList.remove('on'); last.classList.remove('fin'); last.classList.add('fout');
+        setTimeout(function(){ mode='text'; advance(); advance.fading=false; },950); return; } }
+    paraI++;
+    if(paraI>=cur.pages[pageI].paras.length){
+      pageI++; paraI=0; textEl.innerHTML='';
+      $('floatResist').classList.remove('on');
+      if(pageI>=cur.pages.length){ showChoices(cur.choice); return; }
+      var pg=cur.pages[pageI]; pageFx(pg);
+      var prevBg=curBg;
+      if(pg.bg||pg.cam) setBg(pg.bg||curBg, pg.cam||'still');
+      if(pg.se) se(pg.se);
+      newHide(); refreshEat();
+      if(pg.bg && pg.bg!==prevBg){ showPicture(showPara); return; }
     }
-
-    function fadeSample(sound, duration = 0.12) {
-      if (!sound) return;
-      const now = ctx.currentTime;
-      const gain = sound.gain.gain;
-      if (gain.cancelAndHoldAtTime) gain.cancelAndHoldAtTime(now);
-      else gain.cancelScheduledValues(now);
-      gain.linearRampToValueAtTime(0, now + duration);
-      sound.source.stop(now + duration);
-    }
-
-    function startSample(name, level, pan = 0, loop = false) {
-      const buffer = samples.get(name);
-      if (!buffer) return null;
-      const source = ctx.createBufferSource();
-      const gain = ctx.createGain();
-      const panner = createPanner(pan);
-      source.buffer = buffer;
-      source.loop = loop;
-      source.connect(gain);
-      gain.connect(panner);
-      panner.connect(seGain);
-      source.onended = () => {
-        source.disconnect();
-        gain.disconnect();
-        panner.disconnect();
-        if (sceneSample?.source === source) sceneSample = null;
-      };
-      const now = ctx.currentTime;
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(level, now + (loop ? 0.45 : 0.018));
-      source.start(now);
-      return { name, source, gain };
-    }
-
-    function setSceneAmbience(name, quiet = false) {
-      if (ambience?.name === name) return;
-      fadeSample(ambience, quiet ? 0.04 : 0.45);
-      ambience = name ? startSample(name, name === 'rain' ? 0.28 : 0.16, 0, true) : null;
-    }
-
-    function stopSceneSample(quiet = false) {
-      fadeSample(sceneSample, quiet ? 0.04 : 0.12);
-      sceneSample = null;
-    }
-    const volumes = { master: 0.8, bgm: 0.75, se: 0.9 };
-
-    /* ダークサチュレーション用の歪みカーブ生成 */
-    function makeDistortionCurve(amount = 28) {
-      const n = 2048;
-      const curve = new Float32Array(n);
-      for (let i = 0; i < n; i++) {
-        const x = (i * 2) / n - 1;
-        curve[i] = ((3 + amount) * x * 20 * (Math.PI / 180)) / (Math.PI + amount * Math.abs(x));
-      }
-      return curve;
-    }
-
-    /* 深く湿った地下空間のインパルス応答（ConvolverNode用）をアルゴリズム生成 */
-    function createSubterraneanReverb(audioCtx, duration = 2.8, decay = 2.6) {
-      const rate = audioCtx.sampleRate;
-      const length = Math.floor(rate * duration);
-      const impulse = audioCtx.createBuffer(2, length, rate);
-      for (let ch = 0; ch < 2; ch++) {
-        const data = impulse.getChannelData(ch);
-        let lp = 0;
-        for (let i = 0; i < length; i++) {
-          const env = Math.pow(1 - i / length, decay);
-          const white = Math.random() * 2 - 1;
-          lp = lp * 0.72 + white * 0.28;
-          data[i] = lp * env;
-        }
-      }
-      const convolver = audioCtx.createConvolver();
-      convolver.buffer = impulse;
-      return convolver;
-    }
-
-    function init() {
-      if (ctx) {
-        if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-        return;
-      }
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return;
-      ctx = new AudioCtx();
-
-      masterGain = ctx.createGain();
-      bgmGain = ctx.createGain();
-      seGain = ctx.createGain();
-
-      // マスターバス：WaveShaper（ダーク歪み） -> DynamicsCompressor（音圧） -> 出力
-      saturator = ctx.createWaveShaper();
-      saturator.curve = makeDistortionCurve(18);
-      saturator.oversample = '2x';
-
-      compressor = ctx.createDynamicsCompressor();
-      compressor.threshold.value = -16;
-      compressor.knee.value = 18;
-      compressor.ratio.value = 6;
-      compressor.attack.value = 0.004;
-      compressor.release.value = 0.22;
-
-      // 地下残響センドバス
-      reverbNode = createSubterraneanReverb(ctx, 2.7, 2.5);
-      reverbSend = ctx.createGain();
-      reverbSend.gain.value = 0.42;
-
-      bgmGain.connect(masterGain);
-      seGain.connect(masterGain);
-
-      masterGain.connect(saturator);
-      masterGain.connect(reverbSend);
-      reverbSend.connect(reverbNode);
-      reverbNode.connect(saturator);
-
-      saturator.connect(compressor);
-      compressor.connect(ctx.destination);
-
-      applyVolumes();
-    }
-
-    function applyVolumes() {
-      if (!ctx) return;
-      masterGain.gain.setTargetAtTime(volumes.master, ctx.currentTime, 0.04);
-      bgmGain.gain.setTargetAtTime(volumes.bgm, ctx.currentTime, 0.04);
-      seGain.gain.setTargetAtTime(volumes.se, ctx.currentTime, 0.04);
-    }
-
-    function setVolumes(m, b, s) {
-      volumes.master = m;
-      volumes.bgm = b;
-      volumes.se = s;
-      applyVolumes();
-    }
-
-    /* ブラウン/ホワイトノイズ生成 */
-    function createNoiseBuffer(durationSec = 2.0, color = 'brown') {
-      const sampleRate = ctx.sampleRate;
-      const length = Math.floor(sampleRate * durationSec);
-      const buffer = ctx.createBuffer(1, length, sampleRate);
-      const data = buffer.getChannelData(0);
-      if (color === 'brown') {
-        let last = 0;
-        for (let i = 0; i < length; i++) {
-          const white = Math.random() * 2 - 1;
-          last = (last + 0.04 * white) / 1.04;
-          data[i] = Math.max(-1, Math.min(1, last * 4.2));
-        }
-      } else {
-        for (let i = 0; i < length; i++) {
-          data[i] = Math.random() * 2 - 1;
-        }
-      }
-      return buffer;
-    }
-
-    function createPanner(pan = 0) {
-      if (typeof ctx.createStereoPanner === 'function') {
-        const p = ctx.createStereoPanner();
-        p.pan.value = Math.max(-1, Math.min(1, pan));
-        return p;
-      }
-      return ctx.createGain();
-    }
-
-    function stopBgm() {
-      currentBgm = null;
-      if (bgmTimer) {
-        clearInterval(bgmTimer);
-        bgmTimer = null;
-      }
-      bgmNodes.forEach((n) => {
-        try { n.stop && n.stop(); } catch (_) {}
-        try { n.disconnect && n.disconnect(); } catch (_) {}
-      });
-      bgmNodes = [];
-    }
-
-    function playBgm(type) {
-      init();
-      if (!ctx || type === currentBgm) return;
-      stopBgm();
-      currentBgm = type;
-      if (!type || type === 'silence') return;
-
-      const now = ctx.currentTime;
-
-      if (type === 'drone_low' || type === 'title_drone') {
-        // 40-58Hz サブベース＋うねりオシレータ＋ローパスブラウンノイズの圧迫ドローン
-        const sub = ctx.createOscillator();
-        const osc2 = ctx.createOscillator();
-        const lfo = ctx.createOscillator();
-        const lfoGain = ctx.createGain();
-        const filter = ctx.createBiquadFilter();
-        const gain = ctx.createGain();
-
-        sub.type = 'sine';
-        sub.frequency.value = type === 'title_drone' ? 44 : 41;
-        osc2.type = 'sawtooth';
-        osc2.frequency.value = type === 'title_drone' ? 56.5 : 53.2;
-
-        lfo.frequency.value = 0.18;
-        lfoGain.gain.value = 28;
-        lfo.connect(lfoGain);
-        lfoGain.connect(filter.frequency);
-
-        filter.type = 'lowpass';
-        filter.frequency.value = 115;
-        filter.Q.value = 2.2;
-
-        const noise = ctx.createBufferSource();
-        noise.buffer = createNoiseBuffer(4.0, 'brown');
-        noise.loop = true;
-        const nFilter = ctx.createBiquadFilter();
-        nFilter.type = 'lowpass';
-        nFilter.frequency.value = 140;
-        const nGain = ctx.createGain();
-        nGain.gain.value = 0.34;
-        noise.connect(nFilter);
-        nFilter.connect(nGain);
-        nGain.connect(gain);
-
-        gain.gain.setValueAtTime(0.001, now);
-        gain.gain.linearRampToValueAtTime(0.36, now + 1.5);
-
-        sub.connect(gain);
-        osc2.connect(filter);
-        filter.connect(gain);
-        gain.connect(bgmGain);
-
-        sub.start(now);
-        osc2.start(now);
-        lfo.start(now);
-        noise.start(now);
-        bgmNodes.push(sub, osc2, lfo, noise, gain, filter, nFilter, nGain);
-      } else if (type === 'heartbeat') {
-        const beat = () => {
-          if (currentBgm !== 'heartbeat' || !ctx) return;
-          const t = ctx.currentTime;
-          [0, 0.25].forEach((offset, idx) => {
-            const osc = ctx.createOscillator();
-            const g = ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(idx === 0 ? 68 : 54, t + offset);
-            osc.frequency.exponentialRampToValueAtTime(26, t + offset + 0.19);
-            g.gain.setValueAtTime(0.001, t + offset);
-            g.gain.linearRampToValueAtTime(idx === 0 ? 0.65 : 0.42, t + offset + 0.015);
-            g.gain.exponentialRampToValueAtTime(0.001, t + offset + 0.24);
-            osc.connect(g);
-            g.connect(bgmGain);
-            osc.start(t + offset);
-            osc.stop(t + offset + 0.26);
-          });
-        };
-        beat();
-        bgmTimer = setInterval(beat, 880);
-      } else if (type === 'musicbox_happy') {
-        // 狂気段階3：わずかに調律が狂った陽気なオルゴール
-        const notes = [523.25, 659.25, 783.99, 659.25, 880.0, 783.99, 659.25, 587.33];
-        let idx = 0;
-        const playNote = () => {
-          if (currentBgm !== 'musicbox_happy' || !ctx) return;
-          const t = ctx.currentTime;
-          const detuneFactor = idx % 5 === 4 ? 0.978 : (idx % 7 === 3 ? 1.014 : 1.0);
-          const freq = notes[idx % notes.length] * detuneFactor;
-          idx++;
-          const osc = ctx.createOscillator();
-          const overtone = ctx.createOscillator();
-          const g = ctx.createGain();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(freq, t);
-          overtone.type = 'triangle';
-          overtone.frequency.setValueAtTime(freq * 2.005, t);
-          g.gain.setValueAtTime(0.001, t);
-          g.gain.linearRampToValueAtTime(0.2, t + 0.012);
-          g.gain.exponentialRampToValueAtTime(0.0008, t + 0.78);
-          osc.connect(g);
-          overtone.connect(g);
-          g.connect(bgmGain);
-          osc.start(t);
-          overtone.start(t);
-          osc.stop(t + 0.8);
-          overtone.stop(t + 0.8);
-        };
-        playNote();
-        bgmTimer = setInterval(playNote, 410);
-      }
-    }
-
-    function playIntroHorror() {
-      init();
-      if (!ctx) return;
-      const now = ctx.currentTime;
-
-      const sub = ctx.createOscillator();
-      const subG = ctx.createGain();
-      sub.type = 'sine';
-      sub.frequency.setValueAtTime(58, now);
-      sub.frequency.exponentialRampToValueAtTime(34, now + 3.2);
-      subG.gain.setValueAtTime(0.001, now);
-      subG.gain.linearRampToValueAtTime(0.45, now + 0.4);
-      subG.gain.exponentialRampToValueAtTime(0.001, now + 3.4);
-      sub.connect(subG);
-      subG.connect(seGain);
-      sub.start(now);
-      sub.stop(now + 3.45);
-
-      const src = ctx.createBufferSource();
-      src.buffer = createNoiseBuffer(3.2, 'brown');
-      const bp = ctx.createBiquadFilter();
-      bp.type = 'bandpass';
-      bp.frequency.setValueAtTime(520, now);
-      bp.frequency.exponentialRampToValueAtTime(1950, now + 2.6);
-      bp.Q.value = 2.8;
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.001, now);
-      g.gain.linearRampToValueAtTime(0.32, now + 0.35);
-      g.gain.exponentialRampToValueAtTime(0.001, now + 3.1);
-      src.connect(bp);
-      bp.connect(g);
-      g.connect(seGain);
-      src.start(now);
-
-      const ear = ctx.createOscillator();
-      const earGain = ctx.createGain();
-      ear.type = 'sine';
-      ear.frequency.setValueAtTime(4950, now);
-      ear.frequency.linearRampToValueAtTime(4620, now + 2.8);
-      earGain.gain.setValueAtTime(0.001, now);
-      earGain.gain.linearRampToValueAtTime(0.038, now + 0.55);
-      earGain.gain.exponentialRampToValueAtTime(0.0005, now + 3.1);
-      ear.connect(earGain);
-      earGain.connect(seGain);
-      ear.start(now);
-      ear.stop(now + 3.2);
-
-      playBgm('title_drone');
-    }
-
-    function playSfx(spec) {
-      init();
-      if (!ctx) return;
-      if (spec.sample) {
-        stopSceneSample();
-        sceneSample = startSample(spec.sample, spec.level, spec.pan);
-        if (sceneSample) return;
-      }
-      const now = ctx.currentTime;
-      const panner = createPanner(spec.pan || 0);
-      panner.connect(seGain);
-
-      if (spec.type === 'paper') {
-        const src = ctx.createBufferSource();
-        src.buffer = createNoiseBuffer(0.45, 'white');
-        const bp = ctx.createBiquadFilter();
-        bp.type = 'bandpass';
-        bp.frequency.setValueAtTime(1400, now);
-        bp.frequency.linearRampToValueAtTime(2400, now + 0.25);
-        bp.Q.value = 1.5;
-        const g = ctx.createGain();
-        g.gain.setValueAtTime(0.001, now);
-        g.gain.linearRampToValueAtTime(0.24, now + 0.04);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-        src.connect(bp);
-        bp.connect(g);
-        g.connect(panner);
-        src.start(now);
-      } else if (spec.type === 'footstep_drag') {
-        const isFar = spec.distance === 'far';
-        [0, 0.62, 1.28].forEach((offset) => {
-          const thud = ctx.createOscillator();
-          const thudG = ctx.createGain();
-          thud.type = 'sine';
-          thud.frequency.setValueAtTime(isFar ? 62 : 84, now + offset);
-          thud.frequency.exponentialRampToValueAtTime(28, now + offset + 0.18);
-          thudG.gain.setValueAtTime(0.001, now + offset);
-          thudG.gain.linearRampToValueAtTime(isFar ? 0.32 : 0.68, now + offset + 0.015);
-          thudG.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.22);
-          thud.connect(thudG);
-          thudG.connect(panner);
-          thud.start(now + offset);
-          thud.stop(now + offset + 0.24);
-
-          const drag = ctx.createBufferSource();
-          drag.buffer = createNoiseBuffer(0.36, 'brown');
-          const lp = ctx.createBiquadFilter();
-          lp.type = 'lowpass';
-          lp.frequency.value = isFar ? 420 : 1200;
-          const dG = ctx.createGain();
-          dG.gain.setValueAtTime(0.001, now + offset + 0.05);
-          dG.gain.linearRampToValueAtTime(isFar ? 0.28 : 0.55, now + offset + 0.14);
-          dG.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.35);
-          drag.connect(lp);
-          lp.connect(dG);
-          dG.connect(panner);
-          drag.start(now + offset + 0.05);
-        });
-      } else if (spec.type === 'footstep_stop') {
-        const osc = ctx.createOscillator();
-        const g = ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(98, now);
-        osc.frequency.exponentialRampToValueAtTime(26, now + 0.24);
-        g.gain.setValueAtTime(0.001, now);
-        g.gain.linearRampToValueAtTime(0.92, now + 0.008);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-        osc.connect(g);
-        g.connect(panner);
-        osc.start(now);
-        osc.stop(now + 0.32);
-
-        const impact = ctx.createBufferSource();
-        impact.buffer = createNoiseBuffer(0.18, 'brown');
-        const lp = ctx.createBiquadFilter();
-        lp.type = 'lowpass';
-        lp.frequency.value = 600;
-        const iG = ctx.createGain();
-        iG.gain.setValueAtTime(0.65, now);
-        iG.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
-        impact.connect(lp);
-        lp.connect(iG);
-        iG.connect(panner);
-        impact.start(now);
-      } else if (spec.type === 'door_creak') {
-        const osc1 = ctx.createOscillator();
-        const osc2 = ctx.createOscillator();
-        const mod = ctx.createOscillator();
-        const modGain = ctx.createGain();
-        const bp = ctx.createBiquadFilter();
-        const g = ctx.createGain();
-
-        osc1.type = 'sawtooth';
-        osc1.frequency.setValueAtTime(145, now);
-        osc1.frequency.linearRampToValueAtTime(240, now + 0.95);
-        osc1.frequency.linearRampToValueAtTime(185, now + 1.65);
-
-        osc2.type = 'sawtooth';
-        osc2.frequency.setValueAtTime(302, now);
-        osc2.frequency.linearRampToValueAtTime(518, now + 1.0);
-        osc2.frequency.linearRampToValueAtTime(395, now + 1.65);
-
-        mod.frequency.value = 21;
-        modGain.gain.value = 32;
-        mod.connect(modGain);
-        modGain.connect(osc1.frequency);
-        modGain.connect(osc2.frequency);
-
-        bp.type = 'bandpass';
-        bp.frequency.value = 680;
-        bp.Q.value = 3.2;
-
-        g.gain.setValueAtTime(0.001, now);
-        g.gain.linearRampToValueAtTime(0.28, now + 0.3);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 1.75);
-
-        osc1.connect(bp);
-        osc2.connect(bp);
-        bp.connect(g);
-        g.connect(panner);
-
-        osc1.start(now);
-        osc2.start(now);
-        mod.start(now);
-        osc1.stop(now + 1.8);
-        osc2.stop(now + 1.8);
-        mod.stop(now + 1.8);
-      } else if (spec.type === 'door_slam_jumpscare') {
-        const dist = ctx.createWaveShaper();
-        dist.curve = makeDistortionCurve(70);
-        dist.connect(panner);
-
-        const sub = ctx.createOscillator();
-        const subG = ctx.createGain();
-        sub.type = 'sine';
-        sub.frequency.setValueAtTime(115, now);
-        sub.frequency.exponentialRampToValueAtTime(24, now + 0.45);
-        subG.gain.setValueAtTime(1.0, now);
-        subG.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
-        sub.connect(subG);
-        subG.connect(dist);
-        sub.start(now);
-        sub.stop(now + 0.58);
-
-        const screech = ctx.createOscillator();
-        const screechG = ctx.createGain();
-        screech.type = 'sawtooth';
-        screech.frequency.setValueAtTime(1650, now);
-        screech.frequency.exponentialRampToValueAtTime(420, now + 0.35);
-        screechG.gain.setValueAtTime(0.38, now);
-        screechG.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
-        screech.connect(screechG);
-        screechG.connect(dist);
-        screech.start(now);
-        screech.stop(now + 0.4);
-
-        const burst = ctx.createBufferSource();
-        burst.buffer = createNoiseBuffer(0.75, 'white');
-        const lp = ctx.createBiquadFilter();
-        lp.type = 'lowpass';
-        lp.frequency.setValueAtTime(3800, now);
-        lp.frequency.exponentialRampToValueAtTime(190, now + 0.65);
-        const bG = ctx.createGain();
-        bG.gain.setValueAtTime(0.95, now);
-        bG.gain.exponentialRampToValueAtTime(0.001, now + 0.72);
-        burst.connect(lp);
-        lp.connect(bG);
-        bG.connect(dist);
-        burst.start(now);
-      } else if (spec.type === 'dice_clatter') {
-        const intensity = Math.max(0.15, Math.min(1, spec.intensity || 0.7));
-        const body = ctx.createOscillator();
-        const bodyG = ctx.createGain();
-        body.type = 'triangle';
-        body.frequency.setValueAtTime(190 + Math.random() * 90, now);
-        body.frequency.exponentialRampToValueAtTime(48, now + 0.085);
-        bodyG.gain.setValueAtTime(0.55 * intensity, now);
-        bodyG.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-        body.connect(bodyG);
-        bodyG.connect(panner);
-        body.start(now);
-        body.stop(now + 0.11);
-
-        const click = ctx.createBufferSource();
-        click.buffer = createNoiseBuffer(0.09, 'white');
-        const bp = ctx.createBiquadFilter();
-        bp.type = 'bandpass';
-        bp.frequency.value = 1350 + Math.random() * 700;
-        bp.Q.value = 3.5;
-        const cG = ctx.createGain();
-        cG.gain.setValueAtTime(0.42 * intensity, now);
-        cG.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-        click.connect(bp);
-        bp.connect(cG);
-        cG.connect(panner);
-        click.start(now);
-      }
-    }
-
-    return { init, setVolumes, playBgm, stopBgm, playIntroHorror, playSfx, preloadSamples, setSceneAmbience, stopSceneSample, playDiceHeartbeat };
-  })();
-
-  /* ============================================================================
-     SECTION 3: TitleCanvas（3.5秒の糸解け遷移 → 右タイトルロゴ＆左神話生物断片）
-     ============================================================================ */
-  const TitleCanvas = (() => {
-    const canvas = document.getElementById('title-canvas');
-    const ctx = canvas.getContext('2d');
-    let animId = null;
-    let mode = 'idle';
-    let startTime = 0;
-    let fibers = [];
-    let eyes = [];
-    let onTransitionDone = null;
-
-    function resize() {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const w = canvas.clientWidth || window.innerWidth;
-      const h = canvas.clientHeight || window.innerHeight;
-      canvas.width = Math.floor(w * dpr);
-      canvas.height = Math.floor(h * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
-
-    function initEntities() {
-      const w = canvas.clientWidth || window.innerWidth;
-      const h = canvas.clientHeight || window.innerHeight;
-      fibers = [];
-      for (let i = 0; i < 68; i++) {
-        const toMonster = i < 42;
-        const sx = w * 0.5 + (Math.random() - 0.5) * Math.min(w * 0.45, 340);
-        const sy = h * 0.48 + (Math.random() - 0.5) * Math.min(h * 0.34, 125);
-        const tx = toMonster
-          ? w * (0.1 + Math.random() * 0.24)
-          : w * (0.56 + Math.random() * 0.3);
-        const ty = toMonster
-          ? h * (0.24 + Math.random() * 0.48)
-          : h * (0.36 + Math.random() * 0.18);
-        fibers.push({
-          sx, sy, tx, ty,
-          toMonster,
-          phase: Math.random() * Math.PI * 2,
-          amp: 12 + Math.random() * 26,
-          width: 0.7 + Math.random() * 1.8
-        });
-      }
-
-      eyes = [];
-      const cx = w * 0.22;
-      const cy = h * 0.45;
-      for (let i = 0; i < 9; i++) {
-        const ang = (Math.PI * 2 * i) / 9 + Math.random() * 0.4;
-        const dist = 14 + Math.random() * Math.min(w, h) * 0.14;
-        eyes.push({
-          x: cx + Math.cos(ang) * dist,
-          y: cy + Math.sin(ang) * dist,
-          r: 2.8 + Math.random() * 5,
-          blinkSpeed: 0.6 + Math.random() * 1.4,
-          blinkOffset: Math.random() * 10
-        });
-      }
-    }
-
-    function startTransition(callback) {
-      resize();
-      initEntities();
-      mode = 'transition';
-      startTime = performance.now();
-      onTransitionDone = callback;
-      if (animId) cancelAnimationFrame(animId);
-      loop();
-    }
-
-    function startTitleLoop() {
-      resize();
-      initEntities();
-      mode = 'title';
-      startTime = performance.now() - 4000;
-      if (animId) cancelAnimationFrame(animId);
-      loop();
-    }
-
-    function stop() {
-      if (animId) {
-        cancelAnimationFrame(animId);
-        animId = null;
-      }
-    }
-
-    function loop() {
-      const now = performance.now();
-      const elapsed = (now - startTime) / 1000;
-      const w = canvas.clientWidth || window.innerWidth;
-      const h = canvas.clientHeight || window.innerHeight;
-      const p = mode === 'title' ? 1 : Math.min(1, elapsed / 3.5);
-      const ease = 1 - Math.pow(1 - p, 3);
-
-      ctx.fillStyle = '#030305';
-      ctx.fillRect(0, 0, w, h);
-
-      // 左側：闇の奥で呼吸する神話生物の断片
-      const monsterAlpha = Math.max(0, (p - 0.35) / 0.65);
-      if (monsterAlpha > 0) {
-        const mx = w * 0.22;
-        const my = h * 0.45;
-        const pulse = Math.sin(now * 0.0018) * 7;
-        const baseR = Math.min(w, h) * 0.26 + pulse;
-
-        const grad = ctx.createRadialGradient(mx, my, 8, mx, my, baseR * 1.42);
-        grad.addColorStop(0, `rgba(44, 14, 16, ${0.78 * monsterAlpha})`);
-        grad.addColorStop(0.55, `rgba(18, 12, 14, ${0.54 * monsterAlpha})`);
-        grad.addColorStop(1, 'rgba(3, 3, 5, 0)');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(mx, my, baseR * 1.42, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.save();
-        ctx.lineCap = 'round';
-        for (let t = 0; t < 15; t++) {
-          const baseAng = (t / 15) * Math.PI * 2;
-          const sway = Math.sin(now * 0.0014 + t * 1.3) * 0.26;
-          const len = baseR * (0.74 + (t % 3) * 0.3);
-          ctx.strokeStyle = `rgba(28, 13, 15, ${0.94 * monsterAlpha})`;
-          ctx.lineWidth = 2.5 + (t % 4) * 1.7;
-          ctx.beginPath();
-          ctx.moveTo(mx, my);
-          ctx.quadraticCurveTo(
-            mx + Math.cos(baseAng + sway) * len * 0.55,
-            my + Math.sin(baseAng + sway) * len * 0.55,
-            mx + Math.cos(baseAng - sway * 1.3) * len,
-            my + Math.sin(baseAng - sway * 1.3) * len
-          );
-          ctx.stroke();
-
-          ctx.strokeStyle = `rgba(128, 82, 74, ${0.24 * monsterAlpha})`;
-          ctx.lineWidth = 0.8;
-          ctx.stroke();
-        }
-        ctx.restore();
-
-        eyes.forEach((eye) => {
-          const blink = Math.sin(now * 0.001 * eye.blinkSpeed + eye.blinkOffset);
-          const open = blink > -0.25 ? Math.min(1, (blink + 0.25) * 1.6) : 0.04;
-          ctx.save();
-          ctx.translate(eye.x, eye.y);
-          ctx.scale(1, open);
-          ctx.fillStyle = `rgba(190, 180, 160, ${0.68 * monsterAlpha})`;
-          ctx.beginPath();
-          ctx.arc(0, 0, eye.r, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = `rgba(6, 4, 6, ${0.95 * monsterAlpha})`;
-          ctx.beginPath();
-          ctx.arc(Math.sin(now * 0.0008 + eye.blinkOffset) * 1.1, 0, eye.r * 0.45, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = `rgba(255, 250, 240, ${0.75 * monsterAlpha})`;
-          ctx.beginPath();
-          ctx.arc(-eye.r * 0.28, -eye.r * 0.25, eye.r * 0.18, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        });
-      }
-
-      // 有機的な黒い糸
-      fibers.forEach((f) => {
-        const curX = f.sx + (f.tx - f.sx) * ease;
-        const curY = f.sy + (f.ty - f.sy) * ease;
-        const wave = Math.sin(now * 0.002 + f.phase) * f.amp * (1 - ease * 0.55);
-        const alpha = f.toMonster ? 0.6 : (0.55 - ease * 0.2);
-
-        ctx.strokeStyle = `rgba(14, 12, 14, ${alpha})`;
-        ctx.lineWidth = f.width;
-        ctx.beginPath();
-        ctx.moveTo(curX, curY);
-        ctx.quadraticCurveTo(
-          (f.sx + curX) * 0.5 + wave,
-          (f.sy + curY) * 0.5 - wave * 0.6,
-          f.toMonster ? w * 0.22 : w * 0.67,
-          f.toMonster ? h * 0.45 : h * 0.44
-        );
-        ctx.stroke();
-
-        if (p < 0.92) {
-          ctx.strokeStyle = `rgba(155, 145, 135, ${(1 - p) * 0.36})`;
-          ctx.lineWidth = 0.7;
-          ctx.stroke();
-        }
-      });
-
-      // 右側：歪んだ明朝体タイトルロゴ『深淵の胎動』
-      const titleAlpha = Math.max(0, (p - 0.45) / 0.55);
-      if (titleAlpha > 0) {
-        ctx.save();
-        const fontSize = Math.max(26, Math.min(h * 0.14, w * 0.072, 64));
-        ctx.font = `600 ${fontSize}px 'Shippori Mincho', 'Noto Serif JP', serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-
-        const lx = w * 0.66;
-        const ly = h * 0.44;
-        const jitterX = (Math.random() - 0.5) * (p < 1 ? 3 : 0.4);
-        const jitterY = (Math.random() - 0.5) * (p < 1 ? 2 : 0.3);
-
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.96)';
-        ctx.shadowBlur = 18;
-        ctx.fillStyle = `rgba(232, 226, 218, ${titleAlpha})`;
-        ctx.fillText('深淵の胎動', lx + jitterX, ly + jitterY);
-
-        ctx.font = `400 ${Math.max(11, fontSize * 0.23)}px 'Shippori Mincho', serif`;
-        ctx.fillStyle = `rgba(158, 148, 138, ${titleAlpha * 0.85})`;
-        ctx.fillText('— 仮 題 —', lx, ly + fontSize * 0.72);
-        ctx.restore();
-      }
-
-      const vig = ctx.createRadialGradient(w * 0.5, h * 0.5, Math.min(w, h) * 0.22, w * 0.5, h * 0.5, Math.max(w, h) * 0.76);
-      vig.addColorStop(0, 'rgba(0,0,0,0)');
-      vig.addColorStop(1, 'rgba(0,0,0,0.88)');
-      ctx.fillStyle = vig;
-      ctx.fillRect(0, 0, w, h);
-
-      if (mode === 'transition' && p >= 1) {
-        mode = 'title';
-        if (onTransitionDone) {
-          const cb = onTransitionDone;
-          onTransitionDone = null;
-          cb();
-        }
-      }
-
-      animId = requestAnimationFrame(loop);
-    }
-
-    window.addEventListener('resize', () => {
-      if (animId) {
-        resize();
-        initEntities();
-      }
+    showPara();
+  }
+  function showChoices(key){
+    clearTimeout(autoT); setFx(false,false);
+    mode='choice'; newHide(); refreshEat();
+    textEl.style.opacity=0; nextEl.classList.remove('on');
+    var box=$('choices'); box.innerHTML='';
+    CHOICES[key].forEach(function(c){
+      var b=document.createElement('button'); b.type='button'; b.className='ch'; b.textContent=c[0];
+      b.addEventListener('click',function(e){ e.stopPropagation(); se('ページをめくる1',.6); log.push('▶ '+c[0]); textEl.style.opacity=1; go(c[1]); });
+      box.appendChild(b);
     });
-
-    return { startTransition, startTitleLoop, stop };
-  })();
-
-  /* ============================================================================
-     SECTION 4: SceneRenderer（廃療養所シーン ＆ 段階3クレヨン画）
-     ============================================================================ */
-  const SceneRenderer = (() => {
-    const canvas = document.getElementById('scene-canvas');
-    const ctx = canvas.getContext('2d');
-    let currentBg = 'entrance';
-    let crayonMode = false;
-
-    function resize() {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const w = canvas.clientWidth || window.innerWidth;
-      const h = canvas.clientHeight || window.innerHeight;
-      canvas.width = Math.floor(w * dpr);
-      canvas.height = Math.floor(h * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      render();
-    }
-
-    function setScene(bgType, isCrayon) {
-      currentBg = bgType || currentBg;
-      crayonMode = !!isCrayon;
-      render();
-    }
-
-    function render() {
-      const w = canvas.clientWidth || window.innerWidth;
-      const h = canvas.clientHeight || window.innerHeight;
-      ctx.clearRect(0, 0, w, h);
-
-      if (crayonMode) {
-        drawCrayonRealityEscape(w, h);
-        return;
-      }
-
-      const grad = ctx.createLinearGradient(0, 0, 0, h);
-      grad.addColorStop(0, '#07080b');
-      grad.addColorStop(0.55, '#101216');
-      grad.addColorStop(1, '#040406');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, w, h);
-
-      ctx.save();
-      if (currentBg === 'entrance') {
-        ctx.strokeStyle = 'rgba(130, 138, 145, 0.16)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(w * 0.14, h * 0.16, w * 0.24, h * 0.36);
-        ctx.beginPath();
-        ctx.moveTo(w * 0.26, h * 0.16);
-        ctx.lineTo(w * 0.26, h * 0.52);
-        ctx.moveTo(w * 0.14, h * 0.34);
-        ctx.lineTo(w * 0.38, h * 0.34);
-        ctx.stroke();
-
-        ctx.fillStyle = 'rgba(8, 8, 10, 0.86)';
-        ctx.fillRect(w * 0.54, h * 0.44, w * 0.34, h * 0.26);
-        ctx.strokeStyle = 'rgba(120, 110, 100, 0.18)';
-        ctx.strokeRect(w * 0.54, h * 0.44, w * 0.34, h * 0.26);
-      } else if (currentBg === 'corridor') {
-        const vx = w * 0.5;
-        const vy = h * 0.4;
-        ctx.strokeStyle = 'rgba(140, 135, 130, 0.16)';
-        ctx.lineWidth = 1.5;
-        [[0, 0], [w, 0], [0, h], [w, h]].forEach(([x, y]) => {
-          ctx.beginPath();
-          ctx.moveTo(x, y);
-          ctx.lineTo(vx, vy);
-          ctx.stroke();
-        });
-        ctx.fillStyle = '#020203';
-        ctx.fillRect(vx - w * 0.08, vy - h * 0.14, w * 0.16, h * 0.28);
-        ctx.fillStyle = 'rgba(42, 22, 18, 0.5)';
-        ctx.beginPath();
-        ctx.moveTo(w * 0.16, h * 0.18);
-        ctx.lineTo(w * 0.31, h * 0.28);
-        ctx.lineTo(w * 0.31, h * 0.64);
-        ctx.lineTo(w * 0.16, h * 0.76);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-      } else if (currentBg === 'clinic') {
-        ctx.fillStyle = 'rgba(16, 18, 22, 0.9)';
-        ctx.fillRect(w * 0.12, h * 0.18, w * 0.22, h * 0.48);
-        ctx.strokeStyle = 'rgba(130, 145, 140, 0.18)';
-        ctx.strokeRect(w * 0.12, h * 0.18, w * 0.22, h * 0.48);
-        for (let i = 0; i < 6; i++) {
-          ctx.fillStyle = 'rgba(95, 120, 105, 0.18)';
-          ctx.fillRect(w * 0.14 + i * (w * 0.03), h * 0.24, w * 0.018, h * 0.07);
-        }
-        ctx.fillStyle = 'rgba(30, 22, 22, 0.65)';
-        ctx.fillRect(w * 0.48, h * 0.46, w * 0.36, h * 0.12);
-      } else {
-        for (let s = 0; s < 8; s++) {
-          const y = h * 0.2 + s * (h * 0.065);
-          ctx.fillStyle = `rgba(26, 16, 18, ${0.44 + s * 0.06})`;
-          ctx.fillRect(w * 0.2 + s * 10, y, w * 0.6 - s * 20, h * 0.05);
-        }
-      }
-
-      const light = ctx.createRadialGradient(w * 0.5, h * 0.4, 10, w * 0.5, h * 0.4, Math.max(w, h) * 0.46);
-      light.addColorStop(0, 'rgba(215, 220, 205, 0.12)');
-      light.addColorStop(0.55, 'rgba(20, 22, 25, 0.15)');
-      light.addColorStop(1, 'rgba(0, 0, 0, 0.88)');
-      ctx.fillStyle = light;
-      ctx.fillRect(0, 0, w, h);
-      ctx.restore();
-    }
-
-    function drawCrayonRealityEscape(w, h) {
-      ctx.fillStyle = '#c8ebff';
-      ctx.fillRect(0, 0, w, h * 0.56);
-      ctx.fillStyle = '#a4e386';
-      ctx.fillRect(0, h * 0.54, w, h * 0.46);
-
-      ctx.save();
-      for (let i = 0; i < 40; i++) {
-        ctx.strokeStyle = i % 2 === 0 ? 'rgba(255,255,255,0.28)' : 'rgba(110, 195, 90, 0.24)';
-        ctx.lineWidth = 6 + (i % 5) * 3;
-        ctx.beginPath();
-        const y = (i / 40) * h;
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y + Math.sin(i) * 12);
-        ctx.stroke();
-      }
-
-      const sx = w * 0.18;
-      const sy = h * 0.24;
-      const sr = Math.min(34, h * 0.09);
-      ctx.fillStyle = '#ffdd55';
-      ctx.strokeStyle = '#ff9838';
-      ctx.lineWidth = 3.5;
-      ctx.beginPath();
-      ctx.arc(sx, sy, sr, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = '#4a2b10';
-      ctx.beginPath();
-      ctx.arc(sx - sr * 0.3, sy - sr * 0.18, sr * 0.11, 0, Math.PI * 2);
-      ctx.arc(sx + sr * 0.3, sy - sr * 0.18, sr * 0.11, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(sx, sy + sr * 0.12, sr * 0.38, 0.1 * Math.PI, 0.9 * Math.PI);
-      ctx.stroke();
-
-      const cx = w * 0.52;
-      const cy = h * 0.55;
-      const cw = Math.min(160, w * 0.22);
-      const ch = Math.min(100, h * 0.26);
-      ctx.fillStyle = '#f5d2d8';
-      ctx.strokeStyle = '#c95f75';
-      ctx.lineWidth = 4;
-      ctx.fillRect(cx - cw / 2, cy - ch, cw, ch);
-      ctx.strokeRect(cx - cw / 2, cy - ch, cw, ch);
-
-      ctx.fillStyle = '#e86a82';
-      ctx.beginPath();
-      ctx.moveTo(cx - cw * 0.6, cy - ch);
-      ctx.lineTo(cx, cy - ch * 1.58);
-      ctx.lineTo(cx + cw * 0.6, cy - ch);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = '#6e1c2c';
-      ctx.beginPath();
-      ctx.arc(cx, cy, cw * 0.2, Math.PI, 0);
-      ctx.fill();
-
-      const flowerColors = ['#ff6b8b', '#ffd93d', '#ff9f43', '#a29bfe'];
-      for (let f = 0; f < 14; f++) {
-        const fx = w * (0.08 + f * 0.068);
-        const fy = h * (0.62 + (f % 3) * 0.06);
-        ctx.strokeStyle = '#3b8c3b';
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.moveTo(fx, fy);
-        ctx.lineTo(fx + Math.sin(f) * 5, fy + 22);
-        ctx.stroke();
-        ctx.fillStyle = flowerColors[f % flowerColors.length];
-        ctx.beginPath();
-        ctx.arc(fx, fy, 9, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-
-    window.addEventListener('resize', resize);
-    return { resize, setScene, render };
-  })();
-
-  /* ============================================================================
-     SECTION 5: MadnessFX（本物のShift_JIS/UTF-8文字化け 約20%混入 ＆ 段階1〜3視覚変質）
-     ============================================================================ */
-  const MadnessFX = (() => {
-    const MOJIBAKE_POOL = [
-      '縺', '繝', '繧', '纉', '蜿', '螟', '蜈', '譌',
-      'ｻ', 'ｽ', 'ｧ', 'ｭ', '\uFFFD', '□', '◆', '※',
-      '励', '勸', '蟆', '蛻', 'ｮ', 'ｬ', 'ｱ', 'ｲ', 'ｳ', 'ｴ', 'ｵ'
-    ];
-    const SKIP_CHARS = new Set(['\n', '。', '、', '「', '」', '！', '？', '…', '―', '　', ' ']);
-
-    const stainsEl = document.getElementById('madness-stains');
-    const sanGroupEl = document.getElementById('san-bar-group');
-    const novelTextWrap = document.getElementById('novel-text-wrap');
-    const gameScreenEl = document.getElementById('screen-game');
-    const redFlashEl = document.getElementById('red-text-flash');
-
-    function getStage(madness, thresholds) {
-      if (madness >= thresholds.stage3) return 3;
-      if (madness >= thresholds.stage2) return 2;
-      if (madness >= thresholds.stage1) return 1;
-      return 0;
-    }
-
-    function applyVisuals(madness, thresholds, bgType) {
-      const stage = getStage(madness, thresholds);
-      stainsEl.style.opacity = stage >= 1 ? (stage >= 2 ? '0.94' : '0.6') : '0';
-      novelTextWrap.classList.toggle('text-jitter', stage >= 1 && stage < 3);
-      sanGroupEl.classList.toggle('bar-glitch', stage >= 2);
-      SceneRenderer.setScene(bgType, stage >= 3);
-    }
-
-    /* 文章の約20%(18〜22%)だけをエンコード崩れ文字化けに変換し、トークン配列を返す */
-    function buildTokens(text, stage) {
-      const chars = Array.from(text);
-      if (stage < 2) {
-        return chars.map((ch) => ({ ch, corrupted: false }));
-      }
-
-      const eligibleIndices = [];
-      chars.forEach((ch, idx) => {
-        if (!SKIP_CHARS.has(ch)) eligibleIndices.push(idx);
-      });
-
-      const targetCount = Math.max(1, Math.round(eligibleIndices.length * (0.18 + Math.random() * 0.04)));
-      for (let i = eligibleIndices.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [eligibleIndices[i], eligibleIndices[j]] = [eligibleIndices[j], eligibleIndices[i]];
-      }
-      const chosen = new Set(eligibleIndices.slice(0, targetCount));
-
-      return chars.map((ch, idx) => {
-        if (chosen.has(idx)) {
-          return {
-            ch: MOJIBAKE_POOL[Math.floor(Math.random() * MOJIBAKE_POOL.length)],
-            corrupted: true
-          };
-        }
-        return { ch, corrupted: false };
-      });
-    }
-
-    function tokensToHtml(tokens, limit) {
-      const count = limit === undefined ? tokens.length : Math.min(limit, tokens.length);
-      let html = '';
-      for (let i = 0; i < count; i++) {
-        const t = tokens[i];
-        const safe = t.ch === '<' ? '&lt;' : (t.ch === '>' ? '&gt;' : (t.ch === '&' ? '&amp;' : t.ch));
-        if (t.corrupted) {
-          html += `<span class="mojibake-char">${safe}</span>`;
-        } else {
-          html += safe;
-        }
-      }
-      return html;
-    }
-
-    function triggerRedFlash(message) {
-      redFlashEl.textContent = Array(14).fill(message).join('　');
-      redFlashEl.classList.remove('flash-active');
-      void redFlashEl.offsetWidth;
-      redFlashEl.classList.add('flash-active');
-      setTimeout(() => redFlashEl.classList.remove('flash-active'), 880);
-    }
-
-    function triggerHeavyShake() {
-      gameScreenEl.classList.remove('shake-heavy');
-      void gameScreenEl.offsetWidth;
-      gameScreenEl.classList.add('shake-heavy');
-      setTimeout(() => gameScreenEl.classList.remove('shake-heavy'), 500);
-    }
-
-    return { getStage, applyVisuals, buildTokens, tokensToHtml, triggerRedFlash, triggerHeavyShake };
-  })();
-
-  /* ============================================================================
-     SECTION 6: MapSystem（見下ろし型間取り図オーバーレイ）
-     ============================================================================ */
-  const MapSystem = (() => {
-    const svg = document.getElementById('map-svg');
-    const caption = document.getElementById('map-room-caption');
-
-    function render(scenario, currentRoomId, visitedRooms) {
-      const rooms = scenario.rooms;
-      let html = '';
-      const drawn = new Set();
-
-      Object.values(rooms).forEach((r) => {
-        const cx1 = r.rect.x + r.rect.w / 2;
-        const cy1 = r.rect.y + r.rect.h / 2;
-        r.connectedTo.forEach((targetId) => {
-          const key = [r.id, targetId].sort().join('-');
-          if (drawn.has(key)) return;
-          drawn.add(key);
-          const t = rooms[targetId];
-          if (!t) return;
-          const cx2 = t.rect.x + t.rect.w / 2;
-          const cy2 = t.rect.y + t.rect.h / 2;
-          const visible = visitedRooms.includes(r.id) || visitedRooms.includes(targetId);
-          html += `<line x1="${cx1}" y1="${cy1}" x2="${cx2}" y2="${cy2}" stroke="${visible ? '#7a6a55' : '#2a241d'}" stroke-width="4" stroke-dasharray="6,4" />`;
-        });
-      });
-
-      Object.values(rooms).forEach((r) => {
-        const isVisited = visitedRooms.includes(r.id);
-        const isCurrent = r.id === currentRoomId;
-        const { x, y, w, h } = r.rect;
-        if (!isVisited) {
-          html += `
-            <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="#080707" stroke="#2c2620" stroke-width="1.5" />
-            <text x="${x + w / 2}" y="${y + h / 2 + 4}" fill="#3d362e" font-size="13" text-anchor="middle" font-family="serif">？？？</text>
-          `;
-        } else {
-          html += `
-            <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="${isCurrent ? '#32221d' : '#241f19'}" stroke="${isCurrent ? '#be3434' : '#85745d'}" stroke-width="${isCurrent ? 2.5 : 1.5}" />
-            <text x="${x + w / 2}" y="${y + h / 2 + 5}" fill="${isCurrent ? '#f2e8da' : '#b8ab98'}" font-size="13" text-anchor="middle" font-family="serif">${r.name}</text>
-          `;
-          if (isCurrent) {
-            html += `<circle cx="${x + w - 14}" cy="${y + 14}" r="5.5" fill="#dc3232" stroke="#1a0808" stroke-width="2" />`;
-          }
-        }
-      });
-
-      svg.innerHTML = html;
-      const cur = rooms[currentRoomId];
-      caption.textContent = cur ? `現在地：${cur.name}` : '';
-    }
-
-    return { render };
-  })();
-
-  /* ============================================================================
-     SECTION 7: DiceSystem（技能判定。ダイス本体は部品 assets/dice/dice-engine.js）
-     見た目・動き・音を直すときは部品側を直す。ここは「技能を渡して結果を受け取る」だけ
-     ============================================================================ */
-  const DiceSystem = (() => {
-    const overlay = document.getElementById('dice-overlay');
-    const host3d = document.getElementById('dice-3d');
-    const options = document.getElementById('dice-skill-options');
-    const resultPanel = document.getElementById('dice-result-panel');
-    const resultLabel = document.getElementById('dice-result-label');
-    const LABELS = { critical: 'クリティカル', success: '成功', fail: '失敗', fumble: 'ファンブル' };
-    // ゲームのルール：1はクリティカル、100はファンブル
-    const RULE = { critMax: 1, fumbleMin: 100 };
-
-    let dice3d = null;
-    let onThrow = null;
-    // cutin：最初に「Dice Roll」のカットイン / tapToClose：結果の1秒後からタップで背景ごとフェードアウトして閉じる（部品側の機能）
-    const createDice = () => HorrorDice.create({ root: host3d, tapToClose: true, fadeEl: overlay, cutin: true, onThrow: () => { if (onThrow) { onThrow(); onThrow = null; } } });
-    // 画像を先に読み込んでおく（判定になったらすぐ出せるように）
-    if (window.HorrorDice) { dice3d = createDice(); dice3d.stop(); }
-
-    function seVolume() {
-      const s = SaveSystem.loadSettings();
-      return Math.max(0, Math.min(1, (s.volMaster ?? 80) / 100 * (s.volSe ?? 90) / 100));
-    }
-
-    function outcomeOf(total, target) {
-      const ok = total <= target;
-      if (ok && total <= RULE.critMax) return 'critical';
-      if (!ok && total >= RULE.fumbleMin) return 'fumble';
-      return ok ? 'success' : 'fail';
-    }
-
-    // checks: [{skill, target, success, fail, critical?, fumble?}] / bpm: 心音の速さ
-    function choose(checks, bpm, onComplete, onCancel) {
-      let selected = checks[0];
-      let settled = false;
-
-      // 判定前の心音・振動（ダイスを投げるまで続く）
-      let stopBeat = () => {};
-      const period = 60 / bpm;
-      const vibrate = pattern => navigator.vibrate?.(pattern);
-      const beat = () => {
-        if (document.hidden) return;
-        stopBeat = AudioEngine.playDiceHeartbeat(period);
-        vibrate([23, Math.round(period * 220) - 23, 31]);
-      };
-      const silence = () => { stopBeat(); vibrate(0); };
-      beat();
-      const timer = setInterval(beat, period * 1000);
-      document.addEventListener('visibilitychange', silence);
-      function stopPulse() {
-        clearInterval(timer);
-        silence();
-        document.removeEventListener('visibilitychange', silence);
-        document.removeEventListener('keydown', onEscape);
-      }
-      const onEscape = event => { if (event.key === 'Escape' && !settled) cancel(); };
-      document.addEventListener('keydown', onEscape);
-
-      function close() {
-        stopPulse();
-        onThrow = null;
-        if (dice3d) dice3d.stop();
-        options.hidden = true;
-        resultPanel.classList.remove('show');
-        overlay.classList.remove('active');
-      }
-      function cancel() { close(); onCancel(); }
-
-      // 結果で次の場面へ進む
-      function proceed(total) {
-        settled = true;
-        const check = selected;
-        const outcome = outcomeOf(total, check.target);
-        const success = outcome === 'critical' || outcome === 'success';
-        close();
-        onComplete(check[outcome] ?? (success ? check.success : check.fail));
-      }
-
-      let firstRoll = true; // カットイン「Dice Roll」は最初の1回だけ（技能の切り替えでは出さない）
-      function setSkill(check) {
-        selected = check;
-        for (const button of options.querySelectorAll('[data-skill]')) {
-          button.setAttribute('aria-pressed', String(checks[Number(button.dataset.skill)] === selected));
-        }
-        if (dice3d) {
-          // 閉じ終わったら結果が返ってくる
-          dice3d.roll({ skill: check.skill, target: check.target, cutin: firstRoll, ...RULE }).then(r => proceed(r.total));
-          firstRoll = false;
-        }
-      }
-
-      // 左下：技能（2つ以上のとき）と「振らずに戻る」
-      options.replaceChildren();
-      if (checks.length > 1) {
-        checks.forEach((check, index) => {
-          const button = document.createElement('button');
-          button.type = 'button';
-          button.className = 'hud-btn';
-          button.dataset.skill = index;
-          button.textContent = `${check.skill} ${check.target}`;
-          button.onclick = () => setSkill(check);
-          options.appendChild(button);
-        });
-      }
-      const back = document.createElement('button');
-      back.type = 'button';
-      back.className = 'hud-btn';
-      back.textContent = '振らずに戻る';
-      back.onclick = cancel;
-      options.appendChild(back);
-      options.hidden = false;
-
-      resultPanel.classList.remove('show');
-      overlay.classList.add('active');
-      onThrow = () => { options.hidden = true; stopPulse(); };
-
-      if (window.HorrorDice) {
-        if (!dice3d) dice3d = createDice();
-        dice3d.setVolume(seVolume());
-        dice3d.start();
-        setSkill(selected);
-      } else {
-        // 部品が読み込めなかったとき（通信エラーなど）は、数字だけで判定して進める
-        resultLabel.textContent = '';
-        const rollBtn = document.createElement('button');
-        rollBtn.type = 'button';
-        rollBtn.className = 'hud-btn';
-        rollBtn.textContent = 'ダイスを振る';
-        rollBtn.onclick = () => {
-          onThrow();
-          const total = Math.floor(Math.random() * 100) + 1;
-          resultLabel.textContent = `出目 ${total}（目標 ${selected.target}） — ${LABELS[outcomeOf(total, selected.target)]}　タップで閉じる`;
-          resultPanel.classList.add('show');
-          setTimeout(() => { overlay.onclick = () => { overlay.onclick = null; proceed(total); }; }, 1000);
-        };
-        options.prepend(rollBtn);
-        setSkill(selected);
-      }
-    }
-
-    return { choose };
-  })();
-
-  /* ============================================================================
-     SECTION 8: SaveSystem（localStorage連動：オート1枠＋手動3枠＋設定）
-     ============================================================================ */
-  const SaveSystem = (() => {
-    const KEY_PREFIX = 'cthulhu_novel_save_v3_';
-    const SETTINGS_KEY = 'cthulhu_novel_settings_v3';
-    const LEGACY_KEY_PREFIX = 'cthulhu_novel_save_v2_';
-    const LEGACY_SETTINGS_KEY = 'cthulhu_novel_settings_v2';
-
-    function readStoredObject(key) {
-      try {
-        const value = JSON.parse(localStorage.getItem(key));
-        return value && typeof value === 'object' && !Array.isArray(value) ? value : null;
-      } catch (_) {
-        return null;
-      }
-    }
-
-    function loadSettings() {
-      return readStoredObject(SETTINGS_KEY) ?? readStoredObject(LEGACY_SETTINGS_KEY) ??
-        { volMaster: 80, volBgm: 75, volSe: 90, textSpeed: 30, apiKey: '' };
-    }
-
-    function saveSettings(s) {
-      try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch (_) {}
-    }
-
-    function saveSlot(slotId, stateSnapshot) {
-      const payload = {
-        ...stateSnapshot,
-        savedAt: new Date().toLocaleString('ja-JP', {
-          year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
-        })
-      };
-      try { localStorage.setItem(KEY_PREFIX + slotId, JSON.stringify(payload)); } catch (_) {}
-    }
-
-    function getSlot(slotId) {
-      return readStoredObject(KEY_PREFIX + slotId) ?? readStoredObject(LEGACY_KEY_PREFIX + slotId);
-    }
-
-    function hasAnySave() {
-      return ['auto', 'slot1', 'slot2', 'slot3'].some((id) => !!getSlot(id));
-    }
-
-    return { loadSettings, saveSettings, saveSlot, getSlot, hasAnySave };
-  })();
-
-  /* ============================================================================
-     SECTION 9: GameCore（バージョン情報モーダル・フルスクリーン・縦向きガード・進行・UI結合）
-     ============================================================================ */
-  const GameCore = (() => {
-    let settings = SaveSystem.loadSettings();
-    let state = null;
-    let typingTimer = null;
-    let isTyping = false;
-    let currentTokens = [];
-    let isWaitingSilence = false;
-    let activeSilverKeyContext = null;
-
-    const screens = {
-      warning: document.getElementById('screen-warning'),
-      title: document.getElementById('screen-title'),
-      game: document.getElementById('screen-game'),
-      ending: document.getElementById('screen-ending')
-    };
-    const changelogModal = document.getElementById('version-changelog-modal');
-    const portraitGuard = document.getElementById('portrait-guard');
-    const fadeCurtain = document.getElementById('fade-curtain');
-    const toastEl = document.getElementById('toast-msg');
-    const novelTextBody = document.getElementById('novel-text-body');
-    const speakerNameEl = document.getElementById('speaker-name');
-    const nextIndicator = document.getElementById('next-indicator');
-    const choicesContainer = document.getElementById('choices-container');
-    const hudLocation = document.getElementById('hud-location');
-    const barHp = document.getElementById('bar-hp');
-    const barSan = document.getElementById('bar-san');
-
-    let toastTimer = null;
-    function showToast(msg) {
-      toastEl.textContent = msg;
-      toastEl.classList.add('show');
-      if (toastTimer) clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2300);
-    }
-
-    /* 起動時バージョン情報・変更点オーバーレイの初期化 */
-    function initVersionChangelog() {
-      document.getElementById('changelog-version-badge').textContent = APP_VERSION;
-      document.getElementById('title-version-corner').textContent = APP_VERSION;
-
-      const listEl = document.getElementById('changelog-list');
-      listEl.innerHTML = '';
-      CHANGELOG.forEach((item) => {
-        const li = document.createElement('li');
-        li.textContent = item;
-        listEl.appendChild(li);
-      });
-
-      // 背景やパネルを押しても閉じないよう伝播のみ遮断
-      changelogModal.addEventListener('click', (e) => {
-        e.stopPropagation();
-      });
-
-      // ×ボタンが押されたときだけ完全に display: none で閉じる
-      document.getElementById('btn-close-changelog').addEventListener('click', (e) => {
-        e.stopPropagation();
-        changelogModal.classList.add('dismissed');
-      });
-    }
-
-    function checkOrientationGuard() {
-      const isPortrait = window.innerHeight > window.innerWidth;
-      portraitGuard.classList.toggle('force-portrait', isPortrait);
-    }
-
-    async function requestLandscapeFullscreen() {
-      const el = document.documentElement;
-      try {
-        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-          if (el.requestFullscreen) await el.requestFullscreen();
-          else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-        }
-      } catch (_) {}
-
-      try {
-        if (screen.orientation && typeof screen.orientation.lock === 'function') {
-          await screen.orientation.lock('landscape');
-        }
-      } catch (_) {}
-      updateFullscreenLabels();
-    }
-
-    async function toggleFullscreen(e) {
-      if (e) e.stopPropagation();
-      try {
-        if (document.fullscreenElement || document.webkitFullscreenElement) {
-          if (document.exitFullscreen) await document.exitFullscreen();
-          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-        } else {
-          await requestLandscapeFullscreen();
-        }
-      } catch (_) {
-        showToast('このブラウザでは全画面切替が制限されています');
-      }
-      updateFullscreenLabels();
-    }
-
-    function updateFullscreenLabels() {
-      const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-      const label = isFs ? '解除' : '全画面';
-      document.getElementById('btn-title-fullscreen').textContent = label;
-      document.getElementById('btn-game-fullscreen').textContent = label;
-    }
-
-    function switchScreen(name, withFade = true) {
-      const doSwitch = () => {
-        Object.entries(screens).forEach(([k, el]) => {
-          el.classList.toggle('active', k === name);
-        });
-        if (name === 'title') updateContinueButton();
-        if (name === 'game') SceneRenderer.resize();
-      };
-
-      if (!withFade) {
-        doSwitch();
-        return;
-      }
-      fadeCurtain.classList.add('active');
-      setTimeout(() => {
-        doSwitch();
-        setTimeout(() => fadeCurtain.classList.remove('active'), 100);
-      }, 520);
-    }
-
-    function updateContinueButton() {
-      document.getElementById('btn-continue').disabled = !SaveSystem.hasAnySave();
-    }
-
-    function handleWarningTap(e) {
-      if (e) e.stopPropagation();
-      // バージョン情報オーバーレイ表示中は反応させない
-      if (!changelogModal.classList.contains('dismissed')) return;
-      if (!screens.warning.classList.contains('active')) return;
-
-      AudioEngine.init();
-      AudioEngine.preloadSamples();
-      AudioEngine.setVolumes(settings.volMaster / 100, settings.volBgm / 100, settings.volSe / 100);
-      requestLandscapeFullscreen();
-      AudioEngine.playIntroHorror();
-
-      screens.warning.classList.remove('active');
-      screens.title.classList.add('active');
-      document.getElementById('title-ui-overlay').classList.remove('visible');
-
-      TitleCanvas.startTransition(() => {
-        document.getElementById('title-ui-overlay').classList.add('visible');
-        updateContinueButton();
-      });
-    }
-
-    function startScenario(scenarioId) {
-      const scenario = SCENARIO_DATA[scenarioId];
-      if (!scenario) return;
-
-      state = {
-        scenarioId,
-        eventId: scenario.startEvent,
-        stepIndex: 0,
-        roomId: scenario.events[scenario.startEvent].room,
-        visitedRooms: [scenario.events[scenario.startEvent].room],
-        hp: 100,
-        madness: 0,
-        items: [],
-        silverKeysLeft: scenario.meta.silverKeyLimit
-      };
-
-      closeAllModals();
-      TitleCanvas.stop();
-      switchScreen('game', true);
-      setTimeout(() => enterEvent(state.eventId, 0), 560);
-    }
-
-    function loadFromSnapshot(snap) {
-      if (!snap || !SCENARIO_DATA[snap.scenarioId]) return;
-      let eventId = snap.eventId;
-      let stepIndex = snap.stepIndex || 0;
-      if (snap.scenarioId === 'ep01_sanatorium' && eventId === 'evt_basement_01') {
-        // v0.3.0 splits the old basement scene into the stairs and the abyss.
-        eventId = stepIndex < 3 ? 'evt_stairs_01' : 'evt_abyss_01';
-        if (eventId === 'evt_abyss_01') stepIndex -= 2;
-      }
-      const event = SCENARIO_DATA[snap.scenarioId].events[eventId];
-      if (!event) return;
-
-      state = {
-        scenarioId: snap.scenarioId,
-        eventId,
-        stepIndex,
-        roomId: event.room,
-        visitedRooms: [...new Set((snap.visitedRooms || [snap.roomId])
-          .map((roomId) => roomId === 'room_basement' ? 'room_stairs' : roomId))],
-        hp: snap.hp ?? 100,
-        madness: snap.madness ?? 0,
-        items: snap.items || [],
-        silverKeysLeft: snap.silverKeysLeft ?? 2
-      };
-      closeAllModals();
-      TitleCanvas.stop();
-      switchScreen('game', true);
-      setTimeout(() => enterEvent(state.eventId, state.stepIndex), 560);
-    }
-
-    function updateHud() {
-      const scenario = SCENARIO_DATA[state.scenarioId];
-      const room = scenario.rooms[state.roomId];
-      hudLocation.textContent = room ? room.name : '';
-      barHp.style.width = `${Math.max(0, Math.min(100, state.hp))}%`;
-      barSan.style.width = `${Math.max(4, Math.min(100, 100 - state.madness))}%`;
-
-      const evt = scenario.events[state.eventId];
-      MadnessFX.applyVisuals(state.madness, scenario.madnessThresholds, evt ? evt.bg : 'entrance');
-    }
-
-    function autoSave() {
-      const scenario = SCENARIO_DATA[state.scenarioId];
-      const room = scenario.rooms[state.roomId];
-      SaveSystem.saveSlot('auto', {
-        ...state,
-        scenarioTitle: scenario.meta.title,
-        roomName: room ? room.name : ''
-      });
-    }
-
-    function enterEvent(eventId, stepIdx = 0) {
-      const scenario = SCENARIO_DATA[state.scenarioId];
-      const evt = scenario.events[eventId];
-      if (!evt) return;
-
-      AudioEngine.stopSceneSample();
-      state.eventId = eventId;
-      state.stepIndex = stepIdx;
-      state.roomId = evt.room;
-      if (!state.visitedRooms.includes(evt.room)) {
-        state.visitedRooms.push(evt.room);
-      }
-
-      choicesContainer.classList.remove('active');
-      choicesContainer.innerHTML = '';
-      autoSave();
-      updateHud();
-      playStep();
-    }
-
-    function playStep() {
-      const scenario = SCENARIO_DATA[state.scenarioId];
-      const evt = scenario.events[state.eventId];
-      const step = evt.steps[state.stepIndex];
-
-      if (!step) {
-        if (evt.ending) showEnding(evt.ending);
-        else if (evt.choices && evt.choices.length > 0) showChoices(evt.choices);
-        return;
-      }
-
-      const quiet = Boolean(step.silenceWait);
-      const roomAmbience = state.roomId === 'room_entrance' ? 'rain'
-        : state.roomId === 'room_corridor' && (state.eventId !== 'evt_corridor_01' || state.stepIndex < 4) ? 'corridor' : null;
-      AudioEngine.setSceneAmbience(quiet ? null : roomAmbience, quiet);
-      if (quiet) AudioEngine.stopSceneSample(true);
-      if (step.bgm) AudioEngine.playBgm(step.bgm);
-      if (step.sfx) AudioEngine.playSfx(step.sfx);
-      if (step.madnessAdd) state.madness = Math.min(100, state.madness + step.madnessAdd);
-      if (step.hpAdd) state.hp = Math.max(0, Math.min(100, state.hp + step.hpAdd));
-      if (step.addItem && !state.items.includes(step.addItem)) {
-        state.items.push(step.addItem);
-        const itemInfo = scenario.itemsCatalog[step.addItem];
-        if (itemInfo) showToast(`入手：${itemInfo.name}`);
-      }
-      if (step.redFlash) MadnessFX.triggerRedFlash(step.redFlash);
-      if (step.shake === 'heavy') MadnessFX.triggerHeavyShake();
-
-      updateHud();
-
-      if (step.showMapBrief) openMapModal();
-
-      const stage = MadnessFX.getStage(state.madness, scenario.madnessThresholds);
-      speakerNameEl.textContent = step.speaker || '';
-      currentTokens = MadnessFX.buildTokens(step.text, stage);
-
-      if (step.silenceWait) {
-        isWaitingSilence = true;
-        novelTextBody.innerHTML = MadnessFX.tokensToHtml(currentTokens);
-        nextIndicator.classList.remove('show');
-        setTimeout(() => {
-          isWaitingSilence = false;
-          state.stepIndex++;
-          playStep();
-        }, step.silenceWait);
-        return;
-      }
-
-      startTypewriter(currentTokens);
-    }
-
-    function startTypewriter(tokens) {
-      if (typingTimer) clearInterval(typingTimer);
-      nextIndicator.classList.remove('show');
-      const speed = Number(settings.textSpeed);
-
-      if (speed <= 0) {
-        novelTextBody.innerHTML = MadnessFX.tokensToHtml(tokens);
-        isTyping = false;
-        nextIndicator.classList.add('show');
-        return;
-      }
-
-      isTyping = true;
-      novelTextBody.innerHTML = '';
-      let i = 0;
-      typingTimer = setInterval(() => {
-        i++;
-        novelTextBody.innerHTML = MadnessFX.tokensToHtml(tokens, i);
-        if (i >= tokens.length) {
-          clearInterval(typingTimer);
-          isTyping = false;
-          nextIndicator.classList.add('show');
-        }
-      }, speed);
-    }
-
-    function handleNovelTap() {
-      if (!state || isWaitingSilence || choicesContainer.classList.contains('active')) return;
-      if (isTyping) {
-        clearInterval(typingTimer);
-        novelTextBody.innerHTML = MadnessFX.tokensToHtml(currentTokens);
-        isTyping = false;
-        nextIndicator.classList.add('show');
-        return;
-      }
-      state.stepIndex++;
-      playStep();
-    }
-
-    function showChoices(choices) {
-      const scenario = SCENARIO_DATA[state.scenarioId];
-      const stage = MadnessFX.getStage(state.madness, scenario.madnessThresholds);
-      choicesContainer.innerHTML = '';
-
-      choices.filter(ch => !ch.unlessItem || !state.items.includes(ch.unlessItem)).forEach((ch) => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'choice-btn' + (ch.useSilverKey ? ' silver-key' : '');
-        const labelHtml = ch.useSilverKey
-          ? ch.label
-          : MadnessFX.tokensToHtml(MadnessFX.buildTokens(ch.label, stage));
-        const tagHtml = ch.useSilverKey
-          ? `<span class="choice-tag">残 ${state.silverKeysLeft} 回</span>`
-          : (ch.tag ? `<span class="choice-tag">${ch.tag}</span>` : '');
-        btn.innerHTML = `<span>${labelHtml}</span>${tagHtml}`;
-
-        if (ch.useSilverKey && state.silverKeysLeft <= 0) {
-          btn.disabled = true;
-          btn.style.opacity = '0.45';
-        }
-
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          AudioEngine.playSfx({ type: 'paper' });
-          if (ch.useSilverKey) {
-            openSilverKeyModal(ch.useSilverKey.context);
-          } else if (ch.diceCheck || ch.diceChecks) {
-            const checks = (ch.diceChecks ?? [ch.diceCheck]).filter(check => !check.item || state.items.includes(check.item));
-            const fatal = checks.some(check => check.fail === 'evt_end_devoured');
-            const pressured = state.madness >= 50 || state.hp <= 40;
-            const bpm = state.madness >= scenario.madnessThresholds.stage3 ? 45 : (fatal || (pressured && state.eventId === 'evt_corridor_01')) ? 165 : 60;
-            choicesContainer.classList.remove('active');
-            DiceSystem.choose(checks, bpm, nextEventId => enterEvent(nextEventId, 0),
-              () => choicesContainer.classList.add('active'));
-          } else if (ch.next) {
-            choicesContainer.classList.remove('active');
-            enterEvent(ch.next, 0);
-          }
-        });
-        choicesContainer.appendChild(btn);
-      });
-
-      choicesContainer.classList.add('active');
-    }
-
-    function openSilverKeyModal(context) {
-      activeSilverKeyContext = context;
-      document.getElementById('silver-key-remain').textContent = state.silverKeysLeft;
-      document.getElementById('silver-key-input').value = '';
-      document.getElementById('silver-key-mode-note').textContent = settings.apiKey
-        ? 'BYOKモード：設定されたAPIキーで裏設定プロンプト付きAI判定を実行します（通信失敗時はオフライン判定へ自動フォールバック）。'
-        : 'オフラインモード：入力内容と所持品（油缶・錆びた鍵など）に応じて専用分岐／トゥルーエンドへ進みます。';
-      document.getElementById('modal-silver-key').classList.add('active');
-    }
-
-    async function callSilverKeyAiIfConfigured(userAction) {
-      if (!settings.apiKey) return null;
-      const scenario = SCENARIO_DATA[state.scenarioId];
-      const ownedItems = state.items.map((id) => scenario.itemsCatalog[id]?.name || id).join('、') || 'なし';
-      const prompt = [
-        'あなたはクトゥルフ神話ホラーノベルのGMです。',
-        `裏設定：${scenario.meta.aiWorldTruth}`,
-        `現在地：${scenario.rooms[state.roomId]?.name || ''}`,
-        `所持品：${ownedItems} / 内部狂気度：${state.madness}`,
-        `プレイヤーの自由行動：「${userAction}」`,
-        '結果をJSONのみ（{"outcome":"burn|escape|madness","narration":"2文以内の日本語ホラー描写"}）で返してください。'
-      ].join('\n');
-
-      try {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(settings.apiKey)}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-          }
-        );
-        if (!res.ok) return null;
-        const json = await res.json();
-        const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        const match = rawText.match(/\{[\s\S]*\}/);
-        return match ? JSON.parse(match[0]) : null;
-      } catch (_) {
-        return null;
-      }
-    }
-
-    async function submitSilverKey(e) {
-      if (e) e.stopPropagation();
-      const input = document.getElementById('silver-key-input').value.trim();
-      if (!input) {
-        showToast('行動を入力してください');
-        return;
-      }
-
-      const submitBtn = document.getElementById('btn-silver-key-submit');
-      submitBtn.disabled = true;
-      submitBtn.textContent = '判定中…';
-
-      state.silverKeysLeft = Math.max(0, state.silverKeysLeft - 1);
-      const aiResult = await callSilverKeyAiIfConfigured(input);
-
-      submitBtn.disabled = false;
-      submitBtn.textContent = '運命を書き換える';
-      document.getElementById('modal-silver-key').classList.remove('active');
-      choicesContainer.classList.remove('active');
-
-      if (aiResult && aiResult.outcome) {
-        showToast('【銀の鍵】AIが新たな運命を紡いだ……');
-        if (aiResult.outcome === 'burn') { enterEvent('evt_end_burn', 0); return; }
-        if (aiResult.outcome === 'madness') { enterEvent('evt_end_madness', 0); return; }
-        enterEvent('evt_end_escape', 0);
-        return;
-      }
-
-      const hasOil = state.items.includes('oil_can');
-      const hasKey = state.items.includes('rusty_key');
-      const mentionsFire = /火|燃|油|焼|炎|ライター/.test(input);
-      const mentionsLock = /鍵|施錠|閉|封/.test(input);
-
-      if (activeSilverKeyContext === 'abyss' && ((hasOil && mentionsFire) || (hasKey && mentionsLock))) {
-        showToast('【銀の鍵】が運命を書き換えた……');
-        enterEvent('evt_end_burn', 0);
-      } else if (activeSilverKeyContext === 'corridor') {
-        showToast('【銀の鍵】により奇策が成功した');
-        enterEvent('evt_corridor_dodge_ok', 0);
-      } else {
-        showToast('【銀の鍵】が微かな活路を開いた');
-        enterEvent('evt_end_escape', 0);
-      }
-    }
-
-    function showEnding(ending) {
-      AudioEngine.stopBgm();
-      AudioEngine.setSceneAmbience(null);
-      AudioEngine.stopSceneSample();
-      document.getElementById('ending-type').textContent = ending.type;
-      document.getElementById('ending-title').textContent = ending.title;
-      document.getElementById('ending-desc').textContent = ending.desc;
-      switchScreen('ending', true);
-    }
-
-    function closeAllModals() {
-      document.querySelectorAll('.modal-overlay').forEach((m) => m.classList.remove('active'));
-    }
-
-    function openScenarioModal() {
-      const body = document.getElementById('scenario-list-body');
-      body.innerHTML = '';
-      SCENARIO_CATALOG.forEach((sc) => {
-        const card = document.createElement('div');
-        card.className = `scenario-card ${sc.status}`;
-        card.innerHTML = `
-          <div class="scenario-card-head">
-            <strong style="font-size:0.95rem; letter-spacing:0.1em;">${sc.title}</strong>
-            <span class="scenario-badge">${sc.badge}</span>
-          </div>
-          <p class="scenario-synopsis">${sc.synopsis}</p>
-          ${sc.status === 'playable'
-            ? `<button type="button" class="primary-action-btn" data-start-sc="${sc.id}">この物語を開始する</button>`
-            : `<button type="button" class="hud-btn" disabled style="opacity:0.5; cursor:not-allowed;">配信予定（DLC枠）</button>`
-          }
-        `;
-        body.appendChild(card);
-      });
-      body.querySelectorAll('[data-start-sc]').forEach((btn) => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          AudioEngine.playSfx({ type: 'paper' });
-          startScenario(btn.dataset.startSc);
-        });
-      });
-      document.getElementById('modal-scenarios').classList.add('active');
-    }
-
-    function openSaveLoadModal(mode) {
-      document.getElementById('save-load-title').textContent = mode === 'save' ? '記録の保存' : '記録の読み込み';
-      const listEl = document.getElementById('save-load-list');
-      listEl.innerHTML = '';
-
-      const slots = mode === 'save'
-        ? [{ id: 'slot1', label: '手動記録 壱' }, { id: 'slot2', label: '手動記録 弐' }, { id: 'slot3', label: '手動記録 参' }]
-        : [{ id: 'auto', label: '自動記録（オート）' }, { id: 'slot1', label: '手動記録 壱' }, { id: 'slot2', label: '手動記録 弐' }, { id: 'slot3', label: '手動記録 参' }];
-
-      slots.forEach((s) => {
-        const data = SaveSystem.getSlot(s.id);
-        const div = document.createElement('div');
-        div.className = 'save-slot';
-        div.innerHTML = `
-          <div>
-            <div style="font-size:0.9rem;">${s.label}</div>
-            <div class="save-slot-meta">${data ? `${data.scenarioTitle} ／ ${data.roomName}` : '記録なし'}</div>
-          </div>
-          <div class="save-slot-meta">${data ? data.savedAt : '—'}</div>
-        `;
-        div.addEventListener('click', (e) => {
-          e.stopPropagation();
-          AudioEngine.playSfx({ type: 'paper' });
-          if (mode === 'save') {
-            const scenario = SCENARIO_DATA[state.scenarioId];
-            const room = scenario.rooms[state.roomId];
-            SaveSystem.saveSlot(s.id, {
-              ...state,
-              scenarioTitle: scenario.meta.title,
-              roomName: room ? room.name : ''
-            });
-            showToast(`${s.label}に保存しました`);
-            openSaveLoadModal('save');
-          } else {
-            if (!data) {
-              showToast('この枠には記録がありません');
-              return;
-            }
-            loadFromSnapshot(data);
-          }
-        });
-        listEl.appendChild(div);
-      });
-
-      document.getElementById('modal-save-load').classList.add('active');
-    }
-
-    function openSettingsModal(inGame) {
-      document.getElementById('opt-vol-master').value = settings.volMaster;
-      document.getElementById('val-vol-master').textContent = `${settings.volMaster}%`;
-      document.getElementById('opt-vol-bgm').value = settings.volBgm;
-      document.getElementById('val-vol-bgm').textContent = `${settings.volBgm}%`;
-      document.getElementById('opt-vol-se').value = settings.volSe;
-      document.getElementById('val-vol-se').textContent = `${settings.volSe}%`;
-      document.getElementById('opt-text-speed').value = String(settings.textSpeed);
-      document.getElementById('opt-api-key').value = settings.apiKey || '';
-      document.getElementById('api-status-label').textContent = settings.apiKey ? '設定済（BYOK有効）' : '未設定（オフライン完結可）';
-      document.getElementById('btn-back-title-from-game').style.display = inGame ? 'inline-flex' : 'none';
-      document.getElementById('modal-settings').classList.add('active');
-    }
-
-    async function testApiKeyConnection(e) {
-      if (e) e.stopPropagation();
-      const key = document.getElementById('opt-api-key').value.trim();
-      const label = document.getElementById('api-status-label');
-      if (!key) {
-        label.textContent = '未設定（オフライン完結可）';
-        showToast('APIキーが空です（オフライン動作）');
-        return;
-      }
-      label.textContent = '接続確認中…';
-      try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`);
-        if (res.ok) {
-          label.textContent = '接続成功（BYOK有効）';
-          showToast('APIキーの接続を確認しました');
-        } else {
-          label.textContent = '接続失敗（キーを確認）';
-          showToast('APIキーが無効か制限されています');
-        }
-      } catch (_) {
-        label.textContent = '通信エラー';
-        showToast('ネットワーク接続を確認してください');
-      }
-    }
-
-    function openMapModal() {
-      if (!state) return;
-      AudioEngine.playSfx({ type: 'paper' });
-      MapSystem.render(SCENARIO_DATA[state.scenarioId], state.roomId, state.visitedRooms);
-      document.getElementById('modal-map').classList.add('active');
-    }
-
-    function openItemsModal() {
-      if (!state) return;
-      const scenario = SCENARIO_DATA[state.scenarioId];
-      const body = document.getElementById('items-list-body');
-      body.innerHTML = '';
-      if (state.items.length === 0) {
-        body.innerHTML = '<p style="color:#968f86; font-size:0.86rem;">現在、特別な所持品はない。</p>';
-      } else {
-        state.items.forEach((id) => {
-          const item = scenario.itemsCatalog[id];
-          if (!item) return;
-          const div = document.createElement('div');
-          div.className = 'scenario-card';
-          div.innerHTML = `<strong>${item.name}</strong><p class="scenario-synopsis" style="margin:0.3rem 0 0;">${item.desc}</p>`;
-          body.appendChild(div);
-        });
-      }
-      document.getElementById('modal-items').classList.add('active');
-    }
-
-    function returnToTitle(e) {
-      if (e) e.stopPropagation();
-      closeAllModals();
-      state = null;
-      AudioEngine.setSceneAmbience(null);
-      AudioEngine.stopSceneSample();
-      AudioEngine.playBgm('title_drone');
-      document.getElementById('title-ui-overlay').classList.add('visible');
-      TitleCanvas.startTitleLoop();
-      switchScreen('title', true);
-    }
-
-    function init() {
-      initVersionChangelog();
-      checkOrientationGuard();
-      window.addEventListener('resize', checkOrientationGuard);
-      window.addEventListener('orientationchange', () => setTimeout(checkOrientationGuard, 80));
-      document.addEventListener('fullscreenchange', updateFullscreenLabels);
-      document.addEventListener('webkitfullscreenchange', updateFullscreenLabels);
-
-      screens.warning.addEventListener('click', handleWarningTap);
-      document.getElementById('btn-warning-start').addEventListener('click', handleWarningTap);
-      screens.warning.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') handleWarningTap(e);
-      });
-
-      document.getElementById('btn-title-fullscreen').addEventListener('click', toggleFullscreen);
-      document.getElementById('btn-game-fullscreen').addEventListener('click', toggleFullscreen);
-
-      document.getElementById('btn-new-game').addEventListener('click', (e) => {
-        e.stopPropagation();
-        AudioEngine.playSfx({ type: 'paper' });
-        openScenarioModal();
-      });
-      document.getElementById('btn-continue').addEventListener('click', (e) => {
-        e.stopPropagation();
-        AudioEngine.playSfx({ type: 'paper' });
-        openSaveLoadModal('load');
-      });
-      document.getElementById('btn-title-settings').addEventListener('click', (e) => {
-        e.stopPropagation();
-        AudioEngine.playSfx({ type: 'paper' });
-        openSettingsModal(false);
-      });
-
-      document.getElementById('btn-open-map').addEventListener('click', (e) => {
-        e.stopPropagation();
-        openMapModal();
-      });
-      document.getElementById('btn-open-items').addEventListener('click', (e) => {
-        e.stopPropagation();
-        AudioEngine.playSfx({ type: 'paper' });
-        openItemsModal();
-      });
-      document.getElementById('btn-open-save').addEventListener('click', (e) => {
-        e.stopPropagation();
-        AudioEngine.playSfx({ type: 'paper' });
-        openSaveLoadModal('save');
-      });
-      document.getElementById('btn-open-settings').addEventListener('click', (e) => {
-        e.stopPropagation();
-        AudioEngine.playSfx({ type: 'paper' });
-        openSettingsModal(true);
-      });
-
-      document.getElementById('novel-tap-area').addEventListener('click', handleNovelTap);
-
-      ['master', 'bgm', 'se'].forEach((k) => {
-        const input = document.getElementById(`opt-vol-${k}`);
-        const val = document.getElementById(`val-vol-${k}`);
-        input.addEventListener('input', () => {
-          val.textContent = `${input.value}%`;
-          AudioEngine.setVolumes(
-            document.getElementById('opt-vol-master').value / 100,
-            document.getElementById('opt-vol-bgm').value / 100,
-            document.getElementById('opt-vol-se').value / 100
-          );
-        });
-      });
-
-      document.getElementById('btn-audio-test').addEventListener('click', (e) => {
-        e.stopPropagation();
-        AudioEngine.playSfx({ type: 'footstep_drag', pan: 0.4, distance: 'near' });
-        showToast('テスト音（重低音足音）を再生しました');
-      });
-
-      document.getElementById('btn-api-test').addEventListener('click', testApiKeyConnection);
-
-      document.getElementById('btn-save-settings').addEventListener('click', (e) => {
-        e.stopPropagation();
-        settings = {
-          volMaster: Number(document.getElementById('opt-vol-master').value),
-          volBgm: Number(document.getElementById('opt-vol-bgm').value),
-          volSe: Number(document.getElementById('opt-vol-se').value),
-          textSpeed: Number(document.getElementById('opt-text-speed').value),
-          apiKey: document.getElementById('opt-api-key').value.trim()
-        };
-        SaveSystem.saveSettings(settings);
-        AudioEngine.setVolumes(settings.volMaster / 100, settings.volBgm / 100, settings.volSe / 100);
-        document.getElementById('modal-settings').classList.remove('active');
-        showToast('設定を保存しました');
-      });
-
-      document.getElementById('btn-back-title-from-game').addEventListener('click', returnToTitle);
-      document.getElementById('btn-ending-to-title').addEventListener('click', returnToTitle);
-      document.getElementById('btn-silver-key-submit').addEventListener('click', submitSilverKey);
-
-      document.querySelectorAll('[data-close]').forEach((btn) => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          document.getElementById(btn.dataset.close).classList.remove('active');
-        });
-      });
-    }
-
-    return { init };
-  })();
-
-  window.addEventListener('load', () => {
-    GameCore.init();
+    var r=document.createElement('button'); r.type='button'; r.className='ch resist'; resistLabel(r);
+    r.addEventListener('click',function(e){ e.stopPropagation(); openResist('choice'); });
+    box.appendChild(r);
+    setTimeout(function(){ box.classList.add('on'); },50);
+  }
+  function hideChoices(){ $('choices').classList.remove('on'); textEl.style.opacity=1; }
+
+  // ---- 抗う ----
+  function openResist(from){
+    resistFrom=from; resistLabel($('resistTitle'));
+    var list=$('skillList'); list.innerHTML='';
+    Object.keys(SKILLS).forEach(function(k){
+      var b=document.createElement('button'); b.type='button'; b.className='item'; b.textContent=k+' '+SKILLS[k];
+      b.addEventListener('click',function(){ useSkill(k); }); list.appendChild(b);
+    });
+    $('free').value=''; openPanel('pResist');
+  }
+  function useSkill(k){
+    closePanels();
+    if(!SKILLS[k]){ resultText('何も起きなかった。'); tick(); return; }
+    rollDice(k,SKILLS[k],function(ok){
+      if(ok && !NOGROW[k]) S.checks[k]=true;
+      var r=RESULTS[k]||['何も起きなかった。','何も起きなかった。'];
+      resultText(r[ok?0:1]); tick();
+    });
+  }
+  $('freeGo').addEventListener('click',function(){
+    var v=$('free').value.trim(); var hit=Object.keys(SKILLS).filter(function(k){ return v.indexOf(k)>=0; })[0];
+    useSkill(hit||v||'?');
   });
+  function resultText(t){
+    // 選択肢の場面なら、結果を見せてから選択肢に戻る
+    $('choices').classList.remove('on'); textEl.style.opacity=1; textEl.innerHTML='';
+    var el=document.createElement('p'); el.textContent=t; textEl.appendChild(el); log.push(t);
+    var back=mode; mode='result'; nextEl.classList.add('on');
+    resultBack = back;
+  }
+  var resultBack=null;
+  // ---- ダイス判定：部品（assets/dice/dice-engine.js）を呼ぶだけ ----
+  // カットイン「Dice Roll」→ダイスをつかんで投げる→結果の1秒後からタップでフェードアウト→cb(成功したか)
+  // 見た目・動き・音・判定のルール（1〜5大成功／96〜100大失敗）は部品側で直す
+  var dice3d=null;
+  function getDice(){
+    if(!dice3d && window.HorrorDice){ dice3d=HorrorDice.create({root:$('dice'),tapToClose:true,fadeEl:$('dice'),cutin:true}); dice3d.stop(); }
+    return dice3d;
+  }
+  getDice(); // 画像を先に読み込んでおく
+  function rollDice(name,val,cb){
+    var host=$('dice'), e=getDice();
+    if(!e){ cb(1+Math.floor(Math.random()*100)<=val); return; } // 部品が読めないときは数字だけで判定
+    host.classList.add('on'); e.start();
+    e.roll({skill:name,target:val}).then(function(r){ e.stop(); host.classList.remove('on'); cb(r.success); });
+  }
+
+  ['pointerdown','pointerup','pointermove','touchstart','touchend','touchmove','click','mousedown','mouseup'].forEach(function(ev){ $('dice').addEventListener(ev,function(e){ e.stopPropagation(); },false); });
+  // ---- 血の魔法陣（時間経過）：血のついた指で書いたような線 ----
+  var seed=7; function rnd(){ seed=(seed*16807)%2147483647; return (seed-1)/2147483646; }
+  function ringPts(r,cx,cy){ var a0=rnd()*6.28, sweep=6.0+rnd()*0.5, n=40, pts=[];
+    for(var i=0;i<=n;i++){ var a=a0+sweep*i/n, rr=r+(rnd()-.5)*2.2; pts.push([cx+Math.cos(a)*rr, cy+Math.sin(a)*rr]); } return pts; }
+  function linePts(x1,y1,x2,y2){ var n=14, pts=[];
+    for(var i=0;i<=n;i++){ var t=i/n; pts.push([x1+(x2-x1)*t+(rnd()-.5)*1.6, y1+(y2-y1)*t+(rnd()-.5)*1.6]); } return pts; }
+  function runePts(){ var pts=[], all=[];
+    for(var k=0;k<9;k++){ var a=k/9*6.28+.3, r=43, cx=50+Math.cos(a)*r, cy=50+Math.sin(a)*r, g=[];
+      for(var j=0;j<4;j++) g.push([cx+(rnd()-.5)*6, cy+(rnd()-.5)*6]); all.push(g); } return all; }
+  function strokeSvg(pts,w){
+    // 指でなぞった線：書き始めは太く濃く、終わりに向かって細く、かすれる
+    var out='', n=Math.max(4,Math.floor(pts.length/3)), per=Math.ceil((pts.length-1)/n);
+    for(var k=0;k<n;k++){
+      var seg=pts.slice(k*per, k*per+per+1); if(seg.length<2) break;
+      var t=k/n, sw=(w*(1-.6*t)*(.8+rnd()*.4)).toFixed(2), o=(1-.55*t).toFixed(2);
+      var d='M'+seg.map(function(p){ return p[0].toFixed(1)+' '+p[1].toFixed(1); }).join(' L');
+      out+='<path class="seg" d="'+d+'" style="--i:'+k+';--o:'+o+';stroke-width:'+sw+(t>.75?';stroke-dasharray:2 1.4':'')+'"/>';
+    }
+    return out;
+  }
+  function dripSvg(pts){
+    // 血が垂れて下に流れる
+    var out='', c=1+Math.floor(rnd()*2);
+    for(var i=0;i<c;i++){ var p=pts[Math.floor(rnd()*pts.length*.6)], L=4+rnd()*9;
+      out+='<path class="drip" d="M'+p[0].toFixed(1)+' '+p[1].toFixed(1)+' q'+((rnd()-.5)*1.5).toFixed(1)+' '+(L/2).toFixed(1)+' 0 '+L.toFixed(1)+'" style="--len:'+(L+2).toFixed(1)+';stroke-width:1.1"/>'+
+             '<circle class="drop" cx="'+p[0].toFixed(1)+'" cy="'+(p[1]+L+.6).toFixed(1)+'" r="'+(0.9+rnd()*.5).toFixed(2)+'"/>'; }
+    return out;
+  }
+  var star=[[50,10],[74,82],[12,36],[88,36],[26,82]];
+  var STROKES=[ ringPts(46,50,50) ];
+  for(var i=0;i<5;i++){ var a=star[i], b=star[(i+1)%5]; STROKES.push(linePts(a[0],a[1],b[0],b[1])); }
+  STROKES.push(ringPts(30,50,50));
+  var html='<defs><filter id="rough" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="1.8"/></filter></defs><g filter="url(#rough)">';
+  STROKES.forEach(function(pts,i){ html+='<g class="st">'+strokeSvg(pts,i===0?3.2:2.6)+dripSvg(pts)+'</g>'; });
+  // 8画目：円の周りに指で書いた歪んだ文字
+  var runes=runePts(), rh='', ri=0;
+  runes.forEach(function(g){ rh+=strokeSvg(g,1.6).replace(/--i:\d+/g,function(){ return '--i:'+(ri++); }); });
+  html+='<g class="st">'+rh+'</g></g>';
+  $('circle').innerHTML=html;
+  var parts=[].slice.call($('circle').querySelectorAll('.st'));
+  var circleHide=null;
+  function drawCircle(anim){
+    parts.forEach(function(p,i){ p.classList.remove('drawing','fresh'); p.classList.toggle('done',i<S.strokes); });
+    if(S.strokes>0){ var p=parts[S.strokes-1]; p.classList.add('fresh');
+      if(anim){ void p.getBoundingClientRect(); p.classList.add('drawing'); } }
+    $('circle').classList.toggle('glow',S.strokes>=S.maxStrokes-2);
+  }
+  function tick(){
+    if(S.strokes>=S.maxStrokes) return;
+    S.strokes++; drawCircle(true); se('血がたれる1',.9);
+    var c=$('circle'); c.classList.add('on'); clearTimeout(circleHide);
+    circleHide=setTimeout(function(){ c.classList.remove('on'); },5200);
+    if(S.strokes>=S.maxStrokes){
+      setTimeout(function(){ $('stage').style.filter='sepia(1) saturate(4) hue-rotate(-30deg) brightness(.5)'; resultText('魔法陣が完成した。——邪神が目を覚ます。（見本：ここでクリア不可エンドへ）'); },1800);
+    }
+  }
+
+  // ---- 正気度・HPの演出 ----
+  function loseSan(n){ S.san=Math.max(0,S.san-n); applyState(); }
+  function applyState(){
+    var r=S.san/S.sanMax, vig=$('vig'), root=document.documentElement.style;
+    vig.className=''; document.body.classList.remove('blur');
+    if(r>=.8){ root.setProperty('--vigA',0); }
+    else if(r>=.6){ root.setProperty('--vigA',.55); root.setProperty('--vigR',0); }
+    else if(r>=.4){ root.setProperty('--vigA',.8); root.setProperty('--vigR',0); vig.className='pulse'; }
+    else if(r>=.2){ root.setProperty('--vigA',.85); root.setProperty('--vigR',90); vig.className='flicker'; }
+    else { root.setProperty('--vigA',.95); root.setProperty('--vigR',140); vig.className='flicker2'; document.body.classList.add('blur'); }
+    var h=S.hp/S.hpMax, f='';
+    if(S.hp<=1) f='grayscale(.95)';
+    else if(h<.2) f='grayscale(.9)';
+    else if(h<.5) f='grayscale(.75)';
+    else if(h<.8) f='grayscale(.3)';
+    $('bg').style.filter=(S.hp<=1||h<.2)?'blur(3px)':'';
+    if(S.strokes<S.maxStrokes) $('stage').style.filter=f;
+    refreshEat();
+    renderSheet();
+  }
+  var sheetPage=0;
+  var ITEMS=['懐中電灯','古い鍵','手帳'];
+  function fl(a,b){ return '<div class="fl"><b>'+a+'</b><span>'+(b||'&nbsp;')+'</span></div>'; }
+  function ab(n,v){ return '<div class="ab">'+n+'<span class="bx">'+v+'</span></div>'; }
+  function renderSheet(){
+    if(!$('pgL')) return;
+    var L,R;
+    if(!sheetPage){
+      L='<h3>探索者記録</h3>'+fl('名前','貴方（見本）')+fl('職業','古書店の店主')+fl('年齢／性別','34／—')+fl('住所','（見本）')+fl('出身','（見本）')
+        +'<div class="sec">能 力 値</div><div class="abil">'+ab('STR',9)+ab('DEX',12)+ab('INT',13)+ab('CON',11)+ab('APP',10)+ab('POW',16)+ab('SIZ',13)+ab('EDU',14)+'</div>'
+        +'<div class="sec">状 態</div><div class="st"><div>体力<span class="bx">'+S.hp+'</span><small>最大 '+S.hpMax+'</small></div><div>正気度<span class="bx">'+S.san+'</span><small>最大 '+S.sanMax+'</small></div><div>MP<span class="bx">10</span><small>最大 16</small></div><div>幸運<span class="bx">50</span><small>&nbsp;</small></div></div>'
+        +'<div class="fl" style="margin-top:1dvh"><b>魔法陣</b><span>'+S.strokes+' / '+S.maxStrokes+' 画</span></div>';
+      R='<h3>技 能</h3><div class="sk">'+Object.keys(SKILLS).map(function(k){ return '<div><i'+(S.checks[k]?' class="on">✓':'>')+'</i><em>'+k+'</em><span class="bx">'+(k==='クトゥルフ神話'?S.mythos:SKILLS[k])+'</span></div>'; }).join('')+'</div>'
+        +'<div class="sec">武 器</div><table class="wp"><tr><th>武器</th><th>ダメージ</th><th>回数</th></tr><tr><td>素手</td><td>1D3</td><td>1</td></tr><tr><td>&nbsp;</td><td></td><td></td></tr></table>';
+    } else {
+      L='<h3>装備と所持品</h3><div class="inv">'+ITEMS.concat(['','','','','','','','','']).map(function(i){ return '<div>'+i+'</div>'; }).join('')+'</div>';
+      R='<h3>バックストーリー</h3>'+fl('容姿','痩せた長身、古い眼鏡')+fl('特徴','古書の匂い')+fl('信念','真実を知りたい')+fl('傷跡','')+fl('重要な人々','亡き師')+fl('恐怖症・マニア','')+fl('意味のある場所','古書店の地下室')+fl('魔道書・呪文','')+fl('秘蔵の品','')+fl('遭遇した存在','');
+    }
+    $('pgL').innerHTML=L; $('pgR').innerHTML=R;
+    $('flip').textContent=sheetPage?'◀ 前のページ':'次のページ ▶';
+  }
+  document.addEventListener('DOMContentLoaded',function(){ $('flip').addEventListener('click',function(){ sheetPage=sheetPage?0:1; renderSheet(); }); });
+  // 視界の欠け：場面ごとに少しずつ変わる。端だけを欠けさせ、中央と選択肢は残す
+  function refreshEat(){
+    var e=$('eat');
+    if(S.hp>1){ e.classList.remove('on'); return; }
+    var s='';
+    for(var i=0;i<26;i++){
+      var side=i%4, x,y, rx=2+Math.random()*5, ry=3+Math.random()*7;
+      if(side===0){ x=Math.random()*100; y=Math.random()*3; }
+      else if(side===1){ x=Math.random()*100; y=97+Math.random()*3; }
+      else if(side===2){ x=Math.random()*3; y=Math.random()*100; }
+      else { x=97+Math.random()*3; y=Math.random()*100; }
+      s+='<ellipse cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" rx="'+rx.toFixed(1)+'" ry="'+ry.toFixed(1)+'" fill="#000"/>';
+    }
+    e.innerHTML='<defs><filter id="ef"><feTurbulence baseFrequency=".08" numOctaves="2" seed="'+Math.floor(Math.random()*99)+'"/><feDisplacementMap in="SourceGraphic" scale="6"/></filter></defs><g filter="url(#ef)">'+s+'</g>';
+    e.classList.add('on');
+  }
+
+  // ---- パネル ----
+  var stack=[];
+  function openPanel(id){ stack.forEach(function(p){ $(p).classList.remove('on'); }); stack.push(id); $(id).classList.add('on');
+    if(id==='pLog') $('logBody').innerHTML=log.map(function(l){ return l.replace(/</g,'&lt;'); }).join('<br>');
+    if(id==='pSheet') renderSheet();
+    if(id==='pAssets') buildAssets(); }
+  function closePanels(){ stack.forEach(function(p){ $(p).classList.remove('on'); }); stack=[]; }
+  function back(){ var p=stack.pop(); if(p) $(p).classList.remove('on'); var q=stack[stack.length-1]; if(q) $(q).classList.add('on'); }
+  document.querySelectorAll('[data-close]').forEach(function(b){ b.addEventListener('click',closePanels); });
+  document.querySelectorAll('[data-back]').forEach(function(b){ b.addEventListener('click',back); });
+  document.querySelectorAll('[data-open]').forEach(function(b){ b.addEventListener('click',function(){ openPanel(b.dataset.open); }); });
+  $('menuBtn').addEventListener('click',function(e){ e.stopPropagation(); openPanel('pMenu'); });
+  $('floatResist').addEventListener('click',function(e){ e.stopPropagation(); openResist('text'); });
+
+  // 調整
+  function bindRange(id,vid,key,fmt){ var r=$(id); r.value=S[key];
+    var f=function(){ S[key]=+r.value; $(vid).textContent=fmt(); applyState(); }; r.addEventListener('input',f); f(); }
+  bindRange('tSan','vSan','san',function(){ return S.san+'/'+S.sanMax; });
+  $('tSan').max=S.sanMax;
+  bindRange('tHp','vHp','hp',function(){ return S.hp+'/'+S.hpMax; });
+  bindRange('tMy','vMy','mythos',function(){ return S.mythos; });
+  $('tCircle').addEventListener('click',function(){ closePanels(); tick(); });
+  $('tGrow').addEventListener('click',function(){
+    var out=[]; Object.keys(S.checks).forEach(function(k){ var r=1+Math.floor(Math.random()*100);
+      if(r>SKILLS[k]||r>95){ var up=1+Math.floor(Math.random()*10); SKILLS[k]+=up; out.push(k+' +'+up+'（'+r+'）'); } else out.push(k+' 変化なし（'+r+'）'); });
+    S.checks={}; $('growOut').textContent=out.length?'成長：'+out.join('／'):'✓の付いた技能がありません'; });
+  $('tReset').addEventListener('click',function(){ S.san=80; S.hp=12; S.mythos=0; S.revealed=false; S.strokes=0; S.checks={}; Object.keys(SKILLS0).forEach(function(k){ SKILLS[k]=SKILLS0[k]; }); log=[];
+    $('tSan').value=80; $('tHp').value=12; $('tMy').value=0; $('vSan').textContent='80/80'; $('vHp').textContent='12/12'; $('vMy').textContent='0';
+    drawCircle(false); $('stage').style.filter=''; applyState(); closePanels(); go('start'); });
+
+  // ---- タップ・スワイプ・長押し ----
+  // 上から下へスワイプ＝ログ／長押し＝押している間だけ文章を消して絵を見る
+  var sy=null, sx=null, lp=null, pictureOnly=false;
+  function setPicture(on){ pictureOnly=on; shade.style.opacity=on?'0':''; textEl.style.visibility=on?'hidden':'';
+    $('choices').style.visibility=on?'hidden':''; nextEl.style.visibility=on?'hidden':''; }
+  $('stage').addEventListener('pointerdown',function(e){ sy=e.clientY; sx=e.clientX;
+    clearTimeout(lp); lp=setTimeout(function(){ if(sy===null) return; if(document.body.classList.contains('movie')){ sy=null; skipMovie(); return; } setPicture(true); },450); });
+  $('stage').addEventListener('pointermove',function(e){ if(sy!==null && Math.hypot(e.clientY-sy,e.clientX-sx)>15) clearTimeout(lp); });
+  $('stage').addEventListener('pointercancel',function(){ clearTimeout(lp); sy=null; if(pictureOnly) setPicture(false); });
+  $('stage').addEventListener('pointerup',function(e){
+    clearTimeout(lp);
+    if(pictureOnly){ setPicture(false); sy=null; return; }
+    if(sy===null) return; var dy=e.clientY-sy, dx=e.clientX-sx; sy=null;
+    if(e.target.closest('button')) return;
+    if(Math.abs(dy)>50 && Math.abs(dy)>Math.abs(dx)){ if(dy>0) openPanel('pLog'); return; }
+    if(mode==='result'){ mode=resultBack; nextEl.classList.remove('on');
+      if(S.strokes>=S.maxStrokes) return;
+      if(resultBack==='choice'){ showChoices(cur.choice); } else { textEl.innerHTML=''; mode='text'; advance(); }
+      return; }
+    if(waitSkip){ waitSkip(); return; }
+    advance();
+  });
+
+  // ---- 全画面＋横向き ----
+  var start=$('start');
+  function isFull(){ return !!(document.fullscreenElement||document.webkitFullscreenElement); }
+  var begun=false;
+  async function goFull(){
+    var el=document.documentElement;
+    try{ if(!isFull()){ if(el.requestFullscreen) await el.requestFullscreen(); else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen(); } }catch(_){}
+    try{ if(screen.orientation&&screen.orientation.lock) await screen.orientation.lock('landscape'); }catch(_){}
+    start.classList.add('hide');
+    if(!begun){ begun=true; applyState(); go('start'); }
+  }
+  start.addEventListener('click',goFull);
+  function onFs(){ if(!isFull()){ start.querySelector('b').textContent='タップして全画面に戻る'; start.classList.remove('hide'); } }
+  document.addEventListener('fullscreenchange',onFs);
+  document.addEventListener('webkitfullscreenchange',onFs);
 })();
 </script>
 </body>
