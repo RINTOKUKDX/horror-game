@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ダイス 見本 v1.10</title>
+<title>ダイス 見本 v1.11</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* ダイスだけを試す見本。ゲーム本体・ゲーム画面見本には影響しない */
@@ -37,11 +37,11 @@
   #res.ng b,#res.ng span{color:#d84444;text-shadow:0 0 .5dvh #000,0 0 1.4dvh #000,0 0 3dvh rgba(150,20,20,.75)}
   #res.sum b{color:#efe3c4;text-shadow:0 0 .5dvh #000,0 0 1.4dvh #000,0 0 2dvh rgba(0,0,0,.9)}
   /* 表示タイプ：左に基準・右に結果 */
-  body.L-sides #band{left:calc(1.5vw + env(safe-area-inset-left,0px));right:auto;top:20dvh;width:25vw;padding:2dvh 1.2vw;border:2px solid #a8864a;border-radius:3px}
+  body.L-sides #band{left:calc(1.5vw + env(safe-area-inset-left,0px));right:auto;top:20dvh;width:max-content;max-width:30vw;padding:2dvh 2.2vw;white-space:nowrap;border:2px solid #a8864a;border-radius:3px}
   body.L-sides #band.in,body.L-tate #band.in{animation:fadeIn .5s ease-out}
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
   body.L-sides #band .t{font-size:3.4dvh;letter-spacing:.2em}
-  body.L-sides #scale{width:100%;margin-top:1.4dvh}
+  body.L-sides #scale{display:none!important}
   body.L-sides #res{left:auto;right:calc(1.5vw + env(safe-area-inset-right,0px));width:25vw;top:24dvh}
   #band .big{display:block;font-size:10dvh;line-height:1.1;color:#efe3c4;font-variant-numeric:tabular-nums;margin-top:.6dvh}
   #band .note{display:block;font-size:2.1dvh;color:#9a8c72;margin-top:1dvh;line-height:1.5}
@@ -136,8 +136,8 @@
   </div>
   <button type="button" id="toggle">☰ 設定</button>
 </div>
-<div class="ver">ダイス 見本 v1.10</div>
-<div id="start"><b>タップして始める</b><span>全画面・横向きになります（音が出ます）</span><span>ダイスを指でつかんで、はじくように投げる</span><span style="font-size:2.4dvh;color:#6c6455">ダイス 見本 v1.10</span></div>
+<div class="ver">ダイス 見本 v1.11</div>
+<div id="start"><b>タップして始める</b><span>全画面・横向きになります（音が出ます）</span><span>ダイスを指でつかんで、はじくように投げる</span><span style="font-size:2.4dvh;color:#6c6455">ダイス 見本 v1.11</span></div>
 
 <script src="../assets/manifest.js"></script>
 <script>
@@ -1056,7 +1056,7 @@
     if(['vol','wet','room','lowVol','resVol'].indexOf(k)>=0) applyAudio();
     if(k==='decay'||k==='room'){ clearTimeout(irTimer); irTimer=setTimeout(function(){ buildIR(); applyAudio(); },250); }
   }
-  function showCfg(){ var o={}; Object.keys(DEF).forEach(function(k){ o[k]=typeof CFG[k]==='number'?Math.round(CFG[k]*100)/100:CFG[k]; }); $('cfgtxt').value='ダイス設定 v1.10 '+JSON.stringify(o); }
+  function showCfg(){ var o={}; Object.keys(DEF).forEach(function(k){ o[k]=typeof CFG[k]==='number'?Math.round(CFG[k]*100)/100:CFG[k]; }); $('cfgtxt').value='ダイス設定 v1.11 '+JSON.stringify(o); }
   showCfg();
   $('viewA').addEventListener('click',function(){ moveCam(startView(),CFG.rTime); });
   $('viewB').addEventListener('click',function(){ moveCam(resultView(),CFG.rTime); });
