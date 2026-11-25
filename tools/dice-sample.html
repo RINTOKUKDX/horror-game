@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ダイス 見本 v1.12</title>
+<title>ダイス 見本 v1.13</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* ダイスだけを試す見本。ゲーム本体・ゲーム画面見本には影響しない */
@@ -136,8 +136,8 @@
   </div>
   <button type="button" id="toggle">☰ 設定</button>
 </div>
-<div class="ver">ダイス 見本 v1.12</div>
-<div id="start"><b>タップして始める</b><span>全画面・横向きになります（音が出ます）</span><span>ダイスを指でつかんで、はじくように投げる</span><span style="font-size:2.4dvh;color:#6c6455">ダイス 見本 v1.12</span></div>
+<div class="ver">ダイス 見本 v1.13</div>
+<div id="start"><b>タップして始める</b><span>全画面・横向きになります（音が出ます）</span><span>ダイスを指でつかんで、はじくように投げる</span><span style="font-size:2.4dvh;color:#6c6455">ダイス 見本 v1.13</span></div>
 
 <script src="../assets/manifest.js"></script>
 <script>
@@ -147,9 +147,9 @@
   var PI=Math.PI;
 
   // ===== 調整できる値（右下の設定で変えられる。端末に保存） =====
-  var DEF={friction:.15,rollDamp:.1,bounce:.5,wallBounce:.7,power:1.2,speed:.8,
-    trayR:7.2,trayRot:0,pitch:58,dist:35,offY:.06,
-    vol:.8,tone:'metal',room:'hall',wet:.45,decay:2.2,rollVol:.7,lowVol:.5,resVol:.8,diceStyle:'silver',trayStyle:'bronze',layout:'top',rPitch:84,rDist:22,rOffY:0,rFocus:.85,rTime:1.1,rYaw:0,rOffX:0};
+  var DEF={friction:.11,rollDamp:.21,bounce:.4,wallBounce:.58,power:1.24,speed:.58,
+    trayR:7.1,trayRot:29,pitch:45,dist:31,offY:-.03,
+    vol:1,tone:'bone',room:'cathedral',wet:1,decay:6,rollVol:.23,lowVol:1,resVol:.8,diceStyle:'img2',trayStyle:'img1',layout:'sides',rPitch:84,rDist:32.5,rOffY:.01,rFocus:0,rTime:.7,rYaw:-29,rOffX:0};
   var CFG={}; Object.keys(DEF).forEach(function(k){ CFG[k]=DEF[k]; });
   try{ var sv=JSON.parse(localStorage.getItem('diceCfg1')||'{}'); Object.keys(DEF).forEach(function(k){ if(sv[k]!==undefined && typeof sv[k]===typeof DEF[k]) CFG[k]=sv[k]; }); }catch(_){ }
   function saveCfg(){ try{ localStorage.setItem('diceCfg1',JSON.stringify(CFG)); }catch(_){ } }
@@ -1072,7 +1072,7 @@
     if(['vol','wet','room','lowVol','resVol'].indexOf(k)>=0) applyAudio();
     if(k==='decay'||k==='room'){ clearTimeout(irTimer); irTimer=setTimeout(function(){ buildIR(); applyAudio(); },250); }
   }
-  function showCfg(){ var o={}; Object.keys(DEF).forEach(function(k){ o[k]=typeof CFG[k]==='number'?Math.round(CFG[k]*100)/100:CFG[k]; }); $('cfgtxt').value='ダイス設定 v1.12 '+JSON.stringify(o); }
+  function showCfg(){ var o={}; Object.keys(DEF).forEach(function(k){ o[k]=typeof CFG[k]==='number'?Math.round(CFG[k]*100)/100:CFG[k]; }); $('cfgtxt').value='ダイス設定 v1.13 '+JSON.stringify(o); }
   showCfg();
   $('viewA').addEventListener('click',function(){ moveCam(startView(),CFG.rTime); });
   $('viewB').addEventListener('click',function(){ moveCam(resultView(),CFG.rTime); });
