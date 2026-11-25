@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ダイス 見本 v1.7</title>
+<title>ダイス 見本 v1.8</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* ダイスだけを試す見本。ゲーム本体・ゲーム画面見本には影響しない */
@@ -136,8 +136,8 @@
   </div>
   <button type="button" id="toggle">☰ 設定</button>
 </div>
-<div class="ver">ダイス 見本 v1.7</div>
-<div id="start"><b>タップして始める</b><span>全画面・横向きになります（音が出ます）</span><span>ダイスを指でつかんで、はじくように投げる</span><span style="font-size:2.4dvh;color:#6c6455">ダイス 見本 v1.7</span></div>
+<div class="ver">ダイス 見本 v1.8</div>
+<div id="start"><b>タップして始める</b><span>全画面・横向きになります（音が出ます）</span><span>ダイスを指でつかんで、はじくように投げる</span><span style="font-size:2.4dvh;color:#6c6455">ダイス 見本 v1.8</span></div>
 
 <script src="../assets/manifest.js"></script>
 <script>
@@ -332,7 +332,7 @@
   // ===== 画像の素材（トレイ・ダイスの面） =====
   var TEX={};
   function loadTex(key,src){ var im=new Image(); im.onload=function(){ TEX[key]=im; if(VIEW && W) buildLayers(); }; im.src=src; }
-  loadTex('tray','../assets/dice/tray-bronze.webp'); loadTex('tri','../assets/dice/face-tri.webp'); loadTex('sq','../assets/dice/face-sq.webp');
+  loadTex('tray','../assets/dice/tray-bronze.webp'); loadTex('tri','../assets/dice/face-tri.webp'); loadTex('sq','../assets/dice/face-sq.webp'); loadTex('kite','../assets/dice/face-kite.webp');
   // 画像の3点(u,v)を画面の3点に合わせて貼る
   function texTri(c,img,uv,sp){
     var u0=uv[0][0],v0=uv[0][1],du1=uv[1][0]-u0,dv1=uv[1][1]-v0,du2=uv[2][0]-u0,dv2=uv[2][1]-v0, det=du1*dv2-du2*dv1; if(Math.abs(det)<1e-6) return;
@@ -706,7 +706,7 @@
   function faceXform(center,a,b,s){ var S0=proj(center), Sa=proj(add(center,mul(a,s))), Sb=proj(add(center,mul(b,s)));
     ctx.setTransform(DPR*(Sb.x-S0.x),DPR*(Sb.y-S0.y),-DPR*(Sa.x-S0.x),-DPR*(Sa.y-S0.y),DPR*S0.x,DPR*S0.y); }
   // 画像を貼ったダイスの面（数字はインクで直接書く）
-  var TEXA={tri:[[.4992,.0478],[.9721,.8644],[.0263,.8644]],sq:[[.0415,.0423],[.9585,.0423],[.9585,.9569],[.0415,.9569]]};
+  var TEXA={tri:[[.4992,.0478],[.9721,.8644],[.0263,.8644]],sq:[[.0415,.0423],[.9585,.0423],[.9585,.9569],[.0415,.9569]],kite:[[.4988,.0399],[.8684,.6722],[.4988,.9545],[.1268,.6722]]};
   function inkText(o,center,up,str,mr){
     var d=o.d, n=o.n, a=norm(sub(up,mul(n,dot(up,n)))), b=cross(a,n), u=d.r/100, size=(mr/u)*(str.length>1?.95:1.25), S=DS();
     ctx.save(); faceXform(center,a,b,u);
@@ -727,7 +727,7 @@
     if(L.length===3){ var img=TEX.tri, A=TEXA.tri.map(function(t){ return [t[0]*img.width,t[1]*img.height]; });
       var srt=by(function(p){ return p.y; }), ap=srt[0], rest=[srt[1],srt[2]].sort(function(p,q2){ return q2.x-p.x; });
       texTri(ctx,img,[A[0],A[1],A[2]],[ap.s,rest[0].s,rest[1].s]);
-    } else { var im2=TEX.sq, B=TEXA.sq.map(function(t){ return [t[0]*im2.width,t[1]*im2.height]; }), TL,TR,BR,BL;
+    } else { var kt=d.sides===10&&TEX.kite, im2=kt?TEX.kite:TEX.sq, B=(kt?TEXA.kite:TEXA.sq).map(function(t){ return [t[0]*im2.width,t[1]*im2.height]; }), TL,TR,BR,BL;
       if(d.sides===10){ var sy=by(function(p){ return p.y; }); TL=sy[0]; BR=sy[3]; var mid=[sy[1],sy[2]].sort(function(p,q2){ return q2.x-p.x; }); TR=mid[0]; BL=mid[1]; }
       else { TL=by(function(p){ return p.y-p.x; })[0]; BR=by(function(p){ return p.x-p.y; })[0]; TR=by(function(p){ return p.x+p.y; })[0]; BL=by(function(p){ return -p.x-p.y; })[0]; }
       texTri(ctx,im2,[B[0],B[1],B[2]],[TL.s,TR.s,BR.s]); texTri(ctx,im2,[B[0],B[2],B[3]],[TL.s,BR.s,BL.s]); }
@@ -1043,7 +1043,7 @@
     if(['vol','wet','room','lowVol','resVol'].indexOf(k)>=0) applyAudio();
     if(k==='decay'||k==='room'){ clearTimeout(irTimer); irTimer=setTimeout(function(){ buildIR(); applyAudio(); },250); }
   }
-  function showCfg(){ var o={}; Object.keys(DEF).forEach(function(k){ o[k]=typeof CFG[k]==='number'?Math.round(CFG[k]*100)/100:CFG[k]; }); $('cfgtxt').value='ダイス設定 v1.7 '+JSON.stringify(o); }
+  function showCfg(){ var o={}; Object.keys(DEF).forEach(function(k){ o[k]=typeof CFG[k]==='number'?Math.round(CFG[k]*100)/100:CFG[k]; }); $('cfgtxt').value='ダイス設定 v1.8 '+JSON.stringify(o); }
   showCfg();
   $('viewA').addEventListener('click',function(){ moveCam(startView(),CFG.rTime); });
   $('viewB').addEventListener('click',function(){ moveCam(resultView(),CFG.rTime); });
