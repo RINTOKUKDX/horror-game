@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ダイス 見本 v1.5</title>
+<title>ダイス 見本 v1.6</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* ダイスだけを試す見本。ゲーム本体・ゲーム画面見本には影響しない */
@@ -33,9 +33,37 @@
   #res b{display:block;font-size:14dvh;line-height:1;font-weight:600;font-variant-numeric:tabular-nums}
   #res span{display:block;font-size:5dvh;letter-spacing:.4em;margin-top:.6dvh}
   #res small{display:block;font-size:2.6dvh;margin-top:.6dvh;color:#cdbb90;letter-spacing:.05em;line-height:1.4}
-  #res.ok b,#res.ok span{color:#e6c877;text-shadow:0 0 2.5dvh rgba(230,200,110,.6)}
-  #res.ng b,#res.ng span{color:#c03d3d;text-shadow:0 0 2.5dvh rgba(150,20,20,.75)}
-  #res.sum b{color:#efe3c4;text-shadow:0 0 2dvh rgba(0,0,0,.9)}
+  #res.ok b,#res.ok span{color:#e6c877;text-shadow:0 0 .5dvh #000,0 0 1.4dvh #000,0 0 3dvh rgba(230,200,110,.6)}
+  #res.ng b,#res.ng span{color:#d84444;text-shadow:0 0 .5dvh #000,0 0 1.4dvh #000,0 0 3dvh rgba(150,20,20,.75)}
+  #res.sum b{color:#efe3c4;text-shadow:0 0 .5dvh #000,0 0 1.4dvh #000,0 0 2dvh rgba(0,0,0,.9)}
+  /* 表示タイプ：左に基準・右に結果 */
+  body.L-sides #band{left:calc(1.5vw + env(safe-area-inset-left,0px));right:auto;top:20dvh;width:25vw;padding:2dvh 1.2vw;border:2px solid #a8864a;border-radius:3px}
+  body.L-sides #band.in,body.L-tate #band.in{animation:fadeIn .5s ease-out}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  body.L-sides #band .t{font-size:3.4dvh;letter-spacing:.2em}
+  body.L-sides #scale{width:100%;margin-top:1.4dvh}
+  body.L-sides #res{left:auto;right:calc(1.5vw + env(safe-area-inset-right,0px));width:25vw;top:24dvh}
+  #band .big{display:block;font-size:10dvh;line-height:1.1;color:#efe3c4;font-variant-numeric:tabular-nums;margin-top:.6dvh}
+  #band .note{display:block;font-size:2.1dvh;color:#9a8c72;margin-top:1dvh;line-height:1.5}
+  /* 表示タイプ：真ん中に浮かぶ */
+  body.L-center #band{left:26vw;right:26vw;padding:.6dvh 2vw}
+  body.L-center #band .t{font-size:3dvh}
+  body.L-center #band .c{font-size:2.2dvh}
+  body.L-center #scale{width:80%}
+  body.L-center #res{left:0;right:0;width:auto;top:20dvh;padding:6dvh 0}
+  body.L-center #res.on{background:radial-gradient(ellipse 30vw 32dvh at center,rgba(0,0,0,.8),rgba(0,0,0,0))}
+  body.L-center #res b{font-size:20dvh}
+  /* 表示タイプ：縦書きの札 */
+  body.L-tate #band{left:auto;right:calc(2vw + env(safe-area-inset-right,0px));top:3dvh;height:76dvh;padding:2.6dvh 1.2vw;writing-mode:vertical-rl;text-align:start;color:#3a0c08;
+    background:linear-gradient(90deg,#bba878,#dccda4 30%,#d2c194 70%,#b29e6e);border:none;border-top:4px double #5a1a10;border-bottom:4px double #5a1a10;box-shadow:0 1dvh 3dvh rgba(0,0,0,.85),inset 0 0 3dvh rgba(80,40,10,.5)}
+  body.L-tate #band .t{font-size:4.8dvh;letter-spacing:.4em;color:#5a0e08;font-weight:700}
+  body.L-tate #band .c{font-size:2.9dvh;color:#3a1c10;margin:0 .8vw 0 0;letter-spacing:.25em}
+  body.L-tate #band .note{color:#5a3a20;font-size:2.3dvh;margin:0 .8vw 0 0}
+  body.L-tate #scale{display:none!important}
+  .tcu{text-combine-upright:all;-webkit-text-combine:horizontal}
+  body.L-tate #res{left:auto;right:calc(12.5vw + env(safe-area-inset-right,0px));width:13vw;top:14dvh}
+  body.L-tate #res b{font-size:12dvh}
+  body.L-tate #res span{writing-mode:vertical-rl;margin:1.6dvh auto 0;letter-spacing:.35em;font-size:5.5dvh}
   #flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,rgba(120,0,0,.0),rgba(120,0,0,.65))}
   #flash.on{animation:flash .9s ease-out}
   @keyframes flash{0%{opacity:1}100%{opacity:0}}
@@ -88,7 +116,7 @@
       <div class="row"><button type="button" id="apply">この式にする</button><button type="button" id="gather">ダイスを戻す</button></div>
       <p>1D100のときは技能の判定（目標値以下で成功）。それ以外は合計を出します。画面に出すダイスは8個まで。</p>
     </div>
-    <div class="tab" id="tab-l"><h4>ダイス</h4><div class="g3" id="dStyles"></div><h4>トレイ</h4><div class="g3" id="tStyles" style="grid-template-columns:repeat(2,1fr)"></div><p>どれも「古くから眠っていた発掘品」のつもりです。宝石だけは光を失っていません。</p></div>
+    <div class="tab" id="tab-l"><h4>ダイス</h4><div class="g3" id="dStyles"></div><h4>トレイ</h4><div class="g3" id="tStyles" style="grid-template-columns:repeat(2,1fr)"></div><p>どれも「古くから眠っていた発掘品」のつもりです。宝石だけは光を失っていません。</p><h4>判定と結果の表示</h4><div class="g3" id="lStyles" style="grid-template-columns:repeat(2,1fr)"></div></div>
     <div class="tab" id="tab-m"></div>
     <div class="tab" id="tab-v"><h4>最初（投げるとき）</h4><div id="camA"></div><h4>結果（数字を見せるとき）</h4><div id="camB"></div>
       <div class="row"><button type="button" id="viewA">最初の位置を見る</button><button type="button" id="viewB">結果の位置を見る</button></div>
@@ -108,8 +136,8 @@
   </div>
   <button type="button" id="toggle">☰ 設定</button>
 </div>
-<div class="ver">ダイス 見本 v1.5</div>
-<div id="start"><b>タップして始める</b><span>全画面・横向きになります（音が出ます）</span><span>ダイスを指でつかんで、はじくように投げる</span><span style="font-size:2.4dvh;color:#6c6455">ダイス 見本 v1.5</span></div>
+<div class="ver">ダイス 見本 v1.6</div>
+<div id="start"><b>タップして始める</b><span>全画面・横向きになります（音が出ます）</span><span>ダイスを指でつかんで、はじくように投げる</span><span style="font-size:2.4dvh;color:#6c6455">ダイス 見本 v1.6</span></div>
 
 <script src="../assets/manifest.js"></script>
 <script>
@@ -121,7 +149,7 @@
   // ===== 調整できる値（右下の設定で変えられる。端末に保存） =====
   var DEF={friction:.15,rollDamp:.1,bounce:.5,wallBounce:.7,power:1.2,speed:.8,
     trayR:7.2,trayRot:0,pitch:58,dist:35,offY:.06,
-    vol:.8,tone:'metal',room:'hall',wet:.45,decay:2.2,rollVol:.7,lowVol:.5,resVol:.8,diceStyle:'silver',trayStyle:'bronze',rPitch:84,rDist:22,rOffY:0,rFocus:.85,rTime:1.1,rYaw:0};
+    vol:.8,tone:'metal',room:'hall',wet:.45,decay:2.2,rollVol:.7,lowVol:.5,resVol:.8,diceStyle:'silver',trayStyle:'bronze',layout:'top',rPitch:84,rDist:22,rOffY:0,rFocus:.85,rTime:1.1,rYaw:0};
   var CFG={}; Object.keys(DEF).forEach(function(k){ CFG[k]=DEF[k]; });
   try{ var sv=JSON.parse(localStorage.getItem('diceCfg1')||'{}'); Object.keys(DEF).forEach(function(k){ if(sv[k]!==undefined && typeof sv[k]===typeof DEF[k]) CFG[k]=sv[k]; }); }catch(_){ }
   function saveCfg(){ try{ localStorage.setItem('diceCfg1',JSON.stringify(CFG)); }catch(_){ } }
@@ -771,10 +799,26 @@
     camAnim=null; if(VIEW && !isStart()){ VIEW=startView(); setupCamera(); buildLayers(); }
     state='idle'; resultShown=false; $('res').className=''; $('mark').style.opacity=0; $('hint').style.display='block';
     var b=$('band'); b.classList.remove('in'); void b.offsetWidth; b.classList.add('in');
-    if(isCheck()){ $('bandT').textContent='目星（技能の判定）'; $('bandC').textContent='出目が '+target+' 以下で成功（1〜100）'; $('scale').style.display='block'; $('fill').style.width=target+'%'; }
-    else{ $('bandT').textContent=formula; $('bandC').textContent='出た目の合計'+(virtualRolls.length?'（画面外に '+virtualRolls.length+' 個）':''); $('scale').style.display='none'; }
+    bandText();
     document.querySelectorAll('#forms button').forEach(function(x){ x.classList.toggle('sel',x.textContent===formula); });
   }
+  // 判定の基準（表示タイプごとに書き方を変える）
+  function full(s){ return String(s).replace(/[0-9A-Z+]/g,function(c){ return String.fromCharCode(c.charCodeAt(0)+0xFEE0); }); }
+  function bandText(){
+    var L=CFG.layout, t=target, ex=virtualRolls.length?'（画面外に '+virtualRolls.length+' 個）':'';
+    if(isCheck()){
+      $('scale').style.display='block'; $('fill').style.width=t+'%';
+      if(L==='sides'){ $('bandT').textContent='目星'; $('bandC').innerHTML='技能の判定<span class="big">'+t+'</span>以下で成功<span class="note">1〜5 大成功<br>96〜100 大失敗</span>'; }
+      else if(L==='tate'){ $('bandT').textContent='目星'; $('bandC').innerHTML='出目<span class="tcu">'+t+'</span>以下にて成功<span class="note">五以下 大成功　九十六以上 大失敗</span>'; }
+      else { $('bandT').textContent='目星（技能の判定）'; $('bandC').textContent='出目が '+t+' 以下で成功（1〜100）'; }
+    } else {
+      $('scale').style.display='none';
+      if(L==='tate'){ $('bandT').textContent='出目の合計'; $('bandC').textContent=full(formula)+ex; }
+      else { $('bandT').textContent=formula; $('bandC').textContent='出た目の合計'+ex; }
+    }
+  }
+  var LAYOUTS=[{id:'top',name:'上に判定・左に結果'},{id:'sides',name:'左に基準・右に結果'},{id:'center',name:'真ん中に浮かぶ'},{id:'tate',name:'縦書きの札'}];
+  function applyLayout(){ document.body.className='L-'+CFG.layout; bandText(); var b=$('band'); b.classList.remove('in'); void b.offsetWidth; b.classList.add('in'); }
   function showResult(){
     resultShown=true;
     var res=$('res'), big=res.querySelector('b'), txt=res.querySelector('span'), sm=res.querySelector('small');
@@ -895,11 +939,12 @@
   function refreshSel(){ document.querySelectorAll('#tones button').forEach(function(b){ b.classList.toggle('sel',b.dataset.k===CFG.tone); });
     document.querySelectorAll('#rooms button').forEach(function(b){ b.classList.toggle('sel',b.dataset.k===CFG.room); });
     document.querySelectorAll('#dStyles button').forEach(function(b){ b.classList.toggle('sel',b.dataset.k===CFG.diceStyle); });
+    document.querySelectorAll('#lStyles button').forEach(function(b){ b.classList.toggle('sel',b.dataset.k===CFG.layout); });
     document.querySelectorAll('#tStyles button').forEach(function(b){ b.classList.toggle('sel',b.dataset.k===CFG.trayStyle); }); }
   selBtns('tones',TONES,'tone');
   function styleBtns(box,list,key){ list.forEach(function(it){ var b=document.createElement('button'); b.type='button'; b.className='f'; b.textContent=it.name; b.dataset.k=it.id;
     b.addEventListener('click',function(){ CFG[key]=it.id; refreshSel(); onCfg(key); }); $(box).appendChild(b); }); }
-  styleBtns('dStyles',DSTYLES,'diceStyle'); styleBtns('tStyles',TRAYS,'trayStyle');
+  styleBtns('dStyles',DSTYLES,'diceStyle'); styleBtns('tStyles',TRAYS,'trayStyle'); styleBtns('lStyles',LAYOUTS,'layout');
   selBtns('rooms',ROOMS,'room',function(it){ CFG.decay=it[2]; CFG.wet=it[3]; ['decay','wet'].forEach(function(k){ inputs[k].inp.value=CFG[k]; inputs[k].out.textContent=fmt(CFG[k],inputs[k].st); }); });
   refreshSel();
   var trayTimer=0;
@@ -912,11 +957,12 @@
       if(state==='idle'||state==='done'){ dice.forEach(function(d){ d.p=clampIn(d.p,d.r*.9); }); if(k==='trayR'||k==='trayRot') placeHome(); }
     }
     if(k==='diceStyle') applyDiceStyle();
+    if(k==='layout') applyLayout();
     if(k==='trayStyle'){ clearTimeout(trayTimer); trayTimer=setTimeout(buildLayers,30); }
     if(['vol','wet','room','lowVol','resVol'].indexOf(k)>=0) applyAudio();
     if(k==='decay'||k==='room'){ clearTimeout(irTimer); irTimer=setTimeout(function(){ buildIR(); applyAudio(); },250); }
   }
-  function showCfg(){ var o={}; Object.keys(DEF).forEach(function(k){ o[k]=typeof CFG[k]==='number'?Math.round(CFG[k]*100)/100:CFG[k]; }); $('cfgtxt').value='ダイス設定 v1.5 '+JSON.stringify(o); }
+  function showCfg(){ var o={}; Object.keys(DEF).forEach(function(k){ o[k]=typeof CFG[k]==='number'?Math.round(CFG[k]*100)/100:CFG[k]; }); $('cfgtxt').value='ダイス設定 v1.6 '+JSON.stringify(o); }
   showCfg();
   $('viewA').addEventListener('click',function(){ moveCam(startView(),CFG.rTime); });
   $('viewB').addEventListener('click',function(){ moveCam(resultView(),CFG.rTime); });
@@ -930,7 +976,7 @@
     document.querySelectorAll('.tabs button').forEach(function(x){ x.classList.toggle('on',x===b); });
     document.querySelectorAll('.tab').forEach(function(x){ x.classList.toggle('on',x.id==='tab-'+b.dataset.t); }); }); });
   $('toggle').addEventListener('click',function(){ $('panel').classList.toggle('on'); });
-  $('target').addEventListener('input',function(){ target=+this.value; $('tv').textContent=target; if(isCheck()){ $('bandC').textContent='出目が '+target+' 以下で成功（1〜100）'; $('fill').style.width=target+'%'; } });
+  $('target').addEventListener('input',function(){ target=+this.value; $('tv').textContent=target; if(isCheck()) bandText(); });
   $('apply').addEventListener('click',function(){ var fs=$('formula').value.toUpperCase().replace(/\s/g,''); if(parse(fs)){ formula=fs; setupDice(); } else { $('formula').value=formula; } });
   $('gather').addEventListener('click',function(){ setupDice(); });
   ['pointerdown','pointerup','click'].forEach(function(ev){ $('tool').addEventListener(ev,function(e){ e.stopPropagation(); }); });
@@ -946,6 +992,7 @@
   $('start').addEventListener('click',begin);
   try{ var bgs=(window.ASSETS&&window.ASSETS.bg)||[]; var pick=bgs.indexOf('corridor')>=0?'corridor':bgs[0]; if(pick) $('bg').style.backgroundImage='url(../assets/bg/'+pick+'.webp)'; }catch(_){ }
   window.addEventListener('resize',function(){ resize(); if(state==='idle') placeHome(); });
+  document.body.className='L-'+CFG.layout;
   resize(); setupDice(); requestAnimationFrame(frame);
   window.__dice={get dice(){ return dice; },get state(){ return state; },setup:function(f){ formula=f; setupDice(); },cfg:CFG};
 })();
