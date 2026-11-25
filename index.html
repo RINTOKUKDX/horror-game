@@ -6,7 +6,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>深淵の胎動（仮） v0.4.6 - Cthulhu Horror Novel Engine</title>
+  <title>深淵の胎動（仮） v0.4.7 - Cthulhu Horror Novel Engine</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Shippori+Mincho:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1419,7 +1419,7 @@
 </div>
 
 <!-- 部品を直したら ?v= を上げる（スマホに古い部品が残るのを防ぐ） -->
-<script src="assets/dice/dice-engine.js?v=1.4.1"></script>
+<script src="assets/dice/dice-engine.js?v=1.4.2"></script>
 <script>
 (() => {
   'use strict';
@@ -1427,8 +1427,9 @@
   /* ============================================================================
      SECTION 0: バージョン・変更履歴定義（更新時にここを編集）
      ============================================================================ */
-  const APP_VERSION = 'v0.4.6';
+  const APP_VERSION = 'v0.4.7';
   const CHANGELOG = [
+    'ダイス：きんきんさんの決定設定を反映（滑りにくさ・止まりやすさ・カットインの音）',
     'ダイス部品の読み込みに版番号を付け、古い部品が残って動かなくなる問題を防止',
     'ダイス：カットインを薄め（濃さ0.52）にして止まる時間を長く、控えめに不穏なカットインの音を追加',
     'ダイス：判定の始めに「Dice Roll」のカットイン（左から右へスライドしながらフェードイン→フェードアウトしてダイス画面へ）',
