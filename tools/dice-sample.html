@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ダイス 見本 v1.11</title>
+<title>ダイス 見本 v1.12</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* ダイスだけを試す見本。ゲーム本体・ゲーム画面見本には影響しない */
@@ -136,8 +136,8 @@
   </div>
   <button type="button" id="toggle">☰ 設定</button>
 </div>
-<div class="ver">ダイス 見本 v1.11</div>
-<div id="start"><b>タップして始める</b><span>全画面・横向きになります（音が出ます）</span><span>ダイスを指でつかんで、はじくように投げる</span><span style="font-size:2.4dvh;color:#6c6455">ダイス 見本 v1.11</span></div>
+<div class="ver">ダイス 見本 v1.12</div>
+<div id="start"><b>タップして始める</b><span>全画面・横向きになります（音が出ます）</span><span>ダイスを指でつかんで、はじくように投げる</span><span style="font-size:2.4dvh;color:#6c6455">ダイス 見本 v1.12</span></div>
 
 <script src="../assets/manifest.js"></script>
 <script>
@@ -212,6 +212,13 @@
     SHAPES[10]=finish({kind:10,sides:10,verts:V10,faces:F10,min:0,scaleZ:true},9);
     var t=(1+Math.sqrt(5))/2, I=[v3(-1,t,0),v3(1,t,0),v3(-1,-t,0),v3(1,-t,0),v3(0,-1,t),v3(0,1,t),v3(0,-1,-t),v3(0,1,-t),v3(t,0,-1),v3(t,0,1),v3(-t,0,-1),v3(-t,0,1)];
     SHAPES[20]=finish({kind:20,sides:20,verts:I,faces:[[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],[1,5,9],[5,11,4],[11,10,2],[10,7,6],[7,1,8],[3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],[4,9,5],[2,4,11],[6,2,10],[8,6,7],[9,8,1]],min:1},21);
+    // d12：正二十面体の面の中心を頂点にした正十二面体
+    var IF=SHAPES[20].faces, IV=SHAPES[20].verts, DV=IF.map(function(f){ return f.c; }), DF=[];
+    IV.forEach(function(v,vi){ var adj=[]; IF.forEach(function(f,fi){ if(f.ix.indexOf(vi)>=0) adj.push(fi); });
+      var ax=norm(sub(DV[adj[0]],mul(v,dot(DV[adj[0]],v)))), ay=cross(v,ax);
+      adj.sort(function(p2,q2){ var P=DV[p2], Q=DV[q2]; return Math.atan2(dot(P,ay),dot(P,ax))-Math.atan2(dot(Q,ay),dot(Q,ax)); });
+      DF.push(adj); });
+    SHAPES[12]=finish({kind:12,sides:12,verts:DV,faces:DF,min:1},13);
   })();
 
   // ===== 画面とカメラ =====
@@ -333,6 +340,7 @@
   var TEX={};
   function loadTex(key,src){ var im=new Image(); im.onload=function(){ TEX[key]=im; if(VIEW && W) buildLayers(); }; im.src=src; }
   loadTex('tray','../assets/dice/tray-bronze.webp'); loadTex('tri','../assets/dice/face-tri.webp'); loadTex('sq','../assets/dice/face-sq.webp'); loadTex('kite','../assets/dice/face-kite.webp');
+  ['t2a','t2b','t2d4','sq2','kite2','pent2'].forEach(function(k){ loadTex(k,'../assets/dice/face2-'+k+'.webp'); });
   // 画像の3点(u,v)を画面の3点に合わせて貼る
   function texTri(c,img,uv,sp){
     var u0=uv[0][0],v0=uv[0][1],du1=uv[1][0]-u0,dv1=uv[1][1]-v0,du2=uv[2][0]-u0,dv2=uv[2][1]-v0, det=du1*dv2-du2*dv1; if(Math.abs(det)<1e-6) return;
@@ -602,7 +610,7 @@
   // ===== ダイス本体と物理 =====
   var G=-42, STEP=1/240, acc=0, dice=[], state='idle', hold=null, rollT=0, resultShown=false, resTimer=0, lastSnd={};
   function makeDie(sides,opt){
-    var sh=SHAPES[sides], r=({4:1.6,6:1.2,8:1.38,10:1.34,20:1.42})[sides];
+    var sh=SHAPES[sides], r=({4:1.6,6:1.2,8:1.38,10:1.34,12:1.4,20:1.42})[sides];
     var d={sh:sh,sides:sides,r:r,p:v3(0,r,0),v:v3(0,0,0),q:q(1,0,0,0),w:v3(0,0,0),I:0.38*r*r,
       metal:opt.metal||'#aba595',enamel:opt.enamel||'#1d5a3b',label:opt.label||null,asleep:true,still:0,glow:null,onFloor:false,chk:null};
     restOnRandomFace(d); return d;
@@ -681,7 +689,8 @@
     {id:'obsidian',name:'黒曜石と血玉',metal:'#36363c',enamel:'#1c0608',metal2:'#3c3232',enamel2:'#1c0608',gem:'ruby',medal:'#b08a3a',ink:'#1a0e04',grime:'rgba(140,125,95,.32)',grime2:'rgba(0,0,0,.4)'},
     {id:'bone',name:'古い骨と紫水晶',metal:'#c9bb92',enamel:'#36203e',metal2:'#b8986a',enamel2:'#3a1010',gem:'amethyst',medal:'#ddd0aa',ink:'#2a1606',grime:'rgba(80,50,20,.5)',grime2:'rgba(40,25,10,.4)',crack:true,matte:true},
     {id:'abyss',name:'深海の鉄と真珠',metal:'#5c5a55',enamel:'#2a4a50',metal2:'#6a4a34',enamel2:'#2a1018',gem:'sapphire',medal:'#8e8c86',ink:'#0a0a0a',grime:'rgba(150,70,30,.5)',grime2:'rgba(30,70,55,.45)',irid:true},
-    {id:'img1',name:'画像：骨と青銅',tex:true,metal:'#8a6a3c',enamel:'#d8c8a0',metal2:'#6a3a20',enamel2:'#5a1010',gem:'ruby',ink:'#2a1606',grime:'rgba(60,40,15,.4)',grime2:'rgba(40,25,10,.3)'}];
+    {id:'img1',name:'画像：骨と青銅',tex:true,metal:'#8a6a3c',enamel:'#d8c8a0',metal2:'#6a3a20',enamel2:'#5a1010',gem:'ruby',ink:'#2a1606',grime:'rgba(60,40,15,.4)',grime2:'rgba(40,25,10,.3)'},
+    {id:'img2',name:'画像：クトゥルフの遺物',tex:true,tex2:true,metal:'#8a6a3c',enamel:'#d8c8a0',metal2:'#6a3a20',enamel2:'#5a1010',gem:'ruby',ink:'#2a1606',grime:'rgba(60,40,15,.4)',grime2:'rgba(40,25,10,.3)'}];
   function DS(){ for(var i=0;i<DSTYLES.length;i++) if(DSTYLES[i].id===CFG.diceStyle) return DSTYLES[i]; return DSTYLES[0]; }
   function applyDiceStyle(){ var S=DS(); dice.forEach(function(d){ d.metal=d.role==='tens'?S.metal2:S.metal; d.enamel=d.role==='tens'?S.enamel2:S.enamel; }); }
   // 小さな宝石（ダイス用：毎フレーム描くので軽い作り）
@@ -706,7 +715,12 @@
   function faceXform(center,a,b,s){ var S0=proj(center), Sa=proj(add(center,mul(a,s))), Sb=proj(add(center,mul(b,s)));
     ctx.setTransform(DPR*(Sb.x-S0.x),DPR*(Sb.y-S0.y),-DPR*(Sa.x-S0.x),-DPR*(Sa.y-S0.y),DPR*S0.x,DPR*S0.y); }
   // 画像を貼ったダイスの面（数字はインクで直接書く）
-  var TEXA={tri:[[.4992,.0478],[.9721,.8644],[.0263,.8644]],sq:[[.0415,.0423],[.9585,.0423],[.9585,.9569],[.0415,.9569]],kite:[[.4988,.0399],[.8684,.6722],[.4988,.9545],[.1268,.6722]]};
+  var TEXA={tri:[[.4992,.0478],[.9721,.8644],[.0263,.8644]],sq:[[.0415,.0423],[.9585,.0423],[.9585,.9569],[.0415,.9569]],kite:[[.4988,.0399],[.8684,.6722],[.4988,.9545],[.1268,.6722]],
+    t2a:[[.499,.0118],[.9628,.9348],[.0351,.9333]],t2b:[[.4995,.0611],[.9679,.8763],[.0299,.8769]],t2d4:[[.499,.0364],[.9709,.8559],[.0251,.8601]],
+    sq2:[[.0391,.0377],[.9593,.0378],[.9609,.9569],[.0373,.9574]],kite2:[[.4992,.0093],[.8855,.5844],[.4983,.9882],[.1122,.5849]],
+    pent2:[[.4984,.0141],[.9563,.379],[.7902,.9123],[.201,.9126],[.0394,.3799]]};
+  function texKey(d,f){ if(DS().tex2){ if(d.sides===4) return 't2d4'; if(d.sides===6) return 'sq2'; if(d.sides===10) return 'kite2'; if(d.sides===12) return 'pent2'; return d.sh.faces.indexOf(f)%2?'t2b':'t2a'; }
+    if(d.sides===10&&TEX.kite) return 'kite'; return d.sides===4||d.sides===8||d.sides===20?'tri':'sq'; }
   // 浮き出た数字（左上に光、右下に影、縁取りつき）
   function emboss(size,str,ink){
     ctx.font='700 '+size.toFixed(1)+'px "Shippori Mincho","Hiragino Mincho ProN",serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineJoin='round';
@@ -739,15 +753,16 @@
     else if(d.sides===10){ var ai=0; f.ix.forEach(function(ix,k){ if(ix>=10) ai=k; }); far=Vw[f.ix[(ai+2)%4]]; up=sub(Vw[f.ix[ai]],far); pos=lerp(c,Vw[f.ix[ai]],.08); }
     else up=sub(Vw[f.ix[0]],c);
     var a=norm(sub(up,mul(n,dot(up,n)))), b=cross(a,n);
-    var L=outer.map(function(p,k){ var q2=sub(p,c); return {x:dot(q2,b),y:dot(q2,a),s:outerS[k]}; });
-    var by=function(fn){ return L.slice().sort(function(p,q2){ return fn(q2)-fn(p); }); };
-    if(L.length===3){ var img=TEX.tri, A=TEXA.tri.map(function(t){ return [t[0]*img.width,t[1]*img.height]; });
-      var srt=by(function(p){ return p.y; }), ap=srt[0], rest=[srt[1],srt[2]].sort(function(p,q2){ return q2.x-p.x; });
-      texTri(ctx,img,[A[0],A[1],A[2]],[ap.s,rest[0].s,rest[1].s]);
-    } else { var kt=d.sides===10&&TEX.kite, im2=kt?TEX.kite:TEX.sq, B=(kt?TEXA.kite:TEXA.sq).map(function(t){ return [t[0]*im2.width,t[1]*im2.height]; }), TL,TR,BR,BL;
-      if(d.sides===10){ var sy=by(function(p){ return p.y; }); TL=sy[0]; BR=sy[3]; var mid=[sy[1],sy[2]].sort(function(p,q2){ return q2.x-p.x; }); TR=mid[0]; BL=mid[1]; }
-      else { TL=by(function(p){ return p.y-p.x; })[0]; BR=by(function(p){ return p.x-p.y; })[0]; TR=by(function(p){ return p.x+p.y; })[0]; BL=by(function(p){ return -p.x-p.y; })[0]; }
-      texTri(ctx,im2,[B[0],B[1],B[2]],[TL.s,TR.s,BR.s]); texTri(ctx,im2,[B[0],B[2],B[3]],[TL.s,BR.s,BL.s]); }
+    var L=outer.map(function(p,k){ var q2=sub(p,c); return {x:dot(q2,b),y:dot(q2,a),s:outerS[k],w:p}; });
+    var key=texKey(d,f), img=TEX[key]||TEX.sq, TA=(TEXA[key]||TEXA.sq).map(function(t){ return [t[0]*img.width,t[1]*img.height]; }), top=null;
+    if(TA.length===L.length){
+      // 一番上の角から時計回りに、画像の角と面の角を合わせて貼る
+      L.forEach(function(p){ var v=d.sides===6?p.y-p.x:p.y; if(!top||v>top.v){ top=p; top.v=v; } });
+      var a0=Math.atan2(top.y,top.x), ord=L.slice().sort(function(p,q2){ var dp=((a0-Math.atan2(p.y,p.x))%(2*PI)+2*PI)%(2*PI), dq=((a0-Math.atan2(q2.y,q2.x))%(2*PI)+2*PI)%(2*PI); return dp-dq; });
+      for(var t=1;t<ord.length-1;t++) texTri(ctx,img,[TA[0],TA[t],TA[t+1]],[ord[0].s,ord[t].s,ord[t+1].s]);
+    } else { var by=function(fn){ return L.slice().sort(function(p,q2){ return fn(q2)-fn(p); }); };
+      var TL=by(function(p){ return p.y-p.x; })[0], BR=by(function(p){ return p.x-p.y; })[0], TR=by(function(p){ return p.x+p.y; })[0], BL=by(function(p){ return -p.x-p.y; })[0];
+      texTri(ctx,img,[TA[0],TA[1],TA[2]],[TL.s,TR.s,BR.s]); texTri(ctx,img,[TA[0],TA[2],TA[3]],[TL.s,BR.s,BL.s]); }
     polyS(outerS);
     if(d.role==='tens'){ ctx.fillStyle='rgba(110,10,10,.4)'; ctx.fill(); }
     var dark=Math.max(0,Math.min(.65,.72-(.3+.7*diff))); if(dark>0){ ctx.fillStyle='rgba(0,0,0,'+dark.toFixed(3)+')'; ctx.fill(); }
@@ -755,6 +770,7 @@
     ctx.lineWidth=1.1; ctx.strokeStyle='rgba(18,12,6,.95)'; ctx.stroke();
     var str=d.label?d.label(f.val):String(f.val);
     if(d.sides===4){ f.ix.forEach(function(i){ var corner=Vw[i]; inkText(o,lerp(c,corner,.5),sub(corner,c),String(d.sh.vval[i]),inrad(c,outer)*.42); }); }
+    else if(DS().tex2 && d.sides!==6){ var tv=d.sides===10?Vw[f.ix[ai]]:Vw[f.ix[0]], k2=d.sides===10?.3:d.sides===12?.3:.24; inkText(o,lerp(c,tv,k2),up,str,inrad(c,outer)*(d.sides===10?.6:d.sides===12?.52:.56)); }
     else inkText(o,pos,up,str,inrad(pos,outer)*(d.sides===6?.62:d.sides===10?.68:.66));
     if(d.glow && d.glow.f===f){ polyS(outerS); ctx.lineWidth=3.2; ctx.strokeStyle=d.glow.color; ctx.stroke(); }
   }
@@ -870,7 +886,7 @@
     fs=String(fs).toUpperCase().replace(/\s/g,'').replace(/Ｄ/g,'D');
     var terms=fs.split('+'), list=[], m=0;
     for(var i=0;i<terms.length;i++){ var t=terms[i]; if(!t) continue; var mm=t.match(/^(\d*)D(\d+)$/);
-      if(mm){ var n=Math.min(20,parseInt(mm[1]||'1',10)), s=parseInt(mm[2],10); if([3,4,6,8,10,20,100].indexOf(s)<0) return null; for(var k=0;k<n;k++) list.push(s); }
+      if(mm){ var n=Math.min(20,parseInt(mm[1]||'1',10)), s=parseInt(mm[2],10); if([3,4,6,8,10,12,20,100].indexOf(s)<0) return null; for(var k=0;k<n;k++) list.push(s); }
       else if(/^\d+$/.test(t)) m+=parseInt(t,10); else return null; }
     return list.length?{list:list,mod:m}:null;
   }
@@ -1007,7 +1023,7 @@
   }
 
   // ===== 右下の設定 =====
-  ['1D100','1D3','1D4','1D6','2D6','3D6','1D8','1D10','1D20','2D6+1D4','1D6+1D4','8D6'].forEach(function(fs){
+  ['1D100','1D3','1D4','1D6','2D6','3D6','1D8','1D10','1D12','1D20','2D6+1D4','1D6+1D4','8D6'].forEach(function(fs){
     var b=document.createElement('button'); b.type='button'; b.className='f'; b.textContent=fs;
     b.addEventListener('click',function(){ formula=fs; $('formula').value=fs; setupDice(); }); $('forms').appendChild(b); });
   var SL=[
@@ -1056,7 +1072,7 @@
     if(['vol','wet','room','lowVol','resVol'].indexOf(k)>=0) applyAudio();
     if(k==='decay'||k==='room'){ clearTimeout(irTimer); irTimer=setTimeout(function(){ buildIR(); applyAudio(); },250); }
   }
-  function showCfg(){ var o={}; Object.keys(DEF).forEach(function(k){ o[k]=typeof CFG[k]==='number'?Math.round(CFG[k]*100)/100:CFG[k]; }); $('cfgtxt').value='ダイス設定 v1.11 '+JSON.stringify(o); }
+  function showCfg(){ var o={}; Object.keys(DEF).forEach(function(k){ o[k]=typeof CFG[k]==='number'?Math.round(CFG[k]*100)/100:CFG[k]; }); $('cfgtxt').value='ダイス設定 v1.12 '+JSON.stringify(o); }
   showCfg();
   $('viewA').addEventListener('click',function(){ moveCam(startView(),CFG.rTime); });
   $('viewB').addEventListener('click',function(){ moveCam(resultView(),CFG.rTime); });
