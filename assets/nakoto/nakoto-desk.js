@@ -1,5 +1,5 @@
 /* ============================================================================
-   机メニュー＋ナコト写本 部品（NakotoDesk） v1.3.0
+   机メニュー＋ナコト写本 部品（NakotoDesk） v1.4.0
    ----------------------------------------------------------------------------
    机そのものがメニュー。本＝探索者シート（部品 assets/sheet/investigator-sheet.js）、紙の束＝ルート分岐表（付箋付きファイル）、羽ペン＝セーブ。
    本体は呼ぶだけ。見た目を作り直すときは、このファイルと assets/nakoto/ の絵だけを差しかえる。
@@ -36,7 +36,7 @@
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.3.0';
+  var VERSION='1.4.0';
   // 効果音（assets からの場所）。空なら鳴らさない。見本の「調整」で差しかえられる
   var SOUNDS={glow:'',sheet:'sfx/紙を広げる1.mp3',openWet:'sfx/うごめく触手.mp3',strap:'sfx/ベルトを付ける.mp3',cover:'sfx/ページをめくる1.mp3',coverWet:'sfx/ねんえきネバネバ.mp3',
     peek:'sfx/ページをめくる2.mp3',grow:'sfx/うごめく触手.mp3',grow2:'sfx/暗黒魔法.mp3',close:'sfx/本を閉じる1.mp3',saveOpen:'sfx/紙を広げる2.mp3',write:'sfx/シャーペンで字を書く.mp3',
@@ -145,10 +145,12 @@
 '.nd-here{position:absolute;left:-26px;top:50%;width:16px;height:16px;margin-top:-8px;border-radius:50%;background:radial-gradient(#ffdc8a,#c06018 60%,rgba(0,0,0,0) 72%);animation:nd-pulse 1.6s infinite}',
 '@keyframes nd-pulse{50%{transform:scale(1.5);opacity:.6}}',
 /* 保存の印 */
-'.nd-mark{position:relative;flex:0 0 auto;margin-left:4px;min-width:44px;min-height:40px;padding:2px 6px;border:2px solid #7a1414;border-radius:3px;font-size:15px;font-weight:700;letter-spacing:.2em;color:#7a1414;background:rgba(255,240,220,.25);transform:rotate(-6deg);cursor:pointer;display:flex;align-items:center;gap:4px}',
-'.nd-mark small{font-size:12px;letter-spacing:0}',
+'.nd-mark{position:relative;flex:0 0 auto;margin-left:8px;min-width:44px;min-height:40px;padding:0 6px;font-family:"Yuji Syuku","Shippori Mincho",serif;font-size:21px;letter-spacing:.06em;color:#8e1610;transform:rotate(-2deg);cursor:pointer;display:flex;align-items:center;gap:3px;filter:url(#nd-ink);text-shadow:0 0 1px rgba(142,22,16,.7),0 0 3px rgba(142,22,16,.35)}',
+'.nd-mark::before{content:"";position:absolute;left:58%;top:62%;width:15px;height:12px;border-radius:48% 52% 40% 60%/55% 45% 55% 45%;background:radial-gradient(ellipse at 45% 45%,rgba(140,20,14,.55),rgba(140,20,14,.25) 55%,rgba(140,20,14,0) 75%);filter:blur(1.2px);pointer-events:none}',
+'.nd-mark::after{content:"";position:absolute;left:4%;right:8%;bottom:5px;height:2px;border-radius:2px;background:linear-gradient(90deg,rgba(142,22,16,.15),rgba(142,22,16,.7) 30%,rgba(142,22,16,.5) 80%,rgba(142,22,16,0));transform:rotate(-1.5deg);pointer-events:none}',
+'.nd-mark small{font-size:12px;letter-spacing:0;opacity:.85;align-self:flex-end;margin-bottom:6px}',
 '.nd-mark.fadeout{animation:nd-vanish 1.1s forwards}',
-'@keyframes nd-vanish{0%{filter:none}40%{filter:brightness(3) drop-shadow(0 0 14px #bff) ;opacity:1}100%{opacity:0;filter:brightness(4) blur(6px) drop-shadow(0 0 30px #bff);transform:rotate(-6deg) scale(1.4)}}',
+'@keyframes nd-vanish{0%{filter:none}40%{filter:brightness(3) drop-shadow(0 0 14px #bff) ;opacity:1}100%{opacity:0;filter:brightness(4) blur(6px) drop-shadow(0 0 30px #bff);transform:rotate(-2deg) scale(1.4)}}',
 '.nd-mark.burnin{-webkit-mask-image:radial-gradient(circle at 30% 60%,#000 var(--r),rgba(0,0,0,0) calc(var(--r) + 14%));mask-image:radial-gradient(circle at 30% 60%,#000 var(--r),rgba(0,0,0,0) calc(var(--r) + 14%));box-shadow:0 0 calc(var(--g) * 18px) rgba(255,120,30,var(--g));text-shadow:0 0 calc(var(--g) * 10px) rgba(255,150,40,var(--g))}',
 /* 魔法陣・イス人 */
 '.nd-circle{position:absolute;width:150px;height:150px;margin:-75px 0 0 -75px;pointer-events:none;opacity:0}',
@@ -169,7 +171,15 @@
 '.nd-cmsg{position:absolute;z-index:12;left:50%;bottom:2.5%;transform:translateX(-50%);font-size:13px;letter-spacing:.2em;color:#b8a07a;opacity:.8;pointer-events:none;white-space:nowrap}'
   ].join('\n');
 
-  function injectCss(){ if(document.getElementById('nd-css')) return; var st=document.createElement('style'); st.id='nd-css'; st.textContent=CSS; document.head.appendChild(st); }
+  function injectCss(){ if(document.getElementById('nd-css')) return; var st=document.createElement('style'); st.id='nd-css'; st.textContent=CSS; document.head.appendChild(st);
+    // 手書きの赤インク：筆文字の字体＋インクのにじみ（輪郭を少し揺らす）
+    var lk=document.createElement('link'); lk.rel='stylesheet'; lk.href='https://fonts.googleapis.com/css2?family=Yuji+Syuku&display=swap'; document.head.appendChild(lk);
+    var sv=document.createElementNS('http://www.w3.org/2000/svg','svg'); sv.setAttribute('width','0'); sv.setAttribute('height','0'); sv.style.position='absolute';
+    sv.innerHTML='<filter id="nd-ink" x="-10%" y="-20%" width="120%" height="140%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="1.6" result="d"/><feGaussianBlur in="d" stdDeviation=".35"/></filter>';
+    document.body.appendChild(sv); }
+  // 探索者シートの部品が無ければ自分で読みこむ
+  function loadSheet(base){ return new Promise(function(res){ if(window.InvestigatorSheet) return res(true);
+    var sc=document.createElement('script'); sc.src=base+'../sheet/investigator-sheet.js?v='+VERSION; sc.onload=function(){ res(!!window.InvestigatorSheet); }; sc.onerror=function(){ res(false); }; document.head.appendChild(sc); }); }
   function noiseUrl(){
     var c=document.createElement('canvas'); c.width=c.height=96; var x=c.getContext('2d'); var d=x.createImageData(96,96);
     for(var i=0;i<d.data.length;i+=4){ var v=Math.random()*255|0; d.data[i]=v*0.55; d.data[i+1]=v*0.42; d.data[i+2]=v*0.32; d.data[i+3]=Math.random()<.55?200:40; }
@@ -329,6 +339,7 @@
       await wait(1100);
     }
     async function showSheet(){
+      if(!window.InvestigatorSheet) await loadSheet(B);
       if(!isheet && window.InvestigatorSheet) isheet=InvestigatorSheet.create({root:svin, data:o.sheetData});
       else if(isheet) isheet.render();
       if(!isheet) svin.textContent='探索者シートの部品が読み込まれていません';
@@ -472,6 +483,7 @@
     function nodeLabel(id){ for(var i=0;i<chart.chapters.length;i++){ var c=chart.chapters[i]; for(var j=0;j<c.nodes.length;j++){ if(c.nodes[j].id===id) return c.title.replace(/^(第\S+章)\s*/,'$1 ')+' ／ '+c.nodes[j].label; } } return id; }
     function openSave(){
       if(!current){ say('今は記せない'); return; }
+      if(st.saves.some(function(sv){ return sv&&sv.node===current; })){ say('この時はすでに記してある'); return; }
       snd('saveOpen',.4);
       var h='<div class="box"><h3>どこに記しますか？</h3><div class="slots">';
       st.saves.forEach(function(sv,i){ h+='<button data-i="'+i+'"><b>'+KANJI[i]+'</b>'+(sv?nodeLabel(sv.node):'（空き）')+'</button>'; });
