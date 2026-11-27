@@ -1,5 +1,5 @@
 /* ============================================================================
-   探索者シート部品（InvestigatorSheet） v1.0.0
+   探索者シート部品（InvestigatorSheet） v1.1.0
    ----------------------------------------------------------------------------
    古びた羊皮紙の見開き。1ページ目＝探索者記録と技能、2ページ目＝所持品とバックストーリー。
    本体（index.html）も机メニュー（assets/nakoto/）も、これを呼ぶだけ。シートを直すときはこのファイルだけ。
@@ -8,14 +8,15 @@
      <script src="assets/sheet/investigator-sheet.js"></script>
      var sheet = InvestigatorSheet.create({
        root: 置く場所の要素,          // この中いっぱいに広がる
-       data: function(){ return {...}; }   // 表示のたびに呼ばれる（下の SAMPLE と同じ形）。省略で見本
+       data: function(){ return {...}; },  // 表示のたびに呼ばれる（下の SAMPLE と同じ形）。省略で見本
+       onFlip: function(){ 音を鳴らす等 }   // ページをめくる時（省略可）
      });
      sheet.render();   // 中身を描き直す
      sheet.page(0|1);  // ページを切りかえる
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.0.0';
+  var VERSION='1.1.0';
   var SAMPLE={
     name:'貴方（見本）', job:'古書店の店主', age:'34／—', address:'（見本）', birth:'（見本）',
     abil:{STR:9,DEX:12,INT:13,CON:11,APP:10,POW:16,SIZ:13,EDU:14},
@@ -26,7 +27,12 @@
     items:['懐中電灯','古い鍵','手帳'],
     back:[['容姿','痩せた長身、古い眼鏡'],['特徴','古書の匂い'],['信念','真実を知りたい'],['傷跡',''],['重要な人々','亡き師'],['恐怖症・マニア',''],['意味のある場所','古書店の地下室'],['魔道書・呪文',''],['秘蔵の品',''],['遭遇した存在','']]
   };
-  var CSS=`.isheet{position:relative;display:flex;width:100%;height:100%;box-sizing:border-box;font-family:"Shippori Mincho","Noto Serif JP",serif;text-align:left;padding:1.6dvh 1.4vw;border-radius:5px;color:#2a1a08;overflow:hidden;
+  var CSS=`.isheet{perspective:1800px}
+.isheet .isleaf{position:absolute;top:1.2dvh;bottom:1.2dvh;width:calc(50% - 1.2vw);z-index:4;pointer-events:none;transform-style:preserve-3d;border-radius:3px;background:radial-gradient(ellipse at 50% 50%,#dcc592 0%,#c9a96f 62%,#9a7442 100%);box-shadow:inset 0 0 4dvh rgba(50,22,3,.6)}
+.isheet .isleaf.fw{left:50%;transform-origin:0 50%}
+.isheet .isleaf.bw{right:50%;transform-origin:100% 50%}
+.isheet .isleaf::after{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(90deg,rgba(40,18,2,var(--sh,0)),rgba(40,18,2,0) 70%)}
+.isheet{position:relative;display:flex;width:100%;height:100%;box-sizing:border-box;font-family:"Shippori Mincho","Noto Serif JP",serif;text-align:left;padding:1.6dvh 1.4vw;border-radius:5px;color:#2a1a08;overflow:hidden;
 background:
 radial-gradient(circle at 18% 22%,rgba(110,60,15,.28) 0,transparent 9%),
 radial-gradient(circle at 78% 70%,rgba(90,45,10,.3) 0,transparent 12%),
@@ -89,7 +95,19 @@ border:1.5px solid #3a2410;background:linear-gradient(90deg,rgba(255,240,200,.28
       pgs[0].innerHTML=L; pgs[1].innerHTML=R;
       flip.textContent=pageNo?'◀ 前のページ':'次のページ ▶';
     }
-    flip.addEventListener('click',function(e){ e.stopPropagation(); pageNo=pageNo?0:1; render(); });
+    var flipping=false;
+    // ページをめくる：紙が背から持ち上がって反対側へ倒れる
+    function turn(to){
+      if(flipping) return; flipping=true; if(o.onFlip) o.onFlip();
+      var fw=to>pageNo, leaf=document.createElement('div'); leaf.className='isleaf '+(fw?'fw':'bw'); el.appendChild(leaf);
+      var t0=performance.now(), D=650, swapped=false;
+      (function f(){ var k=Math.min(1,(performance.now()-t0)/D), e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+        var ang=(fw?-180:180)*e; leaf.style.transform='rotateY('+ang+'deg)'; leaf.style.setProperty('--sh',(Math.sin(e*Math.PI)*.55).toFixed(2));
+        leaf.style.opacity=k>.97?(1-(k-.97)/.03):1;
+        if(!swapped&&k>=.5){ swapped=true; pageNo=to; render(); }
+        if(k<1) requestAnimationFrame(f); else { leaf.remove(); flipping=false; } })();
+    }
+    flip.addEventListener('click',function(e){ e.stopPropagation(); turn(pageNo?0:1); });
     render();
     return {el:el, render:render, page:function(n){ pageNo=n?1:0; render(); }};
   }
