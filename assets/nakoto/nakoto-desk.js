@@ -1,5 +1,5 @@
 /* ============================================================================
-   机メニュー＋ナコト写本 部品（NakotoDesk） v1.7.0
+   机メニュー＋ナコト写本 部品（NakotoDesk） v1.8.0
    ----------------------------------------------------------------------------
    机そのものがメニュー。本＝探索者シート（部品 assets/sheet/investigator-sheet.js）、紙の束＝ルート分岐表（付箋付きファイル）、羽ペン＝セーブ。
    本体は呼ぶだけ。見た目を作り直すときは、このファイルと assets/nakoto/ の絵だけを差しかえる。
@@ -9,7 +9,7 @@
      var desk = NakotoDesk.create({
        base: 'assets/nakoto/',      // 絵の場所
        assets: 'assets/',           // 効果音などの素材の根元（sounds の場所はここから）
-       sounds: {strap:'sfx/ベルトを付ける.mp3', ...},  // 効果音の差しかえ（空文字で無音）
+       sounds: {sheet:'sfx/紙を広げる1.mp3', ...},  // 効果音の差しかえ（空文字で無音）
        layout: {book:{x,y,w,r}, ...},   // 机の上の配置の差しかえ
        chart: {...},                // 分岐の全体（下の「分岐データの形」）
        state: {...},                // 前回の記録（無ければ新規）。変わるたびに onState で返す
@@ -36,12 +36,12 @@
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.7.0';
+  var VERSION='1.8.0';
   // 効果音（assets からの場所）。空なら鳴らさない。見本の「調整」で差しかえられる
-  var SOUNDS={glow:'',sheet:'sfx/紙を広げる1.mp3',openWet:'sfx/うごめく触手.mp3',strap:'sfx/ベルトを付ける.mp3',cover:'sfx/ページをめくる1.mp3',coverWet:'sfx/ねんえきネバネバ.mp3',
+  var SOUNDS={glow:'',sheet:'sfx/紙を広げる1.mp3',
     peek:'sfx/ページをめくる2.mp3',grow:'sfx/うごめく触手.mp3',grow2:'sfx/暗黒魔法.mp3',close:'sfx/本を閉じる1.mp3',saveOpen:'sfx/紙を広げる2.mp3',write:'sfx/シャーペンで字を書く.mp3',
     yithIn:'sfx/異次元空間.mp3',vanish:'sfx/ワープ.mp3',circle:'sfx/魔法陣を展開.mp3',burn:'sfx/マッチで火をつける.mp3',load:'sfx/ワープ.mp3'};
-  var SOUND_LABELS={glow:'物が光る',sheet:'シートを開く',openWet:'本を開く（うごめく音）',strap:'ベルトがほどける',cover:'表紙がめくれる',coverWet:'表紙（湿った音）',
+  var SOUND_LABELS={glow:'物が光る',sheet:'シートを開く',
     peek:'覗き込む',grow:'分岐が伸びる',grow2:'分岐が伸びる（重ね）',close:'閉じる',saveOpen:'セーブ枠を開く',write:'記す',
     yithIn:'イス人が現れる',vanish:'保存が消える',circle:'魔法陣',burn:'保存が現れる',load:'セーブへ戻る'};
   // 机の上の配置（舞台 1600x800 の中の位置・幅・傾き）
@@ -70,10 +70,6 @@
 '.nd-book{}',
 '.nd-book .bk-closed{position:relative!important;display:block}',
 '.nd-book .bk{position:absolute;left:0;top:0;width:100%;transition:opacity .6s,transform .9s}',
-'.nd-book .bk-open{left:-25.6%;top:11%;width:151%;opacity:0}',
-'.nd-book.isopen .bk-closed{opacity:0}.nd-book.isopen .bk-open{opacity:1}',
-'.nd-book .cover{position:absolute;left:0;top:0;width:100%;transform-origin:0% 60%;opacity:0}',
-'.nd-book .strap{position:absolute;width:76%;transition:transform 1s cubic-bezier(.5,0,.7,.4),opacity 1s}',
 '.nd-book .s1{left:9%;top:24%;transform:rotate(-22deg)}',
 '.nd-book .s2{left:13%;top:47%;transform:rotate(-22deg)}',
 '.nd-book .s3{left:22%;top:66%;transform:rotate(-20deg) scaleX(.9)}',
@@ -123,7 +119,6 @@
 '.nd-sv{position:absolute;z-index:25;inset:0;display:none;align-items:center;justify-content:center;background:#050302;opacity:0;transition:opacity .9s}',
 '.nd-sv.on{display:flex}.nd-sv.vis{opacity:1}',
 '.nd-svin{position:relative;width:min(94vw,calc(86dvh * 2));height:86dvh;perspective:2000px}',
-'.nd-bcover{position:absolute;left:50%;top:-1%;width:50.5%;height:102%;z-index:9;transform-origin:0 50%;border-radius:2px 8px 8px 2px;background-size:cover;background-position:center;box-shadow:0 0 30px #000;backface-visibility:hidden}',
 '.nd-tree{position:absolute;z-index:1;inset:15% 4% 3% 7%;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:none}',
 '.nd-tree::-webkit-scrollbar{display:none}',
 '.nd-tin{position:relative;padding:4% 2% 18%}',
@@ -211,13 +206,13 @@
     var room=el('div','nd-room'); room.style.backgroundImage='url('+B+'room.webp)';
     var desk=el('img','nd-desk'); desk.src=B+'desk.webp';
     function obj(cls,img,label){ var d=el('div','nd-obj '+cls); if(img){ var i=el('img'); i.src=B+img; d.appendChild(i); } if(label) d.appendChild(el('div','nd-label',label)); return d; }
-    var sheets=obj('nd-sheets','sheets.webp','ルート分岐表');
+    var sheets=obj('nd-sheets','cardbox.webp','ルート分岐表');
     var lantern=obj('nd-lantern','lantern.webp',null); lantern.style.cursor='default';
     var flame=el('div','nd-flame'); lantern.appendChild(flame);
     var ink=obj('nd-ink','ink.webp',null); ink.style.pointerEvents='none';
     var quill=obj('nd-quill','quill.webp','記す（セーブ）');
     var book=el('div','nd-obj nd-book');
-    book.innerHTML='<img class="bk bk-closed" src="'+B+'book-1.webp"><img class="bk bk-open" src="'+B+'book-open.webp"><img class="cover" src="'+B+'book-cover.webp">'+
+    book.innerHTML='<img class="bk bk-closed" alt="">'+
       '<div class="nd-label">探索者シート</div>';
     cam.appendChild(room); cam.appendChild(desk); cam.appendChild(lantern); cam.appendChild(sheets); cam.appendChild(book); cam.appendChild(ink); cam.appendChild(quill);
     var dark=el('div','nd-dark'), warm=el('div','nd-warm');
@@ -235,7 +230,6 @@
       '<div class="nd-tree"><div class="nd-tin"></div></div></div></div><div class="nd-cmsg">「保存」の印を押すと、その時へ戻れる</div>';
     var cback=el('button','nd-back','閉じる'); cback.type='button'; codex.appendChild(cback);
     host.appendChild(codex);
-    host.style.setProperty('--tex','url('+B+'page-tex.webp)');
     /* 探索者シート（本の中身） */
     var sv=el('div','nd-sv'), svin=el('div','nd-svin'); sv.appendChild(svin);
     var sback=el('button','nd-back','閉じる'); sback.type='button'; sv.appendChild(sback); host.appendChild(sv);
@@ -295,8 +289,6 @@
 
     function applyBook(){
       sheets.style.display=st.hasBook?'':'none';
-      book.classList.remove('isopen');  // 本は普段は閉じたまま（ベルトは最初の一度だけ）
-      book.querySelectorAll('.strap').forEach(function(s){ s.style.display='none'; });
     }
 
     /* ---------- 本を開く ---------- */
@@ -327,7 +319,7 @@
       sv.classList.add('on'); void sv.offsetWidth; sv.classList.add('vis'); await wait(700);
     }
     sback.addEventListener('click',async function(){ if(busy) return; sv.classList.remove('vis'); await wait(700); sv.classList.remove('on'); unpeek(); snd('close',.25,.9); closeBook(); });
-    function closeBook(){ book.classList.remove('isopen'); var cv=book.querySelector('.cover'); cv.style.transition='none'; cv.style.opacity='0'; cv.style.transform='none'; }
+    function closeBook(){}
     function unpeek(){ cam.style.transform=''; cam.classList.remove('peek'); }
 
     /* ---------- 分岐表 ---------- */
@@ -560,8 +552,7 @@
       markSeen:function(ids){ ids.forEach(function(id){ if(!has(id)) st.seen.push(id); }); emit(); },
       setHasBook:function(v){ st.hasBook=!!v; applyBook(); emit(); },
       getState:function(){ return JSON.parse(JSON.stringify(st)); },
-      setState:function(s){ st=Object.assign({seen:[],shown:[],opened:false,hasBook:true,hinted:false,saves:[null,null,null]},s||{}); applyBook();
-        book.querySelectorAll('.strap').forEach(function(x){ x.style.transform=''; x.style.opacity=''; }); var cv=book.querySelector('.cover'); cv.style.cssText=''; },
+      setState:function(s){ st=Object.assign({seen:[],shown:[],opened:false,hasBook:true,hinted:false,saves:[null,null,null]},s||{}); applyBook(); },
       openCodex:async function(){ await peek(sheets); await showCodex(); },
       openSheet:async function(){ await peek(book); await showSheet(); },
       setEdit:function(on,cb){ editing=!!on; editCb=cb||null; host.classList.toggle('editing',editing); unglow(); if(!editing) select(null); },
@@ -569,7 +560,7 @@
       setObj:function(k,v){ if(!layout[k]) return; Object.assign(layout[k],v); applyLayout(); if(o.onLayout) o.onLayout(JSON.parse(JSON.stringify(layout))); },
       getLayout:function(){ return JSON.parse(JSON.stringify(layout)); },
       resetLayout:function(){ layout=JSON.parse(JSON.stringify(LAYOUT)); applyLayout(); if(selKey) select(selKey); if(o.onLayout) o.onLayout(JSON.parse(JSON.stringify(layout))); },
-      previewBook:function(open){ book.classList.toggle('isopen',open==null?!!st.opened:!!open); book.querySelectorAll('.strap').forEach(function(x){ x.style.display=(open==null?st.opened:open)?'none':''; }); },
+      previewBook:function(){},
       getSounds:function(){ return Object.assign({},sounds); },
       setSound:function(k,p){ sounds[k]=p||''; if(o.onSounds) o.onSounds(Object.assign({},sounds)); },
       playSound:function(k){ return snd(k,.7); }
