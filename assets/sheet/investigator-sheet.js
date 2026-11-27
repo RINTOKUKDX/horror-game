@@ -1,5 +1,5 @@
 /* ============================================================================
-   探索者シート部品（InvestigatorSheet） v1.2.4
+   探索者シート部品（InvestigatorSheet） v1.2.5
    ----------------------------------------------------------------------------
    古びた羊皮紙の見開き。1ページ目＝探索者記録と技能、2ページ目＝所持品とバックストーリー。
    本体（index.html）も机メニュー（assets/nakoto/）も、これを呼ぶだけ。シートを直すときはこのファイルだけ。
@@ -16,7 +16,7 @@
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.2.4';
+  var VERSION='1.2.5';
   var SAMPLE={
     name:'貴方（見本）', job:'古書店の店主', age:'34／—', address:'（見本）', birth:'（見本）',
     abil:{STR:9,DEX:12,INT:13,CON:11,APP:10,POW:16,SIZ:13,EDU:14},
@@ -29,7 +29,8 @@
   };
   var CSS=`.isheet{perspective:1800px}
 .isheet .isleaf{position:absolute;z-index:4;pointer-events:none;transform-style:preserve-3d}
-.isheet .isleaf .face{position:absolute;inset:0;margin:0!important;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:3px;background-image:linear-gradient(90deg,transparent 48.6%,rgba(40,18,2,.38) 49.8%,rgba(255,235,190,.18) 50.4%,transparent 51.6%),linear-gradient(180deg,rgba(40,18,2,.35),transparent 7%,transparent 93%,rgba(40,18,2,.4)),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.045' numOctaves='4' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 .25  0 0 0 0 .14  0 0 0 0 .04  0 0 0 .675 -.19'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),linear-gradient(90deg,rgba(50,22,3,.8),transparent 7dvh,transparent calc(100% - 7dvh),rgba(50,22,3,.8)),linear-gradient(180deg,rgba(50,22,3,.8),transparent 7dvh,transparent calc(100% - 7dvh),rgba(50,22,3,.8)),radial-gradient(circle at 18% 22%,rgba(110,60,15,.28) 0,transparent 9%),radial-gradient(circle at 78% 70%,rgba(90,45,10,.3) 0,transparent 12%),radial-gradient(circle at 36% 84%,rgba(70,35,8,.22) 0,transparent 7%),radial-gradient(ellipse at 50% 50%,#dcc592 0%,#c9a96f 58%,#8a6535 100%);background-blend-mode:normal,normal,multiply,normal,normal,normal,normal,normal,normal;background-repeat:repeat,no-repeat}
+.isheet .isleaf .face{position:absolute;inset:0;margin:0!important;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:3px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.045' numOctaves='4' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 .25  0 0 0 0 .14  0 0 0 0 .04  0 0 0 .675 -.19'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),radial-gradient(circle at 18% 22%,rgba(110,60,15,.28) 0,transparent 9%),radial-gradient(circle at 78% 70%,rgba(90,45,10,.3) 0,transparent 12%),radial-gradient(circle at 36% 84%,rgba(70,35,8,.22) 0,transparent 7%),radial-gradient(ellipse at 50% 50%,#dcc592 0%,#c9a96f 58%,#8a6535 100%);background-blend-mode:multiply,normal,normal,normal,normal;background-repeat:repeat,no-repeat,no-repeat,no-repeat,no-repeat}
+.isheet .isleaf .face::before{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;opacity:var(--flat,1);background-image:linear-gradient(90deg,transparent 48.6%,rgba(40,18,2,.38) 49.8%,rgba(255,235,190,.18) 50.4%,transparent 51.6%),linear-gradient(180deg,rgba(40,18,2,.35),transparent 7%,transparent 93%,rgba(40,18,2,.4)),linear-gradient(90deg,rgba(50,22,3,.8),transparent 7dvh,transparent calc(100% - 7dvh),rgba(50,22,3,.8)),linear-gradient(180deg,rgba(50,22,3,.8),transparent 7dvh,transparent calc(100% - 7dvh),rgba(50,22,3,.8));background-size:var(--bs);background-position:var(--bp);background-repeat:no-repeat}
 .isheet .isleaf .face.back{transform:rotateY(180deg)}
 .isheet .isleaf .face>.pg{position:absolute;margin:0;flex:none;overflow:hidden}
 .isheet .isleaf .face.r::after{background:linear-gradient(270deg,rgba(40,18,2,var(--sh,0)),rgba(40,18,2,0) 75%)}
@@ -116,14 +117,15 @@ border:1.5px solid #3a2410;background:linear-gradient(90deg,rgba(255,240,200,.28
         c.style.cssText='left:'+(pg.offsetLeft-x)+'px;top:'+pg.offsetTop+'px;width:'+pg.offsetWidth+'px;height:'+pg.offsetHeight+'px';
         f.appendChild(c);
         // 紙の模様・シミ・影を、その面が重なる場所とぴったり合わせる
-        var sz=W+'px '+H+'px,'+W+'px '+H+'px,300px 300px', ps='', i; for(i=3;i<9;i++) sz+=','+W+'px '+H+'px';
-        for(i=0;i<9;i++) ps+=(i?',':'')+(-x)+'px 0px'; f.style.backgroundSize=sz; f.style.backgroundPosition=ps; return f; }
+        var wh=W+'px '+H+'px', sz='300px 300px', ps='', bs='', bp='', i, q=(-x)+'px 0px'; for(i=1;i<5;i++) sz+=','+wh;
+        for(i=0;i<5;i++) ps+=(i?',':'')+q; for(i=0;i<4;i++){ bs+=(i?',':'')+wh; bp+=(i?',':'')+q; }
+        f.style.backgroundSize=sz; f.style.backgroundPosition=ps; f.style.setProperty('--bs',bs); f.style.setProperty('--bp',bp); return f; }
       var front=face(fw?'':' r',fw?oldR:oldL,src,lx), back=face(fw?' back r':' back',fw?newL:newR,dst,land);
       leaf.appendChild(front); leaf.appendChild(back); el.appendChild(leaf);
       var t0=performance.now(), D=700;
       (function f(){ var k=Math.min(1,(performance.now()-t0)/D), e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
         leaf.style.transform='rotateY('+((fw?-180:180)*e).toFixed(2)+'deg)';
-        var sh=(Math.sin(e*Math.PI)*.5).toFixed(2); front.style.setProperty('--sh',sh); back.style.setProperty('--sh',sh);
+        var sh=(Math.sin(e*Math.PI)*.5).toFixed(2); front.style.setProperty('--sh',sh); back.style.setProperty('--sh',sh); var fl=(1-Math.sin(e*Math.PI)).toFixed(2); front.style.setProperty('--flat',fl); back.style.setProperty('--flat',fl);
         if(k<1) requestAnimationFrame(f); else { if(fw) pgs[0].innerHTML=newL; else pgs[1].innerHTML=newR; front.style.visibility='hidden'; back.style.transition='opacity .18s'; back.style.opacity='0'; setTimeout(function(){ leaf.remove(); flipping=false; },190); } })();
     }
     flip.addEventListener('click',function(e){ e.stopPropagation(); turn(pageNo?0:1); });
