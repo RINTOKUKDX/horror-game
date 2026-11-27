@@ -1,5 +1,5 @@
 /* ============================================================================
-   机メニュー＋ナコト写本 部品（NakotoDesk） v1.1.0
+   机メニュー＋ナコト写本 部品（NakotoDesk） v1.2.0
    ----------------------------------------------------------------------------
    机そのものがメニュー。写本＝ルート分岐表、羽ペン＝セーブ、探索者シート＝シート表示。
    本体は呼ぶだけ。見た目を作り直すときは、このファイルと assets/nakoto/ の絵だけを差しかえる。
@@ -36,7 +36,7 @@
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.1.0';
+  var VERSION='1.2.0';
   // 効果音（assets からの場所）。空なら鳴らさない。見本の「調整」で差しかえられる
   var SOUNDS={glow:'',sheet:'sfx/紙を広げる1.mp3',openWet:'sfx/うごめく触手.mp3',strap:'sfx/ベルトを付ける.mp3',cover:'sfx/ページをめくる1.mp3',coverWet:'sfx/ねんえきネバネバ.mp3',
     peek:'sfx/ページをめくる2.mp3',grow:'sfx/うごめく触手.mp3',grow2:'sfx/暗黒魔法.mp3',close:'sfx/本を閉じる1.mp3',saveOpen:'sfx/紙を広げる2.mp3',write:'sfx/シャーペンで字を書く.mp3',
@@ -110,15 +110,16 @@
 '.nd-page.l::after,.nd-page.r::after{content:"";position:absolute;top:0;bottom:0;width:14%;pointer-events:none}',
 '.nd-page.l::after{right:0;background:linear-gradient(90deg,rgba(0,0,0,0),rgba(40,20,5,.45))}',
 '.nd-page.r::after{left:0;background:linear-gradient(270deg,rgba(0,0,0,0),rgba(40,20,5,.45))}',
-'.nd-ptitle{text-align:center;font-size:clamp(15px,3.6dvh,26px);font-weight:700;letter-spacing:.4em;padding:6% 0 1%;color:#4a1c0c}',
-'.nd-psub{text-align:center;font-size:clamp(9px,1.8dvh,13px);letter-spacing:.3em;color:#7a5634;margin-bottom:4%}',
+'.nd-ptitle{text-align:center;font-family:"Cinzel","Times New Roman",serif;font-size:clamp(14px,3.4dvh,25px);font-weight:700;letter-spacing:.14em;padding:7% 0 1%;color:#4a1c0c}',
+'.nd-psub{text-align:center;font-size:clamp(11px,2.3dvh,16px);letter-spacing:.5em;color:#6a3a1c;margin-bottom:4%}',
+'.nd-page.r::before{content:"";position:absolute;inset:0;background:var(--tex) center/cover;transform:scale(-1,-1);pointer-events:none}',
 '.nd-chs{display:flex;flex-direction:column;gap:2.4dvh;padding:0 12%}',
 '.nd-ch{min-height:40px;padding:1.2dvh 2%;border-bottom:1px solid rgba(90,50,20,.35);font-size:clamp(12px,2.7dvh,19px);letter-spacing:.15em;cursor:pointer;display:flex;align-items:center;gap:10px}',
 '.nd-ch.sel{color:#8a1a10;font-weight:700}',
 '.nd-ch .mk{font-size:.8em;color:#9a2a18}',
 '.nd-ch.lock{cursor:default;color:transparent;position:relative}',
 '.nd-ch.lock::before{content:"";position:absolute;left:2%;right:30%;top:30%;bottom:30%;background:var(--noise);background-size:120px;opacity:.55;filter:blur(.6px);animation:nd-noise .25s steps(2) infinite}',
-'.nd-tree{position:absolute;inset:4% 3% 4% 9%;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:none}',
+'.nd-tree{position:absolute;z-index:1;inset:4% 3% 4% 9%;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:none}',
 '.nd-tree::-webkit-scrollbar{display:none}',
 '.nd-tin{position:relative;padding:4% 2% 18%}',
 '.nd-tin svg.ln{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}',
@@ -134,7 +135,7 @@
 '.nd-bx.end{background:#9a1010;color:#fff;border-color:#4a0606}',
 '.nd-bx.nz{border:1px dashed rgba(90,60,40,.6);background:var(--noise);background-size:90px;color:transparent;opacity:.7;animation:nd-noise .22s steps(2) infinite}',
 '@keyframes nd-noise{0%{background-position:0 0}50%{background-position:-37px 21px}100%{background-position:13px -29px}}',
-'.nd-tx{flex:1 1 auto;min-width:4em;font-size:clamp(12px,2.6dvh,18px);letter-spacing:.12em;line-height:1.3}',
+'.nd-tx{flex:1 1 auto;min-width:7em;font-size:clamp(12px,2.6dvh,18px);letter-spacing:.12em;line-height:1.3}',
 '.nd-row.endrow .nd-tx{color:#8a1010}',
 '.nd-grow{animation:nd-grow .9s cubic-bezier(.3,1.6,.5,1) both}',
 '@keyframes nd-grow{0%{transform:scale(.2,.05);opacity:0;filter:blur(4px)}60%{opacity:1}100%{transform:none;opacity:1;filter:none}}',
@@ -215,11 +216,11 @@
 
     /* 写本 */
     var codex=el('div','nd-codex');
-    codex.innerHTML='<div class="nd-spread"><div class="nd-page l"><div class="nd-ptitle">ナコト写本</div><div class="nd-psub">PNAKOTIC MANUSCRIPTS</div><div class="nd-chs"></div></div>'+
+    codex.innerHTML='<div class="nd-spread"><div class="nd-page l"><div class="nd-ptitle">Pnakotic Manuscripts</div><div class="nd-psub">ルート分岐表</div><div class="nd-chs"></div></div>'+
       '<div class="nd-page r"><div class="nd-tree"><div class="nd-tin"></div></div></div></div><div class="nd-cmsg">「保存」の印を押すと、その時へ戻れる</div>';
     var cback=el('button','nd-back','閉じる'); cback.type='button'; codex.appendChild(cback);
     host.appendChild(codex);
-    codex.querySelectorAll('.nd-page').forEach(function(p){ p.style.backgroundImage='url('+B+'page-tex.webp)'; });
+    codex.querySelector('.nd-page.l').style.backgroundImage='url('+B+'page-tex.webp)'; host.style.setProperty('--tex','url('+B+'page-tex.webp)');
     var chsEl=codex.querySelector('.nd-chs'), tree=codex.querySelector('.nd-tree'), tin=codex.querySelector('.nd-tin');
     (o.root||document.body).appendChild(host);
 
