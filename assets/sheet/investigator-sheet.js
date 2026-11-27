@@ -1,5 +1,5 @@
 /* ============================================================================
-   探索者シート部品（InvestigatorSheet） v1.1.0
+   探索者シート部品（InvestigatorSheet） v1.2.0
    ----------------------------------------------------------------------------
    古びた羊皮紙の見開き。1ページ目＝探索者記録と技能、2ページ目＝所持品とバックストーリー。
    本体（index.html）も机メニュー（assets/nakoto/）も、これを呼ぶだけ。シートを直すときはこのファイルだけ。
@@ -16,7 +16,7 @@
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.1.0';
+  var VERSION='1.2.0';
   var SAMPLE={
     name:'貴方（見本）', job:'古書店の店主', age:'34／—', address:'（見本）', birth:'（見本）',
     abil:{STR:9,DEX:12,INT:13,CON:11,APP:10,POW:16,SIZ:13,EDU:14},
@@ -28,10 +28,10 @@
     back:[['容姿','痩せた長身、古い眼鏡'],['特徴','古書の匂い'],['信念','真実を知りたい'],['傷跡',''],['重要な人々','亡き師'],['恐怖症・マニア',''],['意味のある場所','古書店の地下室'],['魔道書・呪文',''],['秘蔵の品',''],['遭遇した存在','']]
   };
   var CSS=`.isheet{perspective:1800px}
-.isheet .isleaf{position:absolute;top:1.2dvh;bottom:1.2dvh;width:calc(50% - 1.2vw);z-index:4;pointer-events:none;transform-style:preserve-3d;border-radius:3px;background:radial-gradient(ellipse at 50% 50%,#dcc592 0%,#c9a96f 62%,#9a7442 100%);box-shadow:inset 0 0 4dvh rgba(50,22,3,.6)}
-.isheet .isleaf.fw{left:50%;transform-origin:0 50%}
-.isheet .isleaf.bw{right:50%;transform-origin:100% 50%}
-.isheet .isleaf::after{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(90deg,rgba(40,18,2,var(--sh,0)),rgba(40,18,2,0) 70%)}
+.isheet .isleaf{position:absolute;z-index:4;pointer-events:none;transform-style:preserve-3d}
+.isheet .isleaf .face{position:absolute;inset:0;margin:0!important;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:3px;background:radial-gradient(ellipse at 50% 50%,#dcc592 0%,#cdae76 70%,#b08850 100%);box-shadow:inset 0 0 3dvh rgba(50,22,3,.45)}
+.isheet .isleaf .face.back{transform:rotateY(180deg)}
+.isheet .isleaf .face::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(40,18,2,var(--sh,0)),rgba(40,18,2,0) 75%)}
 .isheet{position:relative;display:flex;width:100%;height:100%;box-sizing:border-box;font-family:"Shippori Mincho","Noto Serif JP",serif;text-align:left;padding:1.6dvh 1.4vw;border-radius:5px;color:#2a1a08;overflow:hidden;
 background:
 radial-gradient(circle at 18% 22%,rgba(110,60,15,.28) 0,transparent 9%),
@@ -99,13 +99,21 @@ border:1.5px solid #3a2410;background:linear-gradient(90deg,rgba(255,240,200,.28
     // ページをめくる：紙が背から持ち上がって反対側へ倒れる
     function turn(to){
       if(flipping) return; flipping=true; if(o.onFlip) o.onFlip();
-      var fw=to>pageNo, leaf=document.createElement('div'); leaf.className='isleaf '+(fw?'fw':'bw'); el.appendChild(leaf);
-      var t0=performance.now(), D=650, swapped=false;
+      var fw=to>pageNo, oldL=pgs[0].innerHTML, oldR=pgs[1].innerHTML;
+      pageNo=to; render(); var newL=pgs[0].innerHTML, newR=pgs[1].innerHTML;
+      // めくっている間：めくられる側の下は新しいページ、反対側は古いページのまま
+      var src=fw?pgs[1]:pgs[0];
+      if(fw) pgs[0].innerHTML=oldL; else pgs[1].innerHTML=oldR;
+      var leaf=document.createElement('div'); leaf.className='isleaf';
+      leaf.style.cssText='left:'+src.offsetLeft+'px;top:'+src.offsetTop+'px;width:'+src.offsetWidth+'px;height:'+src.offsetHeight+'px;transform-origin:'+(fw?'0':'100%')+' 50%';
+      var front=document.createElement('div'); front.className='pg face'; front.innerHTML=fw?oldR:oldL;
+      var back=document.createElement('div'); back.className='pg face back'; back.innerHTML=fw?newL:newR;
+      leaf.appendChild(front); leaf.appendChild(back); el.appendChild(leaf);
+      var t0=performance.now(), D=700;
       (function f(){ var k=Math.min(1,(performance.now()-t0)/D), e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
-        var ang=(fw?-180:180)*e; leaf.style.transform='rotateY('+ang+'deg)'; leaf.style.setProperty('--sh',(Math.sin(e*Math.PI)*.55).toFixed(2));
-        leaf.style.opacity=k>.97?(1-(k-.97)/.03):1;
-        if(!swapped&&k>=.5){ swapped=true; pageNo=to; render(); }
-        if(k<1) requestAnimationFrame(f); else { leaf.remove(); flipping=false; } })();
+        leaf.style.transform='rotateY('+((fw?-180:180)*e).toFixed(2)+'deg)';
+        var sh=(Math.sin(e*Math.PI)*.5).toFixed(2); front.style.setProperty('--sh',sh); back.style.setProperty('--sh',sh);
+        if(k<1) requestAnimationFrame(f); else { if(fw) pgs[0].innerHTML=newL; else pgs[1].innerHTML=newR; leaf.remove(); flipping=false; } })();
     }
     flip.addEventListener('click',function(e){ e.stopPropagation(); turn(pageNo?0:1); });
     render();
