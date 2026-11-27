@@ -1,7 +1,7 @@
 /* ============================================================================
-   机メニュー＋ナコト写本 部品（NakotoDesk） v1.2.0
+   机メニュー＋ナコト写本 部品（NakotoDesk） v1.3.0
    ----------------------------------------------------------------------------
-   机そのものがメニュー。写本＝ルート分岐表、羽ペン＝セーブ、探索者シート＝シート表示。
+   机そのものがメニュー。本＝探索者シート（部品 assets/sheet/investigator-sheet.js）、紙の束＝ルート分岐表（付箋付きファイル）、羽ペン＝セーブ。
    本体は呼ぶだけ。見た目を作り直すときは、このファイルと assets/nakoto/ の絵だけを差しかえる。
 
    使い方：
@@ -16,7 +16,7 @@
        current: 'c1-q2',            // 今いる場所（セーブ位置になる）
        onState: function(state){ 保存する },
        onLoad:  function(slot, save){ そのセーブから再開する },
-       onSheet: function(){ 探索者シートを開く },
+       sheetData: function(){ return {...}; },  // 探索者シートの中身（InvestigatorSheet の形）。省略で見本
        onClose: function(){ 机を閉じてゲームに戻る }
      });
      desk.show();  desk.hide();
@@ -36,17 +36,17 @@
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.2.0';
+  var VERSION='1.3.0';
   // 効果音（assets からの場所）。空なら鳴らさない。見本の「調整」で差しかえられる
   var SOUNDS={glow:'',sheet:'sfx/紙を広げる1.mp3',openWet:'sfx/うごめく触手.mp3',strap:'sfx/ベルトを付ける.mp3',cover:'sfx/ページをめくる1.mp3',coverWet:'sfx/ねんえきネバネバ.mp3',
     peek:'sfx/ページをめくる2.mp3',grow:'sfx/うごめく触手.mp3',grow2:'sfx/暗黒魔法.mp3',close:'sfx/本を閉じる1.mp3',saveOpen:'sfx/紙を広げる2.mp3',write:'sfx/シャーペンで字を書く.mp3',
     yithIn:'sfx/異次元空間.mp3',vanish:'sfx/ワープ.mp3',circle:'sfx/魔法陣を展開.mp3',burn:'sfx/マッチで火をつける.mp3',load:'sfx/ワープ.mp3'};
   var SOUND_LABELS={glow:'物が光る',sheet:'シートを開く',openWet:'本を開く（うごめく音）',strap:'ベルトがほどける',cover:'表紙がめくれる',coverWet:'表紙（湿った音）',
-    peek:'覗き込む',grow:'分岐が伸びる',grow2:'分岐が伸びる（重ね）',close:'写本を閉じる',saveOpen:'セーブ枠を開く',write:'記す',
+    peek:'覗き込む',grow:'分岐が伸びる',grow2:'分岐が伸びる（重ね）',close:'閉じる',saveOpen:'セーブ枠を開く',write:'記す',
     yithIn:'イス人が現れる',vanish:'保存が消える',circle:'魔法陣',burn:'保存が現れる',load:'セーブへ戻る'};
   // 机の上の配置（舞台 1600x800 の中の位置・幅・傾き）
   var LAYOUT={desk:{x:90,y:-30,w:1440,r:0},sheets:{x:200,y:470,w:340,r:-9},lantern:{x:1050,y:150,w:165,r:0},book:{x:560,y:380,w:430,r:0},ink:{x:1320,y:520,w:115,r:0},quill:{x:1120,y:440,w:240,r:18}};
-  var OBJ_LABELS={desk:'机',sheets:'探索者シート',lantern:'ランタン',book:'ナコト写本',ink:'インク瓶',quill:'羽ペン'};
+  var OBJ_LABELS={desk:'机',sheets:'分岐表（紙の束）',lantern:'ランタン',book:'探索者シート（本）',ink:'インク瓶',quill:'羽ペン'};
   var KANJI=['壱','弐','参'];
 
   var CSS=[
@@ -104,22 +104,25 @@
 /* 写本（分岐表） */
 '.nd-codex{position:absolute;z-index:25;inset:0;display:none;align-items:center;justify-content:center;background:#050302;opacity:0;transition:opacity .9s}',
 '.nd-codex.on{display:flex}.nd-codex.vis{opacity:1}',
-'.nd-spread{position:relative;width:min(96vw,calc(92dvh * 1.75));height:min(92dvh,calc(96vw / 1.75));padding:1.6% 1.4%;background:radial-gradient(ellipse at 50% 40%,#3b2516,#1c110a 70%);border-radius:10px;box-shadow:0 0 60px #000,inset 0 0 30px #000;display:flex}',
-'.nd-page{position:relative;flex:1;height:100%;background-size:cover;overflow:hidden;color:#3a2412;box-shadow:inset 0 0 40px rgba(60,30,10,.55)}',
-'.nd-page.l{border-radius:4px 0 0 4px}.nd-page.r{border-radius:0 4px 4px 0}',
-'.nd-page.l::after,.nd-page.r::after{content:"";position:absolute;top:0;bottom:0;width:14%;pointer-events:none}',
-'.nd-page.l::after{right:0;background:linear-gradient(90deg,rgba(0,0,0,0),rgba(40,20,5,.45))}',
-'.nd-page.r::after{left:0;background:linear-gradient(270deg,rgba(0,0,0,0),rgba(40,20,5,.45))}',
-'.nd-ptitle{text-align:center;font-family:"Cinzel","Times New Roman",serif;font-size:clamp(14px,3.4dvh,25px);font-weight:700;letter-spacing:.14em;padding:7% 0 1%;color:#4a1c0c}',
-'.nd-psub{text-align:center;font-size:clamp(11px,2.3dvh,16px);letter-spacing:.5em;color:#6a3a1c;margin-bottom:4%}',
-'.nd-page.r::before{content:"";position:absolute;inset:0;background:var(--tex) center/cover;transform:scale(-1,-1);pointer-events:none}',
-'.nd-chs{display:flex;flex-direction:column;gap:2.4dvh;padding:0 12%}',
-'.nd-ch{min-height:40px;padding:1.2dvh 2%;border-bottom:1px solid rgba(90,50,20,.35);font-size:clamp(12px,2.7dvh,19px);letter-spacing:.15em;cursor:pointer;display:flex;align-items:center;gap:10px}',
-'.nd-ch.sel{color:#8a1a10;font-weight:700}',
-'.nd-ch .mk{font-size:.8em;color:#9a2a18}',
-'.nd-ch.lock{cursor:default;color:transparent;position:relative}',
-'.nd-ch.lock::before{content:"";position:absolute;left:2%;right:30%;top:30%;bottom:30%;background:var(--noise);background-size:120px;opacity:.55;filter:blur(.6px);animation:nd-noise .25s steps(2) infinite}',
-'.nd-tree{position:absolute;z-index:1;inset:4% 3% 4% 9%;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:none}',
+'.nd-file{position:relative;width:min(84vw,calc(88dvh * 1.62));height:min(88dvh,calc(84vw / 1.62));margin-left:9vw}',
+'.nd-file::before{content:"";position:absolute;inset:-2.2% -1.6% -2.6% -1%;border-radius:4px 10px 10px 4px;background:radial-gradient(circle at 70% 90%,rgba(20,10,4,.45) 0,transparent 14%),radial-gradient(circle at 12% 18%,rgba(25,12,4,.4) 0,transparent 10%),linear-gradient(135deg,#6a4c2c,#4a331c 60%,#3a2814);box-shadow:0 0 50px #000,inset 0 0 30px rgba(0,0,0,.6)}',
+'.nd-fsheet{position:absolute;inset:0;border-radius:2px 6px 6px 2px;overflow:hidden;color:#3a2412;background:radial-gradient(circle at 82% 14%,rgba(95,52,14,.3) 0,transparent 9%),radial-gradient(circle at 22% 84%,rgba(80,42,10,.28) 0,transparent 11%),radial-gradient(circle at 64% 58%,transparent 5.6%,rgba(105,58,16,.3) 6.2%,rgba(105,58,16,.1) 6.9%,transparent 7.6%),radial-gradient(circle at 40% 10%,rgba(60,30,8,.18) 0,transparent 6%),var(--tex) center/cover;box-shadow:inset 0 0 60px rgba(70,35,8,.75),inset 0 0 6px rgba(40,20,5,.6)}',
+'.nd-fsheet::after{content:"";position:absolute;left:44%;top:-1.2%;width:12%;height:5.5%;border-radius:0 0 4px 4px;background:linear-gradient(#8a7a64,#4c4234);box-shadow:0 2px 4px rgba(0,0,0,.5);pointer-events:none}',
+'.nd-fhead{position:absolute;left:4%;right:4%;top:5%;display:flex;align-items:baseline;gap:3%;padding-bottom:1.2%;border-bottom:2px double rgba(90,45,15,.45)}',
+'.nd-ptitle{font-family:"Cinzel","Times New Roman",serif;font-size:clamp(13px,3.2dvh,24px);font-weight:700;letter-spacing:.12em;color:#4a1c0c;white-space:nowrap}',
+'.nd-psub{font-size:clamp(10px,2.2dvh,15px);letter-spacing:.4em;color:#6a3a1c;white-space:nowrap}',
+'.nd-chtitle{margin-left:auto;font-size:clamp(12px,2.8dvh,19px);font-weight:700;letter-spacing:.15em;color:#7a1a10;white-space:nowrap}',
+'.nd-tabs{position:absolute;right:100%;top:9%;display:flex;flex-direction:column;gap:1.2dvh;align-items:flex-end;margin-right:-6px}',
+'.nd-tab{position:relative;min-height:42px;width:clamp(70px,10vw,120px);padding:.8dvh 10px .8dvh 8px;border-radius:7px 0 0 7px;font-size:clamp(11px,2.6dvh,16px);letter-spacing:.12em;color:#2e1608;background:var(--c);box-shadow:inset 0 0 14px rgba(60,30,5,.55),-2px 3px 5px rgba(0,0,0,.55);filter:sepia(.35) saturate(.7);transform:translateX(10px);opacity:.82;cursor:pointer;display:flex;flex-direction:column;justify-content:center;transition:transform .3s,opacity .3s}',
+'.nd-tab::after{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(circle at 30% 70%,rgba(60,30,5,.3) 0,transparent 40%),radial-gradient(circle at 80% 20%,rgba(255,240,200,.2) 0,transparent 30%);pointer-events:none}',
+'.nd-tab.sel{transform:translateX(0);opacity:1;font-weight:700;z-index:2}',
+'.nd-tab small{font-size:.72em;color:#7a1a10;letter-spacing:0}',
+'.nd-tab.lock{cursor:default;color:transparent}',
+'.nd-tab.lock::before{content:"";position:absolute;left:14%;right:14%;top:32%;bottom:32%;background:var(--noise);background-size:110px;opacity:.6;animation:nd-noise .25s steps(2) infinite}',
+'.nd-sv{position:absolute;z-index:25;inset:0;display:none;align-items:center;justify-content:center;background:#050302;opacity:0;transition:opacity .9s}',
+'.nd-sv.on{display:flex}.nd-sv.vis{opacity:1}',
+'.nd-svin{width:min(94vw,calc(86dvh * 2));height:86dvh}',
+'.nd-tree{position:absolute;z-index:1;inset:15% 4% 3% 7%;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:none}',
 '.nd-tree::-webkit-scrollbar{display:none}',
 '.nd-tin{position:relative;padding:4% 2% 18%}',
 '.nd-tin svg.ln{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}',
@@ -196,14 +199,14 @@
     var room=el('div','nd-room'); room.style.backgroundImage='url('+B+'room.webp)';
     var desk=el('img','nd-desk'); desk.src=B+'desk.webp';
     function obj(cls,img,label){ var d=el('div','nd-obj '+cls); if(img){ var i=el('img'); i.src=B+img; d.appendChild(i); } if(label) d.appendChild(el('div','nd-label',label)); return d; }
-    var sheets=obj('nd-sheets','sheets.webp','探索者シート');
+    var sheets=obj('nd-sheets','sheets.webp','ルート分岐表');
     var lantern=obj('nd-lantern','lantern.webp',null); lantern.style.cursor='default';
     var flame=el('div','nd-flame'); lantern.appendChild(flame);
     var ink=obj('nd-ink','ink.webp',null); ink.style.pointerEvents='none';
     var quill=obj('nd-quill','quill.webp','記す（セーブ）');
     var book=el('div','nd-obj nd-book');
     book.innerHTML='<img class="bk bk-closed" src="'+B+'book-closed.webp"><img class="bk bk-open" src="'+B+'book-open.webp"><img class="cover" src="'+B+'book-cover.webp">'+
-      '<img class="strap s1" src="'+B+'strap-1.webp"><img class="strap s2" src="'+B+'strap-2.webp"><img class="strap s3" src="'+B+'strap-3.webp"><div class="nd-label">ナコト写本</div>';
+      '<img class="strap s1" src="'+B+'strap-1.webp"><img class="strap s2" src="'+B+'strap-2.webp"><img class="strap s3" src="'+B+'strap-3.webp"><div class="nd-label">探索者シート</div>';
     cam.appendChild(room); cam.appendChild(desk); cam.appendChild(lantern); cam.appendChild(sheets); cam.appendChild(book); cam.appendChild(ink); cam.appendChild(quill);
     var dark=el('div','nd-dark'), warm=el('div','nd-warm');
     cam.appendChild(dark); cam.appendChild(warm);
@@ -216,12 +219,16 @@
 
     /* 写本 */
     var codex=el('div','nd-codex');
-    codex.innerHTML='<div class="nd-spread"><div class="nd-page l"><div class="nd-ptitle">Pnakotic Manuscripts</div><div class="nd-psub">ルート分岐表</div><div class="nd-chs"></div></div>'+
-      '<div class="nd-page r"><div class="nd-tree"><div class="nd-tin"></div></div></div></div><div class="nd-cmsg">「保存」の印を押すと、その時へ戻れる</div>';
+    codex.innerHTML='<div class="nd-file"><div class="nd-tabs"></div><div class="nd-fsheet"><div class="nd-fhead"><div class="nd-ptitle">Pnakotic Manuscripts</div><div class="nd-psub">ルート分岐表</div><div class="nd-chtitle"></div></div>'+
+      '<div class="nd-tree"><div class="nd-tin"></div></div></div></div><div class="nd-cmsg">「保存」の印を押すと、その時へ戻れる</div>';
     var cback=el('button','nd-back','閉じる'); cback.type='button'; codex.appendChild(cback);
     host.appendChild(codex);
-    codex.querySelector('.nd-page.l').style.backgroundImage='url('+B+'page-tex.webp)'; host.style.setProperty('--tex','url('+B+'page-tex.webp)');
-    var chsEl=codex.querySelector('.nd-chs'), tree=codex.querySelector('.nd-tree'), tin=codex.querySelector('.nd-tin');
+    host.style.setProperty('--tex','url('+B+'page-tex.webp)');
+    /* 探索者シート（本の中身） */
+    var sv=el('div','nd-sv'), svin=el('div','nd-svin'); sv.appendChild(svin);
+    var sback=el('button','nd-back','閉じる'); sback.type='button'; sv.appendChild(sback); host.appendChild(sv);
+    var isheet=null;
+    var chsEl=codex.querySelector('.nd-tabs'), chTitle=codex.querySelector('.nd-chtitle'), tree=codex.querySelector('.nd-tree'), tin=codex.querySelector('.nd-tin');
     (o.root||document.body).appendChild(host);
 
     /* ---------- 配置 ---------- */
@@ -269,12 +276,12 @@
     }
     book.addEventListener('click',function(e){ tapObj(e,book,openBook); });
     quill.addEventListener('click',function(e){ tapObj(e,quill,openSave); });
-    sheets.addEventListener('click',function(e){ tapObj(e,sheets,function(){ snd('sheet',.6); if(o.onSheet) o.onSheet(); else say('探索者シートは準備中'); }); });
+    sheets.addEventListener('click',function(e){ tapObj(e,sheets,async function(){ busy=true; snd('sheet',.6); await peek(sheets); await showCodex(); busy=false; }); });
     stage.addEventListener('click',function(){ if(!editing) unglow(); });
     back.addEventListener('click',function(){ if(busy) return; if(o.onClose) o.onClose(); else hide(); });
 
     function applyBook(){
-      book.classList.toggle('nobook',!st.hasBook);
+      sheets.style.display=st.hasBook?'':'none';
       book.classList.toggle('isopen',!!st.opened);
       book.querySelectorAll('.strap').forEach(function(s){ s.style.display=st.opened?'none':''; });
     }
@@ -306,38 +313,49 @@
         await wait(300);
         fadeOut(wet,1500);
       }
-      await peek();
+      await peek(book);
+      await showSheet();
       busy=false;
     }
 
     /* 覗き込む → 写本を開く */
-    async function peek(){
-      var r=book.getBoundingClientRect(), sr=stage.getBoundingClientRect();
+    async function peek(target){
+      var r=(target||book).getBoundingClientRect(), sr=stage.getBoundingClientRect();
       var s=sr.width/1600, cx=(r.left+r.width/2-sr.left)/s, cy=(r.top+r.height*.55-sr.top)/s;
       cam.style.transformOrigin=cx+'px '+cy+'px';
       cam.style.transform='translate('+(800-cx)+'px,'+(400-cy)+'px) scale(2.6)';
       cam.classList.add('peek');
       snd('peek',.6,.7);
       await wait(1100);
-      await showCodex();
     }
+    async function showSheet(){
+      if(!isheet && window.InvestigatorSheet) isheet=InvestigatorSheet.create({root:svin, data:o.sheetData});
+      else if(isheet) isheet.render();
+      if(!isheet) svin.textContent='探索者シートの部品が読み込まれていません';
+      sv.classList.add('on'); void sv.offsetWidth; sv.classList.add('vis'); await wait(700);
+    }
+    sback.addEventListener('click',async function(){ if(busy) return; sv.classList.remove('vis'); await wait(700); sv.classList.remove('on'); unpeek(); snd('close',.25,.9); });
     function unpeek(){ cam.style.transform=''; cam.classList.remove('peek'); }
 
     /* ---------- 分岐表 ---------- */
     var selCh=null;
     function chReached(c){ return c.nodes.some(function(n){ return has(n.id); }); }
     function nodeChapter(id){ for(var i=0;i<chart.chapters.length;i++){ if(chart.chapters[i].nodes.some(function(n){return n.id===id;})) return chart.chapters[i]; } return null; }
+    var TAB_COLORS=['#c9a46a','#b98a7a','#9aa88a','#c7b48a','#a89ab0','#b8a070'];
     function renderChapters(){
       chsEl.innerHTML='';
-      chart.chapters.forEach(function(c){
-        var ok=chReached(c), d=el('div','nd-ch'+(ok?'':' lock')+(selCh===c?' sel':''));
+      chart.chapters.forEach(function(c,ci){
+        var ok=chReached(c), d=el('div','nd-tab'+(ok?'':' lock')+(selCh===c?' sel':''));
+        d.style.setProperty('--c',TAB_COLORS[ci%TAB_COLORS.length]);
         if(ok){
           var marks=st.saves.map(function(sv,i){ return sv&&nodeChapter(sv.node)===c?KANJI[i]:''; }).join('');
-          d.innerHTML='<span>'+c.title+'</span>'+(marks?'<span class="mk">保存 '+marks+'</span>':'');
-          d.addEventListener('click',function(){ if(busy) return; selCh=c; renderChapters(); renderTree(false); });
-        } else d.textContent='？？？';
+          var m=c.title.match(/^(第\S+?章)\s*(.*)$/);
+          d.innerHTML='<span>'+(m?m[1]:c.title)+'</span>'+(marks?'<small>保存 '+marks+'</small>':'');
+          d.addEventListener('click',function(){ if(busy) return; selCh=c; renderChapters(); renderTree(false); tree.scrollTop=0; });
+        } else d.textContent='？';
         chsEl.appendChild(d);
       });
+      chTitle.textContent=selCh?selCh.title:'';
     }
 
     var rowsById={};
@@ -465,8 +483,8 @@
       busy=true; unglow();
       var old=st.saves[i];
       snd('write',.35,.7);
-      if(!st.hasBook||!st.opened){ st.saves[i]={node:current,time:Date.now()}; emit(); say('記した（'+KANJI[i]+'）'); busy=false; return; }
-      await peek();
+      if(!st.hasBook){ st.saves[i]={node:current,time:Date.now()}; emit(); say('記した（'+KANJI[i]+'）'); busy=false; return; }
+      await peek(sheets); await showCodex({noGrow:true});
       var cOld=old&&nodeChapter(old.node);
       if(old && old.node!==current && cOld){
         // 古い印へ
@@ -540,7 +558,7 @@
       cancelAnimationFrame(raf); raf=requestAnimationFrame(flick);
       if(!st.hinted){ await wait(900); [book,quill,sheets].forEach(function(x){ if(x.offsetParent!==null){ x.classList.remove('hint'); void x.offsetWidth; x.classList.add('hint'); } }); st.hinted=true; emit(); say('光る物に触れてみよう',2600); }
     }
-    function hide(){ host.classList.add('gone'); setTimeout(function(){ host.hidden=true; cancelAnimationFrame(raf); codex.classList.remove('on','vis'); unpeek(); },700); }
+    function hide(){ host.classList.add('gone'); setTimeout(function(){ host.hidden=true; cancelAnimationFrame(raf); codex.classList.remove('on','vis'); sv.classList.remove('on','vis'); unpeek(); },700); }
 
     return {
       show:show, hide:hide, version:VERSION,
@@ -550,7 +568,8 @@
       getState:function(){ return JSON.parse(JSON.stringify(st)); },
       setState:function(s){ st=Object.assign({seen:[],shown:[],opened:false,hasBook:true,hinted:false,saves:[null,null,null]},s||{}); applyBook();
         book.querySelectorAll('.strap').forEach(function(x){ x.style.transform=''; x.style.opacity=''; }); var cv=book.querySelector('.cover'); cv.style.cssText=''; },
-      openCodex:function(){ return peek(); },
+      openCodex:async function(){ await peek(sheets); await showCodex(); },
+      openSheet:async function(){ await peek(book); await showSheet(); },
       setEdit:function(on,cb){ editing=!!on; editCb=cb||null; host.classList.toggle('editing',editing); unglow(); if(!editing) select(null); },
       selectObj:function(k){ select(k); },
       setObj:function(k,v){ if(!layout[k]) return; Object.assign(layout[k],v); applyLayout(); if(o.onLayout) o.onLayout(JSON.parse(JSON.stringify(layout))); },
