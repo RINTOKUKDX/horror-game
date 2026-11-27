@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>探索者づくり 見本 v1.0</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
+<style>
+  /* 探索者づくりの見本。計算は assets/charmake/character-rules.js、ダイスは assets/dice/dice-engine.js（どちらも部品） */
+  :root{ --gold:#c7b07c; --fg:#e8e2da; --dim:#928b82; --serif:'Shippori Mincho','Noto Serif JP','Hiragino Mincho ProN',serif; color-scheme:dark }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
+  html,body{width:100vw;height:100dvh;overflow:hidden;background:#050403;color:var(--fg);font-family:var(--serif);letter-spacing:.04em}
+  button,select,input{font-family:inherit;color:inherit}
+  #app{position:absolute;inset:0;display:grid;grid-template-columns:30vw 1fr;gap:1.6vw;padding:calc(2dvh + env(safe-area-inset-top,0px)) calc(2vw + env(safe-area-inset-right,0px)) 2dvh calc(2vw + env(safe-area-inset-left,0px))}
+  .box{background:rgba(20,14,9,.9);border:1px solid #6b5630;border-radius:4px;padding:1.6dvh 1.2vw;overflow:auto;touch-action:pan-y}
+  h2{font-size:3.4dvh;color:var(--gold);font-weight:600;margin-bottom:1.2dvh}
+  label{display:flex;align-items:center;justify-content:space-between;gap:.8vw;font-size:3dvh;margin:.9dvh 0}
+  select,input[type=text]{font-size:3dvh;padding:.7dvh .6vw;background:#0c0a08;border:1px solid #4a3a22;border-radius:3px;min-width:9vw}
+  input[type=text]{user-select:text;width:14vw}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:0 2vw}
+  .rest{font-size:3.4dvh;margin:1.2dvh 0;color:var(--gold)}
+  .rest.bad{color:#d84444}
+  .go{width:100%;font-size:3.6dvh;padding:1.6dvh 0;background:#2a1010;border:1px solid #8c1414;border-radius:3px;letter-spacing:.3em;margin-top:1dvh}
+  .go:disabled{opacity:.35}
+  table{border-collapse:collapse;width:100%;font-size:2.8dvh}
+  th,td{padding:.5dvh .4vw;text-align:right;border-bottom:1px solid #3a2e1c}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--dim);font-weight:400;font-size:2.4dvh}
+  td.f{color:#f0d890;font-size:3.2dvh}
+  .st{display:grid;grid-template-columns:repeat(5,1fr);gap:1vw;margin-top:1.4dvh;text-align:center}
+  .st div{background:#0c0a08;border:1px solid #4a3a22;border-radius:3px;padding:1dvh 0}
+  .st small{display:block;font-size:2.3dvh;color:var(--dim)}
+  .st b{font-size:5dvh;font-weight:600}
+  .note{font-size:2.4dvh;color:var(--dim);margin-top:1dvh;line-height:1.6}
+  #dice{position:absolute;inset:0;z-index:40;display:none;background:rgba(0,0,0,.6);touch-action:none}
+  #dice.on{display:block}
+  .ver{position:absolute;left:calc(1vw + env(safe-area-inset-left,0px));bottom:.4dvh;font-size:2dvh;color:#6c6455;pointer-events:none;z-index:5}
+  #start{position:fixed;inset:0;z-index:90;background:#050403;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2dvh;text-align:center}
+  #start b{font-size:6dvh;font-weight:600} #start span{font-size:3.4dvh;color:var(--dim)}
+  #portrait{position:fixed;inset:0;z-index:100;background:#050403;display:none;align-items:center;justify-content:center;text-align:center;padding:24px;font-size:16px}
+  @media (orientation:portrait){#portrait{display:flex}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="box" id="left">
+    <h2>探索者づくり</h2>
+    <label>名前 <input type="text" id="name" value="貴方（見本）" autocomplete="off"></label>
+    <label>職業 <input type="text" id="job" value="古書店の店主" autocomplete="off"></label>
+    <label>年齢 <select id="age"></select></label>
+    <div class="rest" id="rest"></div>
+    <button type="button" class="go" id="go">決定（ダイスで決める）</button>
+    <p class="note">能力値を配って「決定」を押すと、8つのダイスが一気に転がり、配った値から上下して決まります。高く狙うほど幅が広がります。</p>
+  </div>
+  <div class="box" id="right">
+    <h2 id="rtitle">能力値を振り分ける</h2>
+    <div class="stats" id="stats"></div>
+    <div id="result" style="display:none"></div>
+  </div>
+</div>
+<div id="dice"></div>
+<div class="ver">探索者づくり 見本 v1.0</div>
+<div id="start" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span style="font-size:2.4dvh;color:#6c6455">探索者づくり 見本 v1.0</span></div>
+<div id="portrait">スマホを横向きにしてください</div>
+
+<!-- 部品を直したら ?v= を上げる（スマホに古い部品が残るのを防ぐ） -->
+<script src="../assets/charmake/character-rules.js?v=1.0.0"></script>
+<script src="../assets/dice/dice-engine.js?v=1.5.0"></script>
+<script>
+(function(){
+  'use strict';
+  var $=function(id){ return document.getElementById(id); };
+  var R=HorrorCharRules, C=R.cfg;
+  var alloc={}; C.stats.forEach(function(k){ alloc[k]=Math.round(C.total/C.stats.length/C.allocStep)*C.allocStep; });
+  // 年齢
+  for(var a=C.ageMin;a<=C.ageMax;a++){ var o=document.createElement('option'); o.value=a; o.textContent=a+'歳'; if(a===34) o.selected=true; $('age').appendChild(o); }
+  // 能力値の振り分け（ドロップダウン）
+  C.stats.forEach(function(k){
+    var lb=document.createElement('label'), sel=document.createElement('select'); lb.textContent=k+' ';
+    for(var v=C.allocMin;v<=C.allocMax;v+=C.allocStep){ var o=document.createElement('option'); o.value=v; o.textContent=v; if(v===alloc[k]) o.selected=true; sel.appendChild(o); }
+    sel.addEventListener('change',function(){ alloc[k]=+sel.value; refresh(); });
+    lb.appendChild(sel); $('stats').appendChild(lb);
+  });
+  function sum(){ return C.stats.reduce(function(s,k){ return s+alloc[k]; },0); }
+  function refresh(){
+    var left=C.total-sum(), el=$('rest');
+    el.textContent='残り '+left+' / '+C.total; el.className='rest'+(left<0?' bad':'');
+    $('go').disabled=(left!==0);
+  }
+  refresh();
+
+  // ---- ダイス（部品）----
+  var dice=null;
+  function getDice(){ if(!dice) dice=HorrorDice.create({root:$('dice'),tapToClose:true,fadeEl:$('dice'),cutin:false}); return dice; }
+  function rollParts(formula){
+    var e=getDice(), host=$('dice'); host.classList.add('on'); e.start();
+    return e.roll({formula:formula}).then(function(r){ e.stop(); host.classList.remove('on'); return r.parts; });
+  }
+  $('go').addEventListener('click',function(){
+    var age=+$('age').value;
+    rollParts(R.diceFormula()).then(function(dv){
+      return rollParts(R.luckFormula()).then(function(lv){ show(R.makeStats(alloc,age,dv),R.luckFromDice(lv),age); });
+    });
+  });
+  function sgn(n){ return n>0?'＋'+n:n<0?'−'+(-n):'±0'; }
+  function show(res,luck,age){
+    var d=R.derived(res.stats), h='<table><tr><th>能力値</th><th>配った値</th><th>ダイス（±幅）</th><th>年齢</th><th>決定</th></tr>';
+    res.rows.forEach(function(r){ h+='<tr><td>'+r.key+'</td><td>'+r.alloc+'</td><td>'+sgn(r.dice)+'（±'+r.swing+'）</td><td>'+sgn(r.age)+'</td><td class="f">'+r.final+'</td></tr>'; });
+    h+='</table><div class="st"><div><small>体力</small><b>'+d.hp+'</b></div><div><small>MP</small><b>'+d.mp+'</b></div><div><small>正気度</small><b>'+d.san+'</b></div><div><small>行動P</small><b>'+d.ap+'</b></div><div><small>幸運</small><b>'+luck+'</b></div></div>'+
+      '<button type="button" class="go" id="again">もう一度つくる</button>';
+    $('stats').style.display='none'; $('result').innerHTML=h; $('result').style.display='block'; $('rtitle').textContent=$('name').value+'（'+age+'歳）　'+$('job').value;
+    $('again').addEventListener('click',function(){ $('result').style.display='none'; $('stats').style.display=''; $('rtitle').textContent='能力値を振り分ける'; });
+  }
+
+  // ---- 全画面＋横向き ----
+  function isFull(){ return document.fullscreenElement||document.webkitFullscreenElement; }
+  async function begin(){
+    var el=document.documentElement;
+    try{ if(!isFull()){ if(el.requestFullscreen) await el.requestFullscreen(); else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen(); } }catch(_){ }
+    try{ if(screen.orientation&&screen.orientation.lock) await screen.orientation.lock('landscape'); }catch(_){ }
+    $('start').style.display='none'; getDice().stop();
+  }
+  $('start').addEventListener('click',begin);
+})();
+</script>
+</body>
+</html>

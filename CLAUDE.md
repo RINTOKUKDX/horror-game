@@ -14,4 +14,5 @@
 ## 今ある部品
 - `assets/sheet/investigator-sheet.js` 探索者シート
 - `assets/picker/asset-picker.js` 素材えらび（効果音・背景・BGM）
+- `assets/charmake/character-rules.js` 探索者づくりのルール（計算だけ。数値は DEFAULTS に集約）
 - `assets/nakoto/nakoto-desk.js` 机メニュー（※分岐表とセーブ演出がまだ中に入っている。分ける予定）
