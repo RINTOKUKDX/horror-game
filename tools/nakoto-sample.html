@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ナコト写本 見本 v1.11.2</title>
+<title>ナコト写本 見本 v1.12.0</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* 机メニュー＋ナコト写本だけを試す見本。ゲーム本体には影響しない */
@@ -44,7 +44,7 @@
 </style>
 </head>
 <body>
-<div id="start"><b>タップして始める</b><span>全画面・横向きになります</span><span>ナコト写本 見本 v1.11.2</span></div>
+<div id="start"><b>タップして始める</b><span>全画面・横向きになります</span><span>ナコト写本 見本 v1.12.0</span></div>
 <div id="portrait">横向きにしてください</div>
 <div id="dbg"><button id="adv">物語を進める</button><button id="rst">最初から</button><button id="demo">見本で埋める</button><button id="adjBtn">調整</button></div>
 <button id="adjShow">調整に戻る</button>
@@ -66,32 +66,42 @@
     <div class="row"><button id="sndReset">効果音を元に戻す</button></div></div>
 </div>
 
-<script src="../assets/manifest.js?v=1.11.2"></script>
-<script src="../assets/picker/asset-picker.js?v=1.11.2"></script>
-<script src="../assets/sheet/investigator-sheet.js?v=1.11.2"></script>
-<script src="../assets/nakoto/nakoto-desk.js?v=1.11.2"></script>
+<script src="../assets/manifest.js?v=1.12.0"></script>
+<script src="../assets/picker/asset-picker.js?v=1.12.0"></script>
+<script src="../assets/sheet/investigator-sheet.js?v=1.12.0"></script>
+<script src="../assets/nakoto/nakoto-desk.js?v=1.12.0"></script>
 <script>
 (function(){
   'use strict';
   // 試し用の分岐データ
+  // 分岐の型は3つ：寄り道（detour：通ってから本筋へ戻る）／すぐ終わり（end）／別の編へ（行き先が別の章）
   var chart={chapters:[
     {id:'c1',title:'第1章 卯月の館',nodes:[
       {id:'c1-s1',type:'scene',label:'雨の夜、館の門'},
-      {id:'c1-q1',type:'choice',label:'門番の問いかけ',options:[{key:'A',to:'c1-q2'},{key:'B',to:'c1-q2'},{key:'C',to:'c1-e1'}]},
+      {id:'c1-q1',type:'choice',label:'門番の問いかけ',options:[{key:'A',to:'c1-s2'},{key:'B',to:'c1-d1'},{key:'C',to:'c1-e1'}]},
+      {id:'c1-d1',type:'detour',label:'裏口から忍び込む'},
       {id:'c1-e1',type:'end',label:'地下深くの労働者'},
-      {id:'c1-q2',type:'choice',label:'書斎の鍵',options:[{key:'A',to:'c1-s2'},{key:'B',to:'c1-e2'}]},
-      {id:'c1-e2',type:'end',label:'閉ざされた書斎'},
-      {id:'c1-s2',type:'scene',label:'古びた机と一冊の本'},
-      {id:'c1-q3',type:'choice',label:'本を開くか',options:[{key:'A',to:'c2-s1'},{key:'B',to:'c1-e3'},{key:'C',to:'c1-e3'}]},
-      {id:'c1-e3',type:'end',label:'何も知らずに'}
+      {id:'c1-s2',type:'scene',label:'書斎の古い机'},
+      {id:'c1-q2',type:'choice',label:'本を開くか',options:[{key:'A',to:'c2-s1'},{key:'B',to:'c1-e2'}]},
+      {id:'c1-e2',type:'end',label:'何も知らずに'}
     ]},
     {id:'c2',title:'第2章 時を渡るもの',nodes:[
       {id:'c2-s1',type:'scene',label:'見知らぬ天井'},
-      {id:'c2-q1',type:'choice',label:'円すいの影',options:[{key:'A',to:'c2-s2'},{key:'B',to:'c2-s2'}]},
+      {id:'c2-q1',type:'choice',label:'円すいの影',options:[{key:'A',to:'c2-d1'},{key:'B',to:'c2-s2'}]},
+      {id:'c2-d1',type:'detour',label:'影を追って回廊へ'},
       {id:'c2-s2',type:'scene',label:'大図書館'},
-      {id:'c2-q2',type:'choice',label:'記録を盗み見るか',options:[{key:'A',to:'c2-e1'},{key:'B',to:'c2-e2'},{key:'C',to:'c2-e2'}]},
+      {id:'c2-q2',type:'choice',label:'記録を盗み見るか',options:[{key:'A',to:'c2-e1'},{key:'B',to:'c2-s3'},{key:'C',to:'x1-s1'}]},
       {id:'c2-e1',type:'end',label:'交換された精神'},
-      {id:'c2-e2',type:'end',label:'帰れぬ旅人'}
+      {id:'c2-s3',type:'scene',label:'イスの記録庫'},
+      {id:'c2-q3',type:'choice',label:'誰の記録を読むか',options:[{key:'A',to:'c3-s1'},{key:'B',to:'c2-e2'},{key:'C',to:'c2-e3'}]},
+      {id:'c2-e2',type:'end',label:'帰れぬ旅人'},
+      {id:'c2-e3',type:'end',label:'時の虜'}
+    ]},
+    {id:'x1',title:'惨劇編',nodes:[
+      {id:'x1-s1',type:'scene',label:'もう一つの記録'},
+      {id:'x1-q1',type:'choice',label:'扉を開けるか',options:[{key:'A',to:'x1-e1'},{key:'B',to:'x1-e2'}]},
+      {id:'x1-e1',type:'end',label:'血の図書館'},
+      {id:'x1-e2',type:'end',label:'閉ざされた時'}
     ]},
     {id:'c3',title:'第3章 ？？？',nodes:[{id:'c3-s1',type:'scene',label:'—'}]}
   ]};
@@ -99,28 +109,32 @@
   var path=[
     [['c1-s1'],'c1-s1'],
     [['c1-q1','c1-q1:C','c1-e1'],'c1-e1'],
-    [['c1-q1:A','c1-q2'],'c1-q2'],
-    [['c1-q2:A','c1-s2'],'c1-s2'],
-    [['c1-q3'],'c1-q3'],
-    [['c1-q3:A','c2-s1'],'c2-s1'],
+    [['c1-q1:A','c1-s2'],'c1-s2'],
+    [['c1-q2','c1-q2:A','c2-s1'],'c2-s1'],
     [['c2-q1','c2-q1:B','c2-s2'],'c2-s2'],
     [['c2-q2','c2-q2:A','c2-e1'],'c2-e1']
   ];
+  // 見本：第2章は全部見た状態にする
+  var ALL2=['c2-s1','c2-q1','c2-q1:A','c2-q1:B','c2-d1','c2-s2','c2-q2','c2-q2:A','c2-q2:B','c2-q2:C','c2-e1','c2-s3','c2-q3','c2-q3:A','c2-q3:B','c2-q3:C','c2-e2','c2-e3','x1-s1','x1-q1','x1-q1:A','x1-e1','c3-s1'];
   var KEY='nakoto-sample-v1';  // 配置・効果音の調整もここに保存
   function load(){ try{ return JSON.parse(localStorage.getItem(KEY))||null; }catch(_){ return null; } }
   function save(d){ try{ localStorage.setItem(KEY,JSON.stringify(d)); }catch(_){} }
   // 見本の書き込み：最初に開いたとき、途中まで進んだ状態（セーブ2つ）にしておく
   function demo(){
     var seen=[], shown=[];
-    path.forEach(function(p,i){ p[0].forEach(function(id){ seen.push(id); if(i<path.length-2) shown.push(id); }); }); seen.push('c1-q2:B','c1-e2','c1-q3:B','c1-e3'); shown.push('c1-q2:B','c1-e2','c1-q3:B','c1-e3');
-    return {step:path.length,state:{seen:seen,shown:shown,opened:false,hasBook:true,hinted:false,saves:[{node:'c1-q2',time:0},{node:'c2-s1',time:0},null]}};
+    path.forEach(function(p,i){ p[0].forEach(function(id){ seen.push(id); if(i<path.length-2) shown.push(id); }); });
+    ALL2.forEach(function(id){ if(seen.indexOf(id)<0) seen.push(id); });
+    return {step:path.length,state:{seen:seen,shown:shown,opened:false,hasBook:true,hinted:false,saves:[{node:'c1-s2',time:0},{node:'c2-s1',time:0},null]}};
   }
-  var data=load()||demo();
+  var data=load();
+  // 分岐データを作り直したので、古い進み具合は見本に置きかえる（配置と効果音はそのまま）
+  if(!data||data.chartVer!==2){ var d0=demo(); if(data){ d0.layout=data.layout; d0.sounds=data.sounds; } data=d0; }
+  data.chartVer=2;
 
   var desk=NakotoDesk.create({
     base:'../assets/nakoto/', assets:'../assets/', chart:chart, state:data.state, layout:data.layout, sounds:data.sounds,
     onLayout:function(l){ data.layout=l; save(data); },
-    onSounds:function(m){ data.sounds=m; save(data); }, version:'見本 v1.11.2',
+    onSounds:function(m){ data.sounds=m; save(data); }, version:'見本 v1.12.0',
     current: data.step>0?path[data.step-1][1]:null,
     onState:function(s){ data.state=s; save(data); },
     onLoad:function(slot,sv){ alertish('セーブ'+['壱','弐','参'][slot]+'から再開（見本なので表示だけ）'); },
@@ -133,9 +147,9 @@
     alertish('物語が進んだ（'+data.step+'/'+path.length+'）');
   }
   if(data.step===0){ advance(); }
-  document.getElementById('demo').addEventListener('click',function(){ var d=demo(); d.layout=data.layout; d.sounds=data.sounds; save(d); location.reload(); });
+  document.getElementById('demo').addEventListener('click',function(){ var d=demo(); d.layout=data.layout; d.sounds=data.sounds; d.chartVer=2; save(d); location.reload(); });
   document.getElementById('adv').addEventListener('click',advance);
-  document.getElementById('rst').addEventListener('click',function(){ try{ var keep={step:0,state:null,layout:data.layout,sounds:data.sounds}; localStorage.setItem(KEY,JSON.stringify(keep)); }catch(_){} location.reload(); });
+  document.getElementById('rst').addEventListener('click',function(){ try{ var keep={step:0,state:null,layout:data.layout,sounds:data.sounds,chartVer:2}; localStorage.setItem(KEY,JSON.stringify(keep)); }catch(_){} location.reload(); });
 
   /* ---- 調整パネル ---- */
   var $=function(id){ return document.getElementById(id); };

@@ -1,5 +1,5 @@
 /* ============================================================================
-   机メニュー＋ナコト写本 部品（NakotoDesk） v1.9.2
+   机メニュー＋ナコト写本 部品（NakotoDesk） v1.10.0
    ----------------------------------------------------------------------------
    机そのものがメニュー。本＝探索者シート（部品 assets/sheet/investigator-sheet.js）、紙の束＝ルート分岐表（付箋付きファイル）、羽ペン＝セーブ。
    本体は呼ぶだけ。見た目を作り直すときは、このファイルと assets/nakoto/ の絵だけを差しかえる。
@@ -36,7 +36,7 @@
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.9.2';
+  var VERSION='1.10.0';
   // 効果音（assets からの場所）。空なら鳴らさない。見本の「調整」で差しかえられる
   var SOUNDS={glow:'',sheet:'sfx/紙を広げる1.mp3',
     peek:'sfx/ページをめくる2.mp3',grow:'sfx/うごめく触手.mp3',grow2:'sfx/暗黒魔法.mp3',close:'sfx/本を閉じる1.mp3',saveOpen:'sfx/紙を広げる2.mp3',write:'sfx/シャーペンで字を書く.mp3',
@@ -119,7 +119,7 @@
 '.nd-sv{position:absolute;z-index:25;inset:0;display:none;align-items:center;justify-content:center;background:#050302;opacity:0;transition:opacity .9s}',
 '.nd-sv.on{display:flex}.nd-sv.vis{opacity:1}',
 '.nd-svin{position:relative;width:min(94vw,calc(86dvh * 2));height:86dvh;perspective:2000px}',
-'.nd-tree{position:absolute;z-index:1;inset:15% 4% 3% 7%;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:none}',
+'.nd-tree{position:absolute;z-index:1;inset:15% 4% 3% 7%;overflow:auto;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:none}',
 '.nd-tree::-webkit-scrollbar{display:none}',
 '.nd-tin{position:relative;padding:4% 2% 18%}',
 '.nd-tin svg.ln{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}',
@@ -133,6 +133,10 @@
 '.nd-bx.on{background:#8a1c14;color:#f7e7c8;box-shadow:0 0 6px rgba(120,20,10,.6)}',
 '.nd-bx.sc{background:#5a2414;color:#f7e7c8;border-color:#5a2414}',
 '.nd-bx.end{background:#9a1010;color:#fff;border-color:#4a0606}',
+'.nd-bx.dt{background:rgba(255,245,225,.45);color:#5a2414;border-color:#5a2414}',
+'.nd-bx.jp{background:#3a2a1a;color:#f0dcb0;border-color:#3a2a1a;font-size:14px}',
+'.nd-tx.jump{color:#5a2414;text-decoration:underline;text-underline-offset:4px}',
+'.nd-row.side{margin-top:-6px}',
 '.nd-bx.nz{border:1px dashed rgba(90,60,40,.6);background:var(--noise);background-size:90px;color:transparent;opacity:.7;animation:nd-noise .22s steps(2) infinite}',
 '@keyframes nd-noise{0%{background-position:0 0}50%{background-position:-37px 21px}100%{background-position:13px -29px}}',
 '.nd-tx{flex:1 1 auto;min-width:7em;font-size:clamp(12px,2.6dvh,18px);letter-spacing:.12em;line-height:1.3}',
@@ -346,7 +350,7 @@
         if(ok){
           var marks=st.saves.map(function(sv,i){ return sv&&nodeChapter(sv.node)===c?KANJI[i]:''; }).join('');
           var m=c.title.match(/^(第\S+?章)\s*(.*)$/);
-          d.innerHTML='<span>'+(m?m[1]:c.title)+'</span>'+(marks?'<small>保存 '+marks+'</small>':'');
+          d.innerHTML='<span>'+(m?m[1]:c.title.split(/\s/)[0])+'</span>'+(marks?'<small>保存 '+marks+'</small>':'');
           d.addEventListener('click',function(){ if(busy) return; selCh=c; renderChapters(); renderTree(false); tree.scrollTop=0; });
         } else d.textContent='？';
         chsEl.appendChild(d);
@@ -355,44 +359,72 @@
     }
 
     var rowsById={};
+    /* 分岐の型：
+       寄り道（detour）…違う場面を通って次の本筋へ戻る
+       すぐ終わり（end）…そのまま結末
+       別の編へ…行き先が別の章（付箋）にある。「→ ○○へ」と書き、押すとその付箋へ */
+    var COL=40, BX=34;
+    var layoutInfo=null;
     function renderTree(animate){
       tin.innerHTML=''; rowsById={};
-      var c=selCh; if(!c) return;
+      var c=selCh; if(!c) return 0;
       var shown=animate?st.shown:st.seen;
       var isNew=function(id){ return animate && shown.indexOf(id)<0; };
       var byId={}; c.nodes.forEach(function(n){ byId[n.id]=n; });
-      var lines=[], order=0;
+      var order=0;
       function delay(elm){ elm.classList.add('nd-grow'); elm.style.animationDelay=(0.25+order*0.35)+'s'; order++; }
-      var mainNodes=c.nodes.filter(function(n){ return n.type!=='end'; });
-      mainNodes.forEach(function(n){
+      var mains=c.nodes.filter(function(n){ return n.type==='scene'||n.type==='choice'; });
+      var info={rows:[],trunk:{}};
+      var indent=0;   // 本筋の箱の左端（px）
+      mains.forEach(function(n,mi){
         if(!has(n.id)) return;
-        var row=el('div','nd-row'); row.dataset.id=n.id;
+        var row=el('div','nd-row'); row.dataset.id=n.id; row.style.paddingLeft=indent+'px';
         var bx=el('div','nd-boxes'); row.appendChild(bx);
+        var rinfo={id:n.id,type:n.type,row:row,indent:indent,side:[],cont:[],next:null};
         if(n.type==='choice'){
-          n.options.forEach(function(op){
+          n.options.forEach(function(op,oi){
             var picked=has(n.id+':'+op.key), b=el('div','nd-bx'+(picked?' on':' nz'),op.key);
             b.dataset.k=op.key; bx.appendChild(b);
             if(picked && isNew(n.id+':'+op.key)) delay(b);
           });
-        } else { var b0=el('div','nd-bx sc','◆'); bx.appendChild(b0); }
+        } else bx.appendChild(el('div','nd-bx sc','◆'));
         row.appendChild(el('div','nd-tx',n.label));
         addMarks(row,n.id);
         if(current===n.id) row.appendChild(el('div','nd-here'));
         if(isNew(n.id)) delay(row);
-        tin.appendChild(row); rowsById[n.id]=row;
-        // 選んだ先が結末なら、その下に結末を出す
-        if(n.type==='choice') n.options.forEach(function(op){
-          var t=byId[op.to];
-          if(t && t.type==='end' && has(n.id+':'+op.key) && has(t.id)){
-            var er=el('div','nd-row endrow'); er.dataset.id=t.id; er.dataset.from=n.id+':'+op.key;
-            er.appendChild(el('div','nd-boxes','<div class="nd-bx end">終</div>'));
-            er.appendChild(el('div','nd-tx',t.label));
-            addMarks(er,t.id);
-            if(isNew(t.id)) delay(er);
-            tin.appendChild(er); rowsById[t.id]=er;
-          }
-        });
+        tin.appendChild(row); rowsById[n.id]=row; info.rows.push(rinfo);
+        var nextMain=mains[mi+1]||null;
+        if(n.type==='choice'){
+          var nOpt=n.options.length, txtX=nOpt*COL+8;
+          var firstCont=-1;
+          n.options.forEach(function(op,oi){
+            var key=n.id+':'+op.key; if(!has(key)) return;
+            var t=byId[op.to];
+            if(t && (t.type==='scene'||t.type==='choice')){ rinfo.cont.push(oi); if(firstCont<0) firstCont=oi; return; }
+            // 横に出る枝（結末・寄り道・別の編）：箱は選択肢の真下、文字は右の列にそろえる
+            var kind=!t?'jump':(t.type==='end'?'end':'detour');
+            if(kind!=='jump' && !has(t.id)) return;
+            var sr=el('div','nd-row side '+kind+'row'); sr.style.paddingLeft=(indent+oi*COL)+'px'; sr.style.gap='0';
+            var sb=el('div','nd-boxes'), box;
+            if(kind==='end') box=el('div','nd-bx end','終');
+            else if(kind==='detour') box=el('div','nd-bx dt','◇');
+            else box=el('div','nd-bx jp','▶');
+            sb.appendChild(box); sr.appendChild(sb);
+            var tx;
+            if(kind==='jump'){ var tc=nodeChapter(op.to); tx=el('div','nd-tx jump','→ '+(tc?tc.title:'？')+' へ');
+              if(tc){ sr.style.cursor='pointer'; sr.addEventListener('click',function(e){ e.stopPropagation(); if(busy||!chReached(tc)) return; selCh=tc; renderChapters(); renderTree(false); tree.scrollTop=0; }); } }
+            else tx=el('div','nd-tx',t.label);
+            tx.style.marginLeft=((nOpt-oi)*COL-BX+8)+'px'; sr.appendChild(tx);
+            if(kind!=='jump'){ addMarks(sr,t.id); if(current===t.id) sr.appendChild(el('div','nd-here')); rowsById[t.id]=sr; }
+            if(isNew(kind==='jump'?key:t.id)) delay(sr);
+            tin.appendChild(sr);
+            rinfo.side.push({oi:oi,kind:kind,row:sr,box:box});
+          });
+          if(firstCont>=0) indent+=firstCont*COL;
+        }
+        rinfo.nextIndent=indent;
       });
+      layoutInfo=info;
       requestAnimationFrame(function(){ drawLines(c,byId,animate,shown); });
       return order;
     }
@@ -403,32 +435,40 @@
     }
     function drawLines(c,byId,animate,shown){
       var old=tin.querySelector('svg.ln'); if(old) old.remove();
-      var W=tin.scrollWidth,H=tin.scrollHeight;
-      var svg=document.createElementNS('http://www.w3.org/2000/svg','svg'); svg.setAttribute('class','ln'); svg.setAttribute('width',W); svg.setAttribute('height',H);
+      var svg=document.createElementNS('http://www.w3.org/2000/svg','svg'); svg.setAttribute('class','ln');
       function pt(elm,where){ var x=0,y=0,e=elm; while(e&&e!==tin){ x+=e.offsetLeft; y+=e.offsetTop; e=e.offsetParent; } return {x:x+elm.offsetWidth/2, y:where==='top'?y:y+elm.offsetHeight}; }
       var n=0;
       function path(d,cls,isNew){ var p=document.createElementNS('http://www.w3.org/2000/svg','path'); p.setAttribute('d',d); if(cls) p.setAttribute('class',cls); svg.appendChild(p);
         if(isNew){ var L=p.getTotalLength?Math.ceil(p.getTotalLength())+2:400; p.style.setProperty('--len',L); p.classList.add('new'); p.style.animationDelay=(0.15+n*0.35)+'s'; n++; } }
       tin.insertBefore(svg,tin.firstChild);
-      var mains=c.nodes.filter(function(x){ return x.type!=='end' && rowsById[x.id]; });
-      mains.forEach(function(nd){
-        var row=rowsById[nd.id];
-        var nextIdx=c.nodes.indexOf(nd);
-        if(nd.type==='choice'){
-          nd.options.forEach(function(op){
-            var bx=row.querySelector('.nd-bx[data-k="'+op.key+'"]'); var a=pt(bx,'bottom');
-            var picked=has(nd.id+':'+op.key);
-            if(!picked){ path('M'+a.x+','+a.y+' l0,9 l3,4 l-4,5','stub',false); return; }
-            var tgt=rowsById[op.to]; if(!tgt) return;
-            var b=pt(tgt.querySelector('.nd-bx'),'top'), my=a.y+(b.y-a.y)/2;
-            path('M'+a.x+','+a.y+' V'+my+' H'+b.x+' V'+b.y,null,animate&&shown.indexOf(nd.id+':'+op.key)<0);
-          });
-        } else {
-          // 場面の次（同じ章で次の本筋）へつなぐ
-          for(var k=nextIdx+1;k<c.nodes.length;k++){ var nx=c.nodes[k]; if(nx.type==='end') continue; if(rowsById[nx.id]){ var a2=pt(row.querySelector('.nd-bx'),'bottom'), b2=pt(rowsById[nx.id].querySelector('.nd-bx'),'top'); path('M'+a2.x+','+a2.y+' V'+((a2.y+b2.y)/2)+' H'+b2.x+' V'+b2.y,null,animate&&shown.indexOf(nx.id)<0); } break; }
+      var rows=layoutInfo?layoutInfo.rows:[];
+      var NEW=function(id){ return animate&&shown.indexOf(id)<0; };
+      rows.forEach(function(r,ri){
+        var nd=byId[r.id], nxt=rows[ri+1]||null;
+        var nbx=nxt?nxt.row.querySelector('.nd-bx'):null, nb=nbx?pt(nbx,'top'):null;
+        if(nd.type==='scene'){
+          if(nb){ var a=pt(r.row.querySelector('.nd-bx'),'bottom'); path('M'+a.x+','+a.y+' V'+nb.y,null,NEW(nxt.id)); }
+          return;
         }
+        // 選択肢：上から来た1本が、手前で選択肢の数だけ分かれる
+        var boxes=[].slice.call(r.row.querySelectorAll('.nd-bx'));
+        var tops=boxes.map(function(b){ return pt(b,'top'); }), bots=boxes.map(function(b){ return pt(b,'bottom'); });
+        var ySp=tops[0].y-11;
+        if(boxes.length>1) path('M'+tops[0].x+','+ySp+' H'+tops[tops.length-1].x,null,false);
+        tops.forEach(function(t,i){ var picked=has(nd.id+':'+nd.options[i].key); path('M'+t.x+','+ySp+' V'+t.y,picked?null:'stub',false); });
+        // 選ばなかった選択肢：切れ端だけ
+        nd.options.forEach(function(op,i){ if(!has(nd.id+':'+op.key)){ var a=bots[i]; path('M'+a.x+','+a.y+' l0,9 l3,4 l-4,5','stub',false); } });
+        // 横の枝（結末・寄り道・別の編）：選択肢の真下へまっすぐ
+        r.side.forEach(function(sd){ var a=bots[sd.oi], b=pt(sd.box,'top'); path('M'+a.x+','+a.y+' V'+b.y,null,NEW(nd.id+':'+nd.options[sd.oi].key)); });
+        if(!nb) return;
+        var yJ=nb.y-12;
+        // 本筋へ続く選択肢：下で1本にまとまって次へ
+        r.cont.forEach(function(oi){ var a=bots[oi]; path('M'+a.x+','+a.y+' V'+yJ+' H'+nb.x,null,NEW(nd.id+':'+nd.options[oi].key)); });
+        // 寄り道：その場面を通ってから本筋へ戻る
+        r.side.forEach(function(sd){ if(sd.kind!=='detour') return; var a=pt(sd.box,'bottom'); path('M'+a.x+','+a.y+' V'+yJ+' H'+nb.x,null,NEW(byId[nd.options[sd.oi].to].id)); });
+        if(r.cont.length||r.side.some(function(sd){ return sd.kind==='detour'; })) path('M'+nb.x+','+yJ+' V'+nb.y,null,NEW(nxt.id));
       });
-      svg.setAttribute('height',tin.scrollHeight);
+      svg.setAttribute('width',tin.scrollWidth); svg.setAttribute('height',tin.scrollHeight);
     }
 
     async function showCodex(opts){
@@ -450,7 +490,7 @@
       }
     }
     async function closeCodex(){
-      codex.classList.remove('vis'); await wait(700); codex.classList.remove('on');
+      codex.classList.remove('vis'); await wait(950); codex.classList.remove('on');
       unpeek(); snd('close',.25,.9);
     }
     cback.addEventListener('click',function(){ if(busy) return; closeCodex(); });
