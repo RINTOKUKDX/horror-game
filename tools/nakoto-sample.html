@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ナコト写本 見本 v1.0.0</title>
+<title>ナコト写本 見本 v1.1.0</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* 机メニュー＋ナコト写本だけを試す見本。ゲーム本体には影響しない */
@@ -19,17 +19,46 @@
   @media (orientation:portrait){#portrait{display:flex}}
   #dbg{position:fixed;z-index:150;left:max(10px,env(safe-area-inset-left,0px));bottom:8px;display:flex;gap:6px}
   #dbg button{min-height:40px;padding:6px 12px;background:rgba(20,14,8,.8);border:1px solid #6a5434;border-radius:4px;color:#e8dcc4;font-family:inherit;font-size:13px;letter-spacing:.08em}
+  #adj{position:fixed;z-index:155;right:max(8px,env(safe-area-inset-right,0px));top:8px;bottom:8px;width:min(330px,40vw);display:none;flex-direction:column;background:rgba(14,10,6,.9);border:1px solid #6a5434;border-radius:5px;font-size:13px}
+  #adj.on{display:flex}
+  #adj .tabs{display:flex;gap:4px;padding:6px}
+  #adj .tabs button,#adj button{min-height:36px;padding:4px 10px;font-family:inherit;font-size:13px;color:#e8dcc4;background:#1e160d;border:1px solid #4d3c25;border-radius:4px}
+  #adj .tabs button{flex:1}#adj .tabs button.on{border-color:#d4b060;color:#f0d890;background:#2a1e10}
+  #adj .pane{flex:1;overflow-y:auto;padding:4px 8px 8px;display:none;touch-action:pan-y}#adj .pane.on{display:block}
+  #adj h4{font-size:13px;color:#e9d6ac;margin:6px 0;letter-spacing:.1em}
+  #adj label{display:flex;align-items:center;gap:6px;margin:8px 0}
+  #adj label span{flex:0 0 3.5em}#adj label b{flex:0 0 3em;text-align:right;color:#f0d890;font-weight:400}
+  #adj input[type=range]{flex:1;min-width:0;accent-color:#c7a35a}
+  #adj .row{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+  #adj .snd{display:flex;align-items:center;gap:4px;padding:4px 0;border-bottom:1px solid #2a2015}
+  #adj .snd .t{flex:1;min-width:0}#adj .snd .t small{display:block;color:#9a8a6a;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #adj p{color:#9a8a6a;font-size:12px;line-height:1.6;margin:4px 0}
   #sheet{position:fixed;inset:0;z-index:160;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.7)}
   #sheet.on{display:flex}
   #sheet div{padding:24px 34px;background:#1a130c;border:1px solid #6a5434;border-radius:5px;font-size:16px;letter-spacing:.15em;text-align:center;line-height:2}
 </style>
 </head>
 <body>
-<div id="start"><b>タップして始める</b><span>全画面・横向きになります</span><span>ナコト写本 見本 v1.0.0</span></div>
+<div id="start"><b>タップして始める</b><span>全画面・横向きになります</span><span>ナコト写本 見本 v1.1.0</span></div>
 <div id="portrait">横向きにしてください</div>
-<div id="dbg"><button id="adv">物語を進める</button><button id="rst">最初から</button></div>
+<div id="dbg"><button id="adv">物語を進める</button><button id="rst">最初から</button><button id="adjBtn">調整</button></div>
+<div id="adj">
+  <div class="tabs"><button data-p="lay" class="on">配置</button><button data-p="snd">効果音</button><button id="adjClose">閉じる</button></div>
+  <div class="pane on" id="p-lay">
+    <p>物を触って選び、ドラッグで動かす</p>
+    <h4 id="selName">（何も選んでいない）</h4>
+    <label><span>大きさ</span><input type="range" id="sz" min="40" max="2000" step="5"><b id="szv"></b></label>
+    <label><span>傾き</span><input type="range" id="rt" min="-60" max="60" step="1"><b id="rtv"></b></label>
+    <div class="row"><button id="bkOpen">本：開いた形</button><button id="bkClosed">本：閉じた形</button></div>
+    <div class="row"><button id="layReset">配置を元に戻す</button><button id="copyVal">値をコピー</button></div>
+  </div>
+  <div class="pane" id="p-snd"><p>「選ぶ」で入っている効果音から選べる</p><div id="sndList"></div>
+    <div class="row"><button id="sndReset">効果音を元に戻す</button></div></div>
+</div>
 <div id="sheet"><div>探索者シート（未作成）<br><small>タップで閉じる</small></div></div>
 
+<script src="../assets/manifest.js"></script>
+<script src="../assets/picker/asset-picker.js"></script>
 <script src="../assets/nakoto/nakoto-desk.js"></script>
 <script>
 (function(){
@@ -67,13 +96,15 @@
     [['c2-q1','c2-q1:B','c2-s2'],'c2-s2'],
     [['c2-q2','c2-q2:A','c2-e1'],'c2-e1']
   ];
-  var KEY='nakoto-sample-v1';
+  var KEY='nakoto-sample-v1';  // 配置・効果音の調整もここに保存
   function load(){ try{ return JSON.parse(localStorage.getItem(KEY))||null; }catch(_){ return null; } }
   function save(d){ try{ localStorage.setItem(KEY,JSON.stringify(d)); }catch(_){} }
   var data=load()||{step:0,state:null};
 
   var desk=NakotoDesk.create({
-    base:'../assets/nakoto/', sfx:'../assets/sfx/', chart:chart, state:data.state, version:'見本 v1.0.0',
+    base:'../assets/nakoto/', assets:'../assets/', chart:chart, state:data.state, layout:data.layout, sounds:data.sounds,
+    onLayout:function(l){ data.layout=l; save(data); },
+    onSounds:function(m){ data.sounds=m; save(data); }, version:'見本 v1.1.0',
     current: data.step>0?path[data.step-1][1]:null,
     onState:function(s){ data.state=s; save(data); },
     onLoad:function(slot,sv){ alertish('セーブ'+['壱','弐','参'][slot]+'から再開（見本なので表示だけ）'); },
@@ -89,7 +120,36 @@
   }
   if(data.step===0){ advance(); }
   document.getElementById('adv').addEventListener('click',advance);
-  document.getElementById('rst').addEventListener('click',function(){ try{ localStorage.removeItem(KEY); }catch(_){} location.reload(); });
+  document.getElementById('rst').addEventListener('click',function(){ try{ var keep={step:0,state:null,layout:data.layout,sounds:data.sounds}; localStorage.setItem(KEY,JSON.stringify(keep)); }catch(_){} location.reload(); });
+
+  /* ---- 調整パネル ---- */
+  var $=function(id){ return document.getElementById(id); };
+  var adj=$('adj'), sel=null;
+  function onSel(k,v){ sel=k; $('selName').textContent=k?NakotoDesk.OBJ_LABELS[k]:'（何も選んでいない）';
+    if(v){ $('sz').value=v.w; $('szv').textContent=v.w; $('rt').value=v.r||0; $('rtv').textContent=(v.r||0)+'°'; } }
+  $('adjBtn').onclick=function(){ var on=!adj.classList.contains('on'); adj.classList.toggle('on',on); desk.setEdit(on,onSel); if(on) renderSnd(); else desk.previewBook(null); };
+  $('adjClose').onclick=function(){ adj.classList.remove('on'); desk.setEdit(false); desk.previewBook(null); };
+  adj.querySelectorAll('.tabs button[data-p]').forEach(function(b){ b.onclick=function(){ adj.querySelectorAll('.tabs button[data-p]').forEach(function(x){ x.classList.toggle('on',x===b); }); adj.querySelectorAll('.pane').forEach(function(p){ p.classList.toggle('on',p.id==='p-'+b.dataset.p); }); }; });
+  $('sz').oninput=function(){ if(!sel) return; desk.setObj(sel,{w:+this.value}); $('szv').textContent=this.value; };
+  $('rt').oninput=function(){ if(!sel) return; desk.setObj(sel,{r:+this.value}); $('rtv').textContent=this.value+'°'; };
+  $('bkOpen').onclick=function(){ desk.previewBook(true); };
+  $('bkClosed').onclick=function(){ desk.previewBook(false); };
+  $('layReset').onclick=function(){ desk.resetLayout(); };
+  $('copyVal').onclick=function(){ var t=JSON.stringify({layout:desk.getLayout(),sounds:desk.getSounds()}); try{ navigator.clipboard.writeText(t).then(function(){ alertish('コピーしました'); },function(){ prompt('この文字をコピー',t); }); }catch(_){ prompt('この文字をコピー',t); } };
+  function shortName(p){ return p?p.replace(/^.*\//,'').replace(/\.mp3$/,''):'（音なし）'; }
+  function renderSnd(){
+    var box=$('sndList'), cur=desk.getSounds(); box.innerHTML='';
+    Object.keys(NakotoDesk.SOUND_LABELS).forEach(function(k){
+      var r=document.createElement('div'); r.className='snd';
+      r.innerHTML='<div class="t">'+NakotoDesk.SOUND_LABELS[k]+'<small>'+shortName(cur[k])+'</small></div>';
+      var pb=document.createElement('button'); pb.textContent='▶'; pb.onclick=function(){ desk.playSound(k); };
+      var cb=document.createElement('button'); cb.textContent='選ぶ'; cb.onclick=function(){
+        AssetPicker.open({kind:'sound',assets:'../assets/',title:'「'+NakotoDesk.SOUND_LABELS[k]+'」の音',current:desk.getSounds()[k],allowNone:true,
+          onPick:function(p){ desk.setSound(k,p); renderSnd(); }}); };
+      r.appendChild(pb); r.appendChild(cb); box.appendChild(r);
+    });
+  }
+  $('sndReset').onclick=function(){ Object.keys(NakotoDesk.SOUNDS).forEach(function(k){ desk.setSound(k,NakotoDesk.SOUNDS[k]); }); renderSnd(); };
 
   var start=document.getElementById('start');
   async function goFull(){

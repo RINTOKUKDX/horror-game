@@ -1,5 +1,5 @@
 /* ============================================================================
-   机メニュー＋ナコト写本 部品（NakotoDesk） v1.0.0
+   机メニュー＋ナコト写本 部品（NakotoDesk） v1.1.0
    ----------------------------------------------------------------------------
    机そのものがメニュー。写本＝ルート分岐表、羽ペン＝セーブ、探索者シート＝シート表示。
    本体は呼ぶだけ。見た目を作り直すときは、このファイルと assets/nakoto/ の絵だけを差しかえる。
@@ -8,7 +8,9 @@
      <script src="assets/nakoto/nakoto-desk.js"></script>
      var desk = NakotoDesk.create({
        base: 'assets/nakoto/',      // 絵の場所
-       sfx:  'assets/sfx/',         // 効果音の場所
+       assets: 'assets/',           // 効果音などの素材の根元（sounds の場所はここから）
+       sounds: {strap:'sfx/ベルトを付ける.mp3', ...},  // 効果音の差しかえ（空文字で無音）
+       layout: {book:{x,y,w,r}, ...},   // 机の上の配置の差しかえ
        chart: {...},                // 分岐の全体（下の「分岐データの形」）
        state: {...},                // 前回の記録（無ければ新規）。変わるたびに onState で返す
        current: 'c1-q2',            // 今いる場所（セーブ位置になる）
@@ -34,7 +36,17 @@
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.0.0';
+  var VERSION='1.1.0';
+  // 効果音（assets からの場所）。空なら鳴らさない。見本の「調整」で差しかえられる
+  var SOUNDS={glow:'',sheet:'sfx/紙を広げる1.mp3',openWet:'sfx/うごめく触手.mp3',strap:'sfx/ベルトを付ける.mp3',cover:'sfx/ページをめくる1.mp3',coverWet:'sfx/ねんえきネバネバ.mp3',
+    peek:'sfx/ページをめくる2.mp3',grow:'sfx/うごめく触手.mp3',grow2:'sfx/暗黒魔法.mp3',close:'sfx/本を閉じる1.mp3',saveOpen:'sfx/紙を広げる2.mp3',write:'sfx/シャーペンで字を書く.mp3',
+    yithIn:'sfx/異次元空間.mp3',vanish:'sfx/ワープ.mp3',circle:'sfx/魔法陣を展開.mp3',burn:'sfx/マッチで火をつける.mp3',load:'sfx/ワープ.mp3'};
+  var SOUND_LABELS={glow:'物が光る',sheet:'シートを開く',openWet:'本を開く（うごめく音）',strap:'ベルトがほどける',cover:'表紙がめくれる',coverWet:'表紙（湿った音）',
+    peek:'覗き込む',grow:'分岐が伸びる',grow2:'分岐が伸びる（重ね）',close:'写本を閉じる',saveOpen:'セーブ枠を開く',write:'記す',
+    yithIn:'イス人が現れる',vanish:'保存が消える',circle:'魔法陣',burn:'保存が現れる',load:'セーブへ戻る'};
+  // 机の上の配置（舞台 1600x800 の中の位置・幅・傾き）
+  var LAYOUT={desk:{x:90,y:-30,w:1440,r:0},sheets:{x:200,y:470,w:340,r:-9},lantern:{x:1050,y:150,w:165,r:0},book:{x:560,y:380,w:430,r:0},ink:{x:1320,y:520,w:115,r:0},quill:{x:1120,y:440,w:240,r:18}};
+  var OBJ_LABELS={desk:'机',sheets:'探索者シート',lantern:'ランタン',book:'ナコト写本',ink:'インク瓶',quill:'羽ペン'};
   var KANJI=['壱','弐','参'];
 
   var CSS=[
@@ -47,7 +59,7 @@
 '.nd-cam{position:absolute;inset:0;transform-origin:50% 50%;transition:transform 1.3s cubic-bezier(.6,0,.3,1),filter 1.3s}',
 '.nd-cam.peek{filter:blur(3px) brightness(.6)}',
 '.nd-room{position:absolute;left:-120px;top:-160px;width:1840px;height:1000px;background-size:cover;background-position:center 40%;filter:blur(7px) brightness(.55) saturate(.7) sepia(.25)}',
-'.nd-desk{position:absolute;left:90px;top:-30px;width:1440px}',
+'.nd-desk{position:absolute}',
 '.nd-obj{position:absolute;cursor:pointer;transition:filter .5s}',
 '.nd-obj img{display:block;width:100%}',
 '.nd-obj.glow{filter:drop-shadow(0 0 10px rgba(255,214,140,.95)) drop-shadow(0 0 28px rgba(255,170,80,.65)) brightness(1.18)}',
@@ -55,9 +67,9 @@
 '@keyframes nd-hint{0%,100%{filter:none}50%{filter:drop-shadow(0 0 14px rgba(255,214,140,.9)) brightness(1.15)}}',
 '.nd-label{position:absolute;left:50%;bottom:100%;transform:translate(-50%,-8px);white-space:nowrap;font-size:30px;letter-spacing:.25em;color:#f4e2bc;text-shadow:0 0 12px #000,0 0 4px #000;opacity:0;transition:opacity .4s;pointer-events:none}',
 '.nd-obj.glow .nd-label{opacity:1}',
-'.nd-book{left:560px;top:380px;width:430px;height:360px}',
+'.nd-book{aspect-ratio:430/360}',
 '.nd-book .bk{position:absolute;left:0;top:0;width:100%;transition:opacity .6s,transform .9s}',
-'.nd-book .bk-open{left:-110px;top:40px;width:650px;opacity:0}',
+'.nd-book .bk-open{left:-25.6%;top:11%;width:151%;opacity:0}',
 '.nd-book.isopen .bk-closed{opacity:0}.nd-book.isopen .bk-open{opacity:1}',
 '.nd-book .cover{position:absolute;left:0;top:0;width:100%;transform-origin:0% 60%;opacity:0}',
 '.nd-book .strap{position:absolute;width:76%;transition:transform 1s cubic-bezier(.5,0,.7,.4),opacity 1s}',
@@ -65,11 +77,12 @@
 '.nd-book .s2{left:13%;top:47%;transform:rotate(-22deg)}',
 '.nd-book .s3{left:22%;top:66%;transform:rotate(-20deg) scaleX(.9)}',
 '.nd-book.nobook{display:none}',
-'.nd-lantern{left:1050px;top:150px;width:165px}',
+
 '.nd-flame{position:absolute;left:54.7%;top:71%;width:60px;height:90px;margin:-70px 0 0 -30px;border-radius:50% 50% 45% 45%/60% 60% 40% 40%;background:radial-gradient(ellipse at 50% 70%,#fff8d8 0,#ffd27a 25%,rgba(255,140,40,.6) 50%,rgba(255,90,20,0) 72%);mix-blend-mode:screen;pointer-events:none;transform-origin:50% 90%}',
-'.nd-quill{left:1120px;top:440px;width:240px;transform:rotate(18deg)}',
-'.nd-ink{left:1320px;top:520px;width:115px}',
-'.nd-sheets{left:200px;top:470px;width:340px;transform:rotate(-9deg) skewX(8deg)}',
+
+
+'.nd.editing .nd-obj,.nd.editing .nd-desk{cursor:move}',
+'.nd-sel{outline:3px dashed rgba(255,210,120,.9);outline-offset:4px}',
 /* 光と闇 */
 '.nd-dark{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 58% 85% at var(--lx,66%) var(--ly,52%),rgba(0,0,0,0) 0,rgba(0,0,0,.12) 28%,rgba(0,0,0,.6) 62%,rgba(0,0,0,.9) 100%)}',
 '.nd-warm{position:absolute;inset:0;pointer-events:none;mix-blend-mode:soft-light;background:radial-gradient(circle at var(--lx,66%) var(--ly,52%),rgba(255,170,70,var(--la,.55)) 0,rgba(255,120,40,.12) 40%,rgba(0,0,0,0) 70%)}',
@@ -170,8 +183,9 @@
     var busy=false;
 
     /* ---------- 音 ---------- */
-    var sounds={};
-    function snd(name,vol,rate){ try{ var a=new Audio(S+encodeURIComponent(name)+'.mp3'); a.volume=vol==null?.7:vol; if(rate) a.playbackRate=rate; a.play().catch(function(){}); return a; }catch(_){ return null; } }
+    var sounds=Object.assign({},SOUNDS,o.sounds||{});
+    var A=o.assets||'assets/';
+    function snd(key,vol,rate){ var p=sounds[key]; if(!p) return null; try{ var a=new Audio(A+p.split('/').map(encodeURIComponent).join('/')); a.volume=vol==null?.7:vol; if(rate) a.playbackRate=rate; a.play().catch(function(){}); return a; }catch(_){ return null; } }
     function fadeOut(a,ms){ if(!a) return; var v=a.volume, t0=performance.now(); (function f(){ var k=(performance.now()-t0)/ms; if(k>=1){ a.pause(); return; } a.volume=v*(1-k); requestAnimationFrame(f); })(); }
 
     /* ---------- 画面 ---------- */
@@ -209,6 +223,20 @@
     var chsEl=codex.querySelector('.nd-chs'), tree=codex.querySelector('.nd-tree'), tin=codex.querySelector('.nd-tin');
     (o.root||document.body).appendChild(host);
 
+    /* ---------- 配置 ---------- */
+    var layout=JSON.parse(JSON.stringify(LAYOUT)); (function(l){ if(l) Object.keys(l).forEach(function(k){ if(layout[k]) Object.assign(layout[k],l[k]); }); })(o.layout);
+    var objs={desk:desk,sheets:sheets,lantern:lantern,book:book,ink:ink,quill:quill};
+    function applyLayout(){ Object.keys(objs).forEach(function(k){ var e=objs[k], v=layout[k]; e.style.left=v.x+'px'; e.style.top=v.y+'px'; e.style.width=v.w+'px'; e.style.transform='rotate('+(v.r||0)+'deg)'+(k==='sheets'?' skewX(8deg)':''); }); }
+    applyLayout();
+    /* 調整モード：触った物を選び、ドラッグで動かす */
+    var editing=false, editCb=null, selKey=null, drag=null;
+    function stageXY(e){ var r=stage.getBoundingClientRect(), s=r.width/1600; return {x:(e.clientX-r.left)/s, y:(e.clientY-r.top)/s, s:s}; }
+    function pick(e){ var order=['quill','ink','book','sheets','lantern','desk']; for(var i=0;i<order.length;i++){ var k=order[i], r=objs[k].getBoundingClientRect(); if(objs[k].offsetParent!==null && e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom) return k; } return null; }
+    function select(k){ if(selKey) objs[selKey].classList.remove('nd-sel'); selKey=k; if(k) objs[k].classList.add('nd-sel'); if(editCb) editCb(k, k?Object.assign({},layout[k]):null); }
+    stage.addEventListener('pointerdown',function(e){ if(!editing) return; var k=pick(e); select(k); if(!k) return; var p=stageXY(e); drag={k:k,x:p.x,y:p.y,ox:layout[k].x,oy:layout[k].y}; try{ stage.setPointerCapture(e.pointerId); }catch(_){} });
+    stage.addEventListener('pointermove',function(e){ if(!drag) return; var p=stageXY(e); layout[drag.k].x=Math.round(drag.ox+p.x-drag.x); layout[drag.k].y=Math.round(drag.oy+p.y-drag.y); applyLayout(); });
+    stage.addEventListener('pointerup',function(){ if(drag){ var k=drag.k; drag=null; if(editCb) editCb(k,Object.assign({},layout[k])); if(o.onLayout) o.onLayout(JSON.parse(JSON.stringify(layout))); } });
+
     /* ---------- 舞台の大きさ ---------- */
     function fit(){ var w=innerWidth,h=innerHeight,s=Math.max(w/1600,h/800); stage.style.transform='scale('+s+') translate(-50%,-50%)'; }
     addEventListener('resize',fit); fit();
@@ -234,14 +262,14 @@
     var glowing=null;
     function unglow(){ if(glowing){ glowing.classList.remove('glow'); glowing=null; } }
     function tapObj(e,elm,act){
-      e.stopPropagation(); if(busy) return;
+      e.stopPropagation(); if(busy||editing) return;
       if(glowing===elm){ unglow(); act(); return; }
-      unglow(); glowing=elm; elm.classList.add('glow'); snd('魔法のステッキ',.18,.7);
+      unglow(); glowing=elm; elm.classList.add('glow'); snd('glow',.18,.7);
     }
     book.addEventListener('click',function(e){ tapObj(e,book,openBook); });
     quill.addEventListener('click',function(e){ tapObj(e,quill,openSave); });
-    sheets.addEventListener('click',function(e){ tapObj(e,sheets,function(){ snd('紙を広げる1',.6); if(o.onSheet) o.onSheet(); else say('探索者シートは準備中'); }); });
-    stage.addEventListener('click',function(){ unglow(); });
+    sheets.addEventListener('click',function(e){ tapObj(e,sheets,function(){ snd('sheet',.6); if(o.onSheet) o.onSheet(); else say('探索者シートは準備中'); }); });
+    stage.addEventListener('click',function(){ if(!editing) unglow(); });
     back.addEventListener('click',function(){ if(busy) return; if(o.onClose) o.onClose(); else hide(); });
 
     function applyBook(){
@@ -256,9 +284,9 @@
       if(!st.opened){
         // ベルトがほどけて落ちる
         var straps=book.querySelectorAll('.strap');
-        var wet=snd('うごめく触手',.55);
+        var wet=snd('openWet',.55);
         for(var i=0;i<straps.length;i++){
-          snd('ベルトを付ける',.5,.8+i*.1);
+          snd('strap',.5,.8+i*.1);
           var s=straps[i], dx=(i%2?1:-1)*(120+i*40);
           s.style.transform='translate('+dx+'px,260px) rotate('+(i%2?40:-50)+'deg)'; s.style.opacity='0';
           await wait(420);
@@ -268,7 +296,7 @@
         var cover=book.querySelector('.cover'); var closed=book.querySelector('.bk-closed');
         cover.style.transition='none'; cover.style.opacity='1'; cover.style.transform='none';
         closed.style.transition='opacity .1s'; void cover.offsetWidth;
-        snd('ページをめくる1',.8,.8); snd('ねんえきネバネバ',.35);
+        snd('cover',.8,.8); snd('coverWet',.35);
         cover.style.transition='transform 1.1s cubic-bezier(.5,0,.4,1),opacity 1.1s';
         cover.style.transform='perspective(900px) rotateY(-170deg)'; cover.style.opacity='0';
         book.classList.add('isopen');
@@ -288,7 +316,7 @@
       cam.style.transformOrigin=cx+'px '+cy+'px';
       cam.style.transform='translate('+(800-cx)+'px,'+(400-cy)+'px) scale(2.6)';
       cam.classList.add('peek');
-      snd('ページをめくる2',.6,.7);
+      snd('peek',.6,.7);
       await wait(1100);
       await showCodex();
     }
@@ -400,7 +428,7 @@
       // 今いる所までスクロール
       var tgt=rowsById[opts.focus||current]; if(tgt) tree.scrollTop=Math.max(0,tgt.offsetTop-tree.clientHeight*.45);
       if(grow&&!opts.noGrow){
-        var a=snd('うごめく触手',.5,.85); snd('暗黒魔法',.25,.8);
+        var a=snd('grow',.5,.85); snd('grow2',.25,.8);
         await wait(600+cnt*350);
         fadeOut(a,900);
         st.shown=st.seen.slice(); emit();
@@ -408,7 +436,7 @@
     }
     async function closeCodex(){
       codex.classList.remove('vis'); await wait(700); codex.classList.remove('on');
-      unpeek(); snd('本を閉じる1',.25,.9);
+      unpeek(); snd('close',.25,.9);
     }
     cback.addEventListener('click',function(){ if(busy) return; closeCodex(); });
 
@@ -418,14 +446,14 @@
       dlg.innerHTML='<div class="box"><h3>この時へ戻りますか？</h3><div class="row"><button data-a="y">戻る</button><button data-a="n">やめる</button></div></div>';
       dlg.classList.add('on');
       dlg.onclick=function(e){ var a=e.target.closest('button'); if(!a&&e.target!==dlg) return; dlg.classList.remove('on');
-        if(a&&a.dataset.a==='y'){ snd('ワープ',.5); if(o.onLoad) o.onLoad(i,JSON.parse(JSON.stringify(sv))); else say('セーブ'+KANJI[i]+'へ戻る'); } };
+        if(a&&a.dataset.a==='y'){ snd('load',.5); if(o.onLoad) o.onLoad(i,JSON.parse(JSON.stringify(sv))); else say('セーブ'+KANJI[i]+'へ戻る'); } };
     }
 
     /* ---------- 羽ペン：セーブ ---------- */
     function nodeLabel(id){ for(var i=0;i<chart.chapters.length;i++){ var c=chart.chapters[i]; for(var j=0;j<c.nodes.length;j++){ if(c.nodes[j].id===id) return c.title.replace(/^(第\S+章)\s*/,'$1 ')+' ／ '+c.nodes[j].label; } } return id; }
     function openSave(){
       if(!current){ say('今は記せない'); return; }
-      snd('紙を広げる2',.4);
+      snd('saveOpen',.4);
       var h='<div class="box"><h3>どこに記しますか？</h3><div class="slots">';
       st.saves.forEach(function(sv,i){ h+='<button data-i="'+i+'"><b>'+KANJI[i]+'</b>'+(sv?nodeLabel(sv.node):'（空き）')+'</button>'; });
       h+='</div><div class="row"><button data-a="n">やめる</button></div></div>';
@@ -435,7 +463,7 @@
     async function doSave(i){
       busy=true; unglow();
       var old=st.saves[i];
-      snd('シャーペンで字を書く',.35,.7);
+      snd('write',.35,.7);
       if(!st.hasBook||!st.opened){ st.saves[i]={node:current,time:Date.now()}; emit(); say('記した（'+KANJI[i]+'）'); busy=false; return; }
       await peek();
       var cOld=old&&nodeChapter(old.node);
@@ -447,8 +475,8 @@
         var mark=orow&&orow.querySelector('.nd-mark[data-slot="'+i+'"]');
         if(mark){
           var y=yith(); placeNear(y,mark,-170,-150); tin.appendChild(y);
-          snd('異次元空間',.4); await wait(60); y.classList.add('on'); await wait(1500);
-          snd('ワープ',.55); mark.classList.add('fadeout'); await wait(1200);
+          snd('yithIn',.4); await wait(60); y.classList.add('on'); await wait(1500);
+          snd('vanish',.55); mark.classList.add('fadeout'); await wait(1200);
           y.classList.remove('on'); await wait(500);
         }
       }
@@ -461,10 +489,10 @@
       await wait(900);
       if(nmark){
         var circ=magicCircle(); placeNear(circ,nmark,0,0,true); tin.appendChild(circ);
-        snd('魔法陣を展開',.5); void circ.offsetWidth; circ.classList.add('on');
+        snd('circle',.5); void circ.offsetWidth; circ.classList.add('on');
         await wait(700);
         await burnIn(nmark);
-        snd('マッチで火をつける',.35,.8);
+        snd('burn',.35,.8);
       }
       await wait(900);
       busy=false;
@@ -521,8 +549,17 @@
       getState:function(){ return JSON.parse(JSON.stringify(st)); },
       setState:function(s){ st=Object.assign({seen:[],shown:[],opened:false,hasBook:true,hinted:false,saves:[null,null,null]},s||{}); applyBook();
         book.querySelectorAll('.strap').forEach(function(x){ x.style.transform=''; x.style.opacity=''; }); var cv=book.querySelector('.cover'); cv.style.cssText=''; },
-      openCodex:function(){ return peek(); }
+      openCodex:function(){ return peek(); },
+      setEdit:function(on,cb){ editing=!!on; editCb=cb||null; host.classList.toggle('editing',editing); unglow(); if(!editing) select(null); },
+      selectObj:function(k){ select(k); },
+      setObj:function(k,v){ if(!layout[k]) return; Object.assign(layout[k],v); applyLayout(); if(o.onLayout) o.onLayout(JSON.parse(JSON.stringify(layout))); },
+      getLayout:function(){ return JSON.parse(JSON.stringify(layout)); },
+      resetLayout:function(){ layout=JSON.parse(JSON.stringify(LAYOUT)); applyLayout(); if(selKey) select(selKey); if(o.onLayout) o.onLayout(JSON.parse(JSON.stringify(layout))); },
+      previewBook:function(open){ book.classList.toggle('isopen',open==null?!!st.opened:!!open); book.querySelectorAll('.strap').forEach(function(x){ x.style.display=(open==null?st.opened:open)?'none':''; }); },
+      getSounds:function(){ return Object.assign({},sounds); },
+      setSound:function(k,p){ sounds[k]=p||''; if(o.onSounds) o.onSounds(Object.assign({},sounds)); },
+      playSound:function(k){ return snd(k,.7); }
     };
   }
-  window.NakotoDesk={create:create, version:VERSION};
+  window.NakotoDesk={create:create, version:VERSION, SOUNDS:SOUNDS, SOUND_LABELS:SOUND_LABELS, LAYOUT:LAYOUT, OBJ_LABELS:OBJ_LABELS};
 })();
