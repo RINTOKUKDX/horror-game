@@ -1,5 +1,5 @@
 /* ============================================================================
-   机メニュー＋ナコト写本 部品（NakotoDesk） v1.9.1
+   机メニュー＋ナコト写本 部品（NakotoDesk） v1.9.2
    ----------------------------------------------------------------------------
    机そのものがメニュー。本＝探索者シート（部品 assets/sheet/investigator-sheet.js）、紙の束＝ルート分岐表（付箋付きファイル）、羽ペン＝セーブ。
    本体は呼ぶだけ。見た目を作り直すときは、このファイルと assets/nakoto/ の絵だけを差しかえる。
@@ -36,7 +36,7 @@
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.9.1';
+  var VERSION='1.9.2';
   // 効果音（assets からの場所）。空なら鳴らさない。見本の「調整」で差しかえられる
   var SOUNDS={glow:'',sheet:'sfx/紙を広げる1.mp3',
     peek:'sfx/ページをめくる2.mp3',grow:'sfx/うごめく触手.mp3',grow2:'sfx/暗黒魔法.mp3',close:'sfx/本を閉じる1.mp3',saveOpen:'sfx/紙を広げる2.mp3',write:'sfx/シャーペンで字を書く.mp3',
@@ -142,10 +142,10 @@
 '.nd-here{position:absolute;left:-26px;top:50%;width:16px;height:16px;margin-top:-8px;border-radius:50%;background:radial-gradient(#ffdc8a,#c06018 60%,rgba(0,0,0,0) 72%);animation:nd-pulse 1.6s infinite}',
 '@keyframes nd-pulse{50%{transform:scale(1.5);opacity:.6}}',
 /* 保存の印 */
-'.nd-mark{position:relative;flex:0 0 auto;margin-left:8px;min-width:44px;min-height:40px;padding:0 6px;font-family:"Yuji Syuku","Shippori Mincho",serif;font-size:21px;letter-spacing:.06em;color:#8e1610;transform:rotate(-2deg);cursor:pointer;display:flex;align-items:center;gap:3px;filter:url(#nd-ink);text-shadow:0 0 1px rgba(142,22,16,.7),0 0 3px rgba(142,22,16,.35)}',
+'.nd-mark{position:relative;flex:0 0 auto;margin-left:8px;min-width:44px;min-height:40px;padding:0 6px;font-family:"Yuji Syuku","Shippori Mincho",serif;font-size:25px;font-weight:700;letter-spacing:.06em;color:#c0261b;transform:rotate(-2deg);cursor:pointer;display:flex;align-items:center;gap:3px;filter:url(#nd-ink);text-shadow:0 0 1px rgba(150,20,12,.9),0 0 6px rgba(255,236,200,.55),0 0 12px rgba(255,230,190,.3)}',
 '.nd-mark::before{content:"";position:absolute;left:58%;top:62%;width:15px;height:12px;border-radius:48% 52% 40% 60%/55% 45% 55% 45%;background:radial-gradient(ellipse at 45% 45%,rgba(140,20,14,.55),rgba(140,20,14,.25) 55%,rgba(140,20,14,0) 75%);filter:blur(1.2px);pointer-events:none}',
 '.nd-mark::after{content:"";position:absolute;left:4%;right:8%;bottom:5px;height:2px;border-radius:2px;background:linear-gradient(90deg,rgba(142,22,16,.15),rgba(142,22,16,.7) 30%,rgba(142,22,16,.5) 80%,rgba(142,22,16,0));transform:rotate(-1.5deg);pointer-events:none}',
-'.nd-mark small{font-size:12px;letter-spacing:0;opacity:.85;align-self:flex-end;margin-bottom:6px}',
+'.nd-mark small{font-size:14px;letter-spacing:0;opacity:.95;align-self:flex-end;margin-bottom:6px}',
 '.nd-mark.fadeout{animation:nd-vanish 1.1s forwards}',
 '@keyframes nd-vanish{0%{filter:none}40%{filter:brightness(3) drop-shadow(0 0 14px #bff) ;opacity:1}100%{opacity:0;filter:brightness(4) blur(6px) drop-shadow(0 0 30px #bff);transform:rotate(-2deg) scale(1.4)}}',
 '.nd-mark.burnin{-webkit-mask-image:radial-gradient(circle at 30% 60%,#000 var(--r),rgba(0,0,0,0) calc(var(--r) + 14%));mask-image:radial-gradient(circle at 30% 60%,#000 var(--r),rgba(0,0,0,0) calc(var(--r) + 14%));box-shadow:0 0 calc(var(--g) * 18px) rgba(255,120,30,var(--g));text-shadow:0 0 calc(var(--g) * 10px) rgba(255,150,40,var(--g))}',
@@ -172,7 +172,7 @@
     // 手書きの赤インク：筆文字の字体＋インクのにじみ（輪郭を少し揺らす）
     var lk=document.createElement('link'); lk.rel='stylesheet'; lk.href='https://fonts.googleapis.com/css2?family=Yuji+Syuku&display=swap'; document.head.appendChild(lk);
     var sv=document.createElementNS('http://www.w3.org/2000/svg','svg'); sv.setAttribute('width','0'); sv.setAttribute('height','0'); sv.style.position='absolute';
-    sv.innerHTML='<filter id="nd-ink" x="-10%" y="-20%" width="120%" height="140%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="1.6" result="d"/><feGaussianBlur in="d" stdDeviation=".35"/></filter>';
+    sv.innerHTML='<filter id="nd-ink" x="-10%" y="-20%" width="120%" height="140%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="1.1" result="d"/><feGaussianBlur in="d" stdDeviation=".25"/></filter>';
     document.body.appendChild(sv); }
   // 探索者シートの部品が無ければ自分で読みこむ
   function loadSheet(base){ return new Promise(function(res){ if(window.InvestigatorSheet) return res(true);
