@@ -1,5 +1,5 @@
 /* ============================================================================
-   机メニュー＋ナコト写本 部品（NakotoDesk） v1.10.1
+   机メニュー＋ナコト写本 部品（NakotoDesk） v1.10.2
    ----------------------------------------------------------------------------
    机そのものがメニュー。本＝探索者シート（部品 assets/sheet/investigator-sheet.js）、紙の束＝ルート分岐表（付箋付きファイル）、羽ペン＝セーブ。
    本体は呼ぶだけ。見た目を作り直すときは、このファイルと assets/nakoto/ の絵だけを差しかえる。
@@ -36,7 +36,7 @@
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.10.1';
+  var VERSION='1.10.2';
   // 効果音（assets からの場所）。空なら鳴らさない。見本の「調整」で差しかえられる
   var SOUNDS={glow:'',sheet:'sfx/紙を広げる1.mp3',
     peek:'sfx/ページをめくる2.mp3',grow:'sfx/うごめく触手.mp3',grow2:'sfx/暗黒魔法.mp3',close:'sfx/本を閉じる1.mp3',saveOpen:'sfx/紙を広げる2.mp3',write:'sfx/シャーペンで字を書く.mp3',
@@ -365,7 +365,9 @@
        すぐ終わり（end）…そのまま結末
        別の編へ…行き先が別の章（付箋）にある。「→ ○○へ」と書き、押すとその付箋へ */
     var COL=40, BX=34;
-    var layoutInfo=null;
+    var layoutInfo=null, lastDraw=null, redrawT=0, lastH=0, lastW=0;
+    function redrawLines(){ if(!lastDraw||lastDraw.c!==selCh||!tin.isConnected) return; clearTimeout(redrawT); var wt=Math.max(60,(lastDraw.until||0)-performance.now()); redrawT=setTimeout(function(){ if(lastDraw&&lastDraw.c===selCh) drawLines(lastDraw.c,lastDraw.byId,false,lastDraw.shown); },wt); }
+    if(window.ResizeObserver) new ResizeObserver(function(){ var h=tin.offsetHeight, w=tin.offsetWidth; if(h!==lastH||w!==lastW){ lastH=h; lastW=w; redrawLines(); } }).observe(tin);
     function renderTree(animate){
       tin.innerHTML=''; rowsById={};
       var c=selCh; if(!c) return 0;
@@ -427,6 +429,9 @@
       });
       layoutInfo=info;
       requestAnimationFrame(function(){ drawLines(c,byId,animate,shown); });
+      // 文字の形（読み込み中の書体）で行の高さが変わったら、線を引き直す（途切れ防止）
+      lastDraw={c:c,byId:byId,shown:shown,until:animate?performance.now()+1600+order*400:0};
+      if(document.fonts&&document.fonts.ready) document.fonts.ready.then(redrawLines);
       return order;
     }
     function addMarks(row,id){
