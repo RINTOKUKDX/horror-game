@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>深淵の胎動（仮） v0.5.2</title>
+<title>深淵の胎動（仮） v0.5.3</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* ゲーム本体（11/25 に「ゲーム画面 見本 v1.8」を本体にした）。ダイスは部品 assets/dice/dice-engine.js */
@@ -240,7 +240,7 @@
     <button type="button" class="item" data-open="pTune">見本の調整</button>
     <button type="button" class="item" data-open="pAssets">素材を見る</button>
   </div>
-  <p class="small">深淵の胎動（仮） v0.5.2</p>
+  <p class="small">深淵の胎動（仮） v0.5.3</p>
 </div>
 <div class="panel" id="pSheet"><button type="button" class="close" data-back>戻る</button>
   <div id="sheetHost"></div></div>
@@ -266,7 +266,7 @@
   <div class="row"><input type="text" id="free" placeholder="技能名や行動を入力（例：目星）" autocomplete="off"><button type="button" class="item" id="freeGo">決定</button></div>
 </div>
 
-<div id="start" class="hide" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプでログ／長押しで絵だけ</span><span class="ver">深淵の胎動（仮） v0.5.2</span></div>
+<div id="start" class="hide" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプでログ／長押しで絵だけ</span><span class="ver">深淵の胎動（仮） v0.5.3</span></div>
 <div id="portrait">スマホを横向きにしてください</div>
 
 <script src="assets/manifest.js"></script>
@@ -727,7 +727,7 @@
   // ---- タイトル（部品 assets/title/title-screen.js）：注意書き→演出→メニュー ----
   function beginGame(){ if(!begun){ begun=true; applyState(); go('start'); } }
   if(window.HorrorTitle){
-    var title=HorrorTitle.create({ version:'v0.5.2', onStartTap:goFull,
+    var title=HorrorTitle.create({ version:'v0.5.3', onStartTap:goFull,
       onNewGame:function(){ title.hide(); beginGame(); } });  // つづきから・設定は、セーブと設定を作ったら渡す
     title.show();
   } else { start.querySelector('b').textContent='タップして始める'; start.classList.remove('hide'); start.addEventListener('click',beginGame); }
