@@ -1,5 +1,5 @@
 /* ============================================================================
-   机メニュー＋ナコト写本 部品（NakotoDesk） v1.5.0
+   机メニュー＋ナコト写本 部品（NakotoDesk） v1.6.0
    ----------------------------------------------------------------------------
    机そのものがメニュー。本＝探索者シート（部品 assets/sheet/investigator-sheet.js）、紙の束＝ルート分岐表（付箋付きファイル）、羽ペン＝セーブ。
    本体は呼ぶだけ。見た目を作り直すときは、このファイルと assets/nakoto/ の絵だけを差しかえる。
@@ -36,7 +36,7 @@
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.5.0';
+  var VERSION='1.6.0';
   // 効果音（assets からの場所）。空なら鳴らさない。見本の「調整」で差しかえられる
   var SOUNDS={glow:'',sheet:'sfx/紙を広げる1.mp3',openWet:'sfx/うごめく触手.mp3',strap:'sfx/ベルトを付ける.mp3',cover:'sfx/ページをめくる1.mp3',coverWet:'sfx/ねんえきネバネバ.mp3',
     peek:'sfx/ページをめくる2.mp3',grow:'sfx/うごめく触手.mp3',grow2:'sfx/暗黒魔法.mp3',close:'sfx/本を閉じる1.mp3',saveOpen:'sfx/紙を広げる2.mp3',write:'sfx/シャーペンで字を書く.mp3',
@@ -121,7 +121,8 @@
 '.nd-tab.lock::before{content:"";position:absolute;left:14%;right:14%;top:32%;bottom:32%;background:var(--noise);background-size:110px;opacity:.6;animation:nd-noise .25s steps(2) infinite}',
 '.nd-sv{position:absolute;z-index:25;inset:0;display:none;align-items:center;justify-content:center;background:#050302;opacity:0;transition:opacity .9s}',
 '.nd-sv.on{display:flex}.nd-sv.vis{opacity:1}',
-'.nd-svin{width:min(94vw,calc(86dvh * 2));height:86dvh}',
+'.nd-svin{position:relative;width:min(94vw,calc(86dvh * 2));height:86dvh;perspective:2000px}',
+'.nd-bcover{position:absolute;left:50%;top:-1%;width:50.5%;height:102%;z-index:9;transform-origin:0 50%;border-radius:2px 8px 8px 2px;background-size:cover;background-position:center;box-shadow:0 0 30px #000;backface-visibility:hidden}',
 '.nd-tree{position:absolute;z-index:1;inset:15% 4% 3% 7%;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:none}',
 '.nd-tree::-webkit-scrollbar{display:none}',
 '.nd-tin{position:relative;padding:4% 2% 18%}',
@@ -343,10 +344,21 @@
     }
     async function showSheet(){
       if(!window.InvestigatorSheet) await loadSheet(B);
-      if(!isheet && window.InvestigatorSheet) isheet=InvestigatorSheet.create({root:svin, data:o.sheetData});
+      if(!isheet && window.InvestigatorSheet){ isheet=InvestigatorSheet.create({root:svin, data:o.sheetData, onFlip:function(){ snd('peek',.6,1.1); }}); }
       else if(isheet) isheet.render();
       if(!isheet) svin.textContent='探索者シートの部品が読み込まれていません';
-      sv.classList.add('on'); void sv.offsetWidth; sv.classList.add('vis'); await wait(700);
+      if(isheet) isheet.page(0);
+      // 本が開く：右半分を表紙が覆い、背を軸に左へ開く
+      var cv=el('div','nd-bcover'); cv.style.backgroundImage='url('+B+'book-cover.webp)'; svin.appendChild(cv);
+      svin.style.clipPath='inset(0 0 0 50%)';
+      sv.classList.add('on'); void sv.offsetWidth; sv.classList.add('vis'); await wait(500);
+      snd('cover',.7,.9);
+      await new Promise(function(res){ var t0=performance.now(), D=1000;
+        (function f(){ var k=Math.min(1,(performance.now()-t0)/D), e=1-Math.pow(1-k,3), ang=-180*e;
+          cv.style.transform='rotateY('+ang+'deg)'; cv.style.filter='brightness('+(1-Math.sin(e*Math.PI)*.45).toFixed(2)+')';
+          if(ang<-90) svin.style.clipPath='inset(0 0 0 '+Math.max(0,50*(1-(e-.5)*2.2)).toFixed(1)+'%)';
+          if(k<1) requestAnimationFrame(f); else res(); })(); });
+      svin.style.clipPath=''; cv.remove();
     }
     sback.addEventListener('click',async function(){ if(busy) return; sv.classList.remove('vis'); await wait(700); sv.classList.remove('on'); unpeek(); snd('close',.25,.9); closeBook(); });
     function closeBook(){ book.classList.remove('isopen'); var cv=book.querySelector('.cover'); cv.style.transition='none'; cv.style.opacity='0'; cv.style.transform='none'; }
