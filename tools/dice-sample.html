@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ダイス 見本 v1.19</title>
+<title>ダイス 見本 v1.20</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* ダイスだけを試す見本。ゲーム本体・ゲーム画面見本には影響しない */
@@ -77,8 +77,8 @@
   </div>
   <button type="button" id="toggle">☰ 設定</button>
 </div>
-<div class="ver">ダイス 見本 v1.19</div>
-<div id="start"><b>タップして始める</b><span>全画面・横向きになります（音が出ます）</span><span>ダイスを指でつかんで、はじくように投げる</span><span style="font-size:2.4dvh;color:#6c6455">ダイス 見本 v1.19</span></div>
+<div class="ver">ダイス 見本 v1.20</div>
+<div id="start"><b>タップして始める</b><span>全画面・横向きになります（音が出ます）</span><span>ダイスを指でつかんで、はじくように投げる</span><span style="font-size:2.4dvh;color:#6c6455">ダイス 見本 v1.20</span></div>
 
 <script src="../assets/manifest.js"></script>
 <!-- 部品を直したら ?v= を上げる（スマホに古い部品が残るのを防ぐ） -->
@@ -92,12 +92,13 @@
     onGrab:function(){ $('panel').classList.remove('on'); },
     onSetup:function(f){ document.querySelectorAll('#forms button').forEach(function(x){ x.classList.toggle('sel',x.textContent===f); }); }});
   var CFG=E.cfg, DEF=E.defaults;
-  E.setup({formula:'1D100',skill:'目星',target:60});
+  var SAMPLE_LUCK=60; // 仮の幸運（本編ではゲームが今の幸運を渡す）。失敗すると「命運を削る」が出る
+  E.setup({luck:SAMPLE_LUCK,formula:'1D100',skill:'目星',target:60});
 
   // ===== 右下の設定 =====
   ['1D100','1D3','1D4','1D6','2D6','3D6','1D8','1D10','1D12','1D20','2D6+1D4','1D6+1D4','8D6'].forEach(function(fs){
     var b=document.createElement('button'); b.type='button'; b.className='f'; b.textContent=fs;
-    b.addEventListener('click',function(){ $('formula').value=fs; E.setup({formula:fs}); }); $('forms').appendChild(b); });
+    b.addEventListener('click',function(){ $('formula').value=fs; E.setup({luck:SAMPLE_LUCK,formula:fs}); }); $('forms').appendChild(b); });
   var SL=[
     ['tab-m','friction','床のすべりにくさ',.05,.9,.01],['tab-m','rollDamp','転がりの止まりやすさ',0,1.5,.01],['tab-m','bounce','床の跳ね返り',0,.8,.01],
     ['tab-m','wallBounce','壁の跳ね返り',0,.9,.01],['tab-m','power','投げる強さ',.4,2,.01],['tab-m','speed','動きの速さ（小さいほどスロー）',.4,1.2,.01],
@@ -128,7 +129,7 @@
   selBtns('rooms',ROOMS,'room',function(it){ CFG.decay=it[2]; CFG.wet=it[3]; ['decay','wet'].forEach(function(k){ inputs[k].inp.value=CFG[k]; inputs[k].out.textContent=fmt(CFG[k],inputs[k].st); }); });
   refreshSel();
   function onCfg(k){ E.changed(k); if(k==='room') ['decay','wet'].forEach(function(n){ E.changed(n); }); showCfg(); }
-  function showCfg(){ var o={}; Object.keys(DEF).forEach(function(k){ o[k]=typeof CFG[k]==='number'?Math.round(CFG[k]*100)/100:CFG[k]; }); $('cfgtxt').value='ダイス設定 v1.19 '+JSON.stringify(o); }
+  function showCfg(){ var o={}; Object.keys(DEF).forEach(function(k){ o[k]=typeof CFG[k]==='number'?Math.round(CFG[k]*100)/100:CFG[k]; }); $('cfgtxt').value='ダイス設定 v1.20 '+JSON.stringify(o); }
   showCfg();
   $('viewA').addEventListener('click',function(){ E.view('start'); });
   $('viewB').addEventListener('click',function(){ E.view('result'); });
@@ -143,8 +144,8 @@
     document.querySelectorAll('.tab').forEach(function(x){ x.classList.toggle('on',x.id==='tab-'+b.dataset.t); }); }); });
   $('toggle').addEventListener('click',function(){ $('panel').classList.toggle('on'); });
   $('target').addEventListener('input',function(){ $('tv').textContent=this.value; E.setTarget(+this.value); });
-  $('apply').addEventListener('click',function(){ var fs=$('formula').value.toUpperCase().replace(/\s/g,''); if(E.parse(fs)){ E.setup({formula:fs}); } else { $('formula').value=E.formula; } });
-  $('gather').addEventListener('click',function(){ E.setup({}); });
+  $('apply').addEventListener('click',function(){ var fs=$('formula').value.toUpperCase().replace(/\s/g,''); if(E.parse(fs)){ E.setup({luck:SAMPLE_LUCK,formula:fs}); } else { $('formula').value=E.formula; } });
+  $('gather').addEventListener('click',function(){ E.setup({luck:SAMPLE_LUCK,}); });
   ['pointerdown','pointerup','click'].forEach(function(ev){ $('tool').addEventListener(ev,function(e){ e.stopPropagation(); }); });
 
   // ===== 始める（全画面・横向き） =====
@@ -153,7 +154,7 @@
     E.unlockAudio(); var el=document.documentElement;
     try{ if(!isFull()){ if(el.requestFullscreen) await el.requestFullscreen(); else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen(); } }catch(_){ }
     try{ if(screen.orientation&&screen.orientation.lock) await screen.orientation.lock('landscape'); }catch(_){ }
-    $('start').style.display='none'; setTimeout(function(){ E.setup({}); E.cutin(); },150);
+    $('start').style.display='none'; setTimeout(function(){ E.setup({luck:SAMPLE_LUCK,}); E.cutin(); },150);
   }
   $('start').addEventListener('click',begin);
   try{ var bgs=(window.ASSETS&&window.ASSETS.bg)||[]; var pick=bgs.indexOf('corridor')>=0?'corridor':bgs[0]; if(pick) $('bg').style.backgroundImage='url(../assets/bg/'+pick+'.webp)'; }catch(_){ }
