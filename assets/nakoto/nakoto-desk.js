@@ -1,5 +1,5 @@
 /* ============================================================================
-   机メニュー＋ナコト写本 部品（NakotoDesk） v1.8.0
+   机メニュー＋ナコト写本 部品（NakotoDesk） v1.9.0
    ----------------------------------------------------------------------------
    机そのものがメニュー。本＝探索者シート（部品 assets/sheet/investigator-sheet.js）、紙の束＝ルート分岐表（付箋付きファイル）、羽ペン＝セーブ。
    本体は呼ぶだけ。見た目を作り直すときは、このファイルと assets/nakoto/ の絵だけを差しかえる。
@@ -36,7 +36,7 @@
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.8.0';
+  var VERSION='1.9.0';
   // 効果音（assets からの場所）。空なら鳴らさない。見本の「調整」で差しかえられる
   var SOUNDS={glow:'',sheet:'sfx/紙を広げる1.mp3',
     peek:'sfx/ページをめくる2.mp3',grow:'sfx/うごめく触手.mp3',grow2:'sfx/暗黒魔法.mp3',close:'sfx/本を閉じる1.mp3',saveOpen:'sfx/紙を広げる2.mp3',write:'sfx/シャーペンで字を書く.mp3',
@@ -78,7 +78,7 @@
 '.nd-flame{position:absolute;left:54.7%;top:71%;width:60px;height:90px;margin:-70px 0 0 -30px;border-radius:50% 50% 45% 45%/60% 60% 40% 40%;background:radial-gradient(ellipse at 50% 70%,#fff8d8 0,#ffd27a 25%,rgba(255,140,40,.6) 50%,rgba(255,90,20,0) 72%);mix-blend-mode:screen;pointer-events:none;transform-origin:50% 90%}',
 
 
-'.nd.editing .nd-obj,.nd.editing .nd-desk{cursor:move}',
+'.nd.editing .nd-obj,.nd.editing .nd-desk{cursor:move}.nd.editing .nd-stage{touch-action:none}',
 '.nd-sel{outline:3px dashed rgba(255,210,120,.9);outline-offset:4px}',
 /* 光と闇 */
 '.nd-dark{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 58% 85% at var(--lx,66%) var(--ly,52%),rgba(0,0,0,0) 0,rgba(0,0,0,.12) 28%,rgba(0,0,0,.6) 62%,rgba(0,0,0,.9) 100%)}',
@@ -240,7 +240,7 @@
     /* ---------- 配置 ---------- */
     var layout=JSON.parse(JSON.stringify(LAYOUT)); (function(l){ if(l) Object.keys(l).forEach(function(k){ if(layout[k]) Object.assign(layout[k],l[k]); }); })(o.layout);
     var objs={desk:desk,sheets:sheets,lantern:lantern,book:book,ink:ink,quill:quill};
-    function applyLayout(){ Object.keys(objs).forEach(function(k){ var e=objs[k], v=layout[k]; e.style.left=v.x+'px'; e.style.top=v.y+'px'; e.style.width=v.w+'px'; e.style.transform='rotate('+(v.r||0)+'deg)'+(k==='sheets'?' skewX(8deg)':''); });
+    function applyLayout(){ Object.keys(objs).forEach(function(k){ var e=objs[k], v=layout[k]; e.style.left=v.x+'px'; e.style.top=v.y+'px'; e.style.width=v.w+'px'; e.style.transform=((v.rx||v.ry)?'perspective(1400px) rotateX('+(v.rx||0)+'deg) rotateY('+(v.ry||0)+'deg) ':'')+'rotate('+(v.r||0)+'deg)'; });
       var bc=book.querySelector('.bk-closed'), want=B+'book-'+(layout.book.s||1)+'.webp'; if(bc.getAttribute('src')!==want) bc.setAttribute('src',want); }
     applyLayout();
     /* 調整モード：触った物を選び、ドラッグで動かす */
@@ -248,9 +248,20 @@
     function stageXY(e){ var r=stage.getBoundingClientRect(), s=r.width/1600; return {x:(e.clientX-r.left)/s, y:(e.clientY-r.top)/s, s:s}; }
     function pick(e){ var order=['quill','ink','book','sheets','lantern','desk']; for(var i=0;i<order.length;i++){ var k=order[i], r=objs[k].getBoundingClientRect(); if(objs[k].offsetParent!==null && e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom) return k; } return null; }
     function select(k){ if(selKey) objs[selKey].classList.remove('nd-sel'); selKey=k; if(k) objs[k].classList.add('nd-sel'); if(editCb) editCb(k, k?Object.assign({},layout[k]):null); }
-    stage.addEventListener('pointerdown',function(e){ if(!editing) return; var k=pick(e); select(k); if(!k) return; var p=stageXY(e); drag={k:k,x:p.x,y:p.y,ox:layout[k].x,oy:layout[k].y}; try{ stage.setPointerCapture(e.pointerId); }catch(_){} });
-    stage.addEventListener('pointermove',function(e){ if(!drag) return; var p=stageXY(e); layout[drag.k].x=Math.round(drag.ox+p.x-drag.x); layout[drag.k].y=Math.round(drag.oy+p.y-drag.y); applyLayout(); });
-    stage.addEventListener('pointerup',function(){ if(drag){ var k=drag.k; drag=null; if(editCb) editCb(k,Object.assign({},layout[k])); if(o.onLayout) o.onLayout(JSON.parse(JSON.stringify(layout))); } });
+    // 1本指＝動かす（スワイプ）、2本指＝大きさ（ピンチ）
+    var ptr={}, pinch=null;
+    function pdist(){ var a=Object.keys(ptr).map(function(i){ return ptr[i]; }); return Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y); }
+    stage.addEventListener('pointerdown',function(e){ if(!editing) return; var p=stageXY(e); ptr[e.pointerId]=p; try{ stage.setPointerCapture(e.pointerId); }catch(_){}
+      if(Object.keys(ptr).length===2 && selKey){ var v=layout[selKey], el0=objs[selKey]; drag=null; pinch={k:selKey,d:pdist(),w:v.w,x:v.x,y:v.y,ar:el0.offsetHeight/Math.max(1,el0.offsetWidth)}; return; }
+      if(Object.keys(ptr).length>1) return;
+      var k=pick(e); select(k); if(!k) return; drag={k:k,x:p.x,y:p.y,ox:layout[k].x,oy:layout[k].y}; });
+    stage.addEventListener('pointermove',function(e){ if(!ptr[e.pointerId]) return; var p=stageXY(e); ptr[e.pointerId]=p;
+      if(pinch && Object.keys(ptr).length>=2){ var v=layout[pinch.k], w=Math.max(30,Math.min(2400,Math.round(pinch.w*pdist()/Math.max(1,pinch.d))));
+        v.w=w; v.x=Math.round(pinch.x-(w-pinch.w)/2); v.y=Math.round(pinch.y-(w-pinch.w)*pinch.ar/2); applyLayout(); if(editCb) editCb(pinch.k,Object.assign({},v)); return; }
+      if(!drag) return; layout[drag.k].x=Math.round(drag.ox+p.x-drag.x); layout[drag.k].y=Math.round(drag.oy+p.y-drag.y); applyLayout(); });
+    function pend(e){ delete ptr[e.pointerId]; if(pinch && Object.keys(ptr).length<2){ var k=pinch.k; pinch=null; ptr={}; if(editCb) editCb(k,Object.assign({},layout[k])); if(o.onLayout) o.onLayout(JSON.parse(JSON.stringify(layout))); } }
+    stage.addEventListener('pointercancel',function(e){ pend(e); drag=null; });
+    stage.addEventListener('pointerup',function(e){ pend(e); if(drag){ var k=drag.k; drag=null; if(editCb) editCb(k,Object.assign({},layout[k])); if(o.onLayout) o.onLayout(JSON.parse(JSON.stringify(layout))); } });
 
     /* ---------- 舞台の大きさ ---------- */
     function fit(){ var w=innerWidth,h=innerHeight,s=Math.max(w/1600,h/800); stage.style.transform='scale('+s+') translate(-50%,-50%)'; }
