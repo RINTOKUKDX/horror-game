@@ -1,5 +1,5 @@
 /* ============================================================================
-   探索者シート部品（InvestigatorSheet） v1.2.0
+   探索者シート部品（InvestigatorSheet） v1.2.1
    ----------------------------------------------------------------------------
    古びた羊皮紙の見開き。1ページ目＝探索者記録と技能、2ページ目＝所持品とバックストーリー。
    本体（index.html）も机メニュー（assets/nakoto/）も、これを呼ぶだけ。シートを直すときはこのファイルだけ。
@@ -16,7 +16,7 @@
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.2.0';
+  var VERSION='1.2.1';
   var SAMPLE={
     name:'貴方（見本）', job:'古書店の店主', age:'34／—', address:'（見本）', birth:'（見本）',
     abil:{STR:9,DEX:12,INT:13,CON:11,APP:10,POW:16,SIZ:13,EDU:14},
@@ -29,7 +29,7 @@
   };
   var CSS=`.isheet{perspective:1800px}
 .isheet .isleaf{position:absolute;z-index:4;pointer-events:none;transform-style:preserve-3d}
-.isheet .isleaf .face{position:absolute;inset:0;margin:0!important;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:3px;background:radial-gradient(ellipse at 50% 50%,#dcc592 0%,#cdae76 70%,#b08850 100%);box-shadow:inset 0 0 3dvh rgba(50,22,3,.45)}
+.isheet .isleaf .face{position:absolute;inset:0;margin:0!important;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:3px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.045' numOctaves='4' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 .25  0 0 0 0 .14  0 0 0 0 .04  0 0 0 .9 -.25'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),radial-gradient(circle at 30% 70%,rgba(90,45,10,.22) 0,transparent 10%),radial-gradient(ellipse at 50% 50%,#dcc592 0%,#c9a96f 62%,#9a7240 100%);background-blend-mode:multiply,normal,normal;box-shadow:inset 0 0 4dvh rgba(50,22,3,.6)}
 .isheet .isleaf .face.back{transform:rotateY(180deg)}
 .isheet .isleaf .face::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(40,18,2,var(--sh,0)),rgba(40,18,2,0) 75%)}
 .isheet{position:relative;display:flex;width:100%;height:100%;box-sizing:border-box;font-family:"Shippori Mincho","Noto Serif JP",serif;text-align:left;padding:1.6dvh 1.4vw;border-radius:5px;color:#2a1a08;overflow:hidden;
