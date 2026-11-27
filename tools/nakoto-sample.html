@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ナコト写本 見本 v1.3.0</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
+<title>ナコト写本 見本 v1.4.0</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* 机メニュー＋ナコト写本だけを試す見本。ゲーム本体には影響しない */
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
@@ -45,9 +45,9 @@
 </style>
 </head>
 <body>
-<div id="start"><b>タップして始める</b><span>全画面・横向きになります</span><span>ナコト写本 見本 v1.3.0</span></div>
+<div id="start"><b>タップして始める</b><span>全画面・横向きになります</span><span>ナコト写本 見本 v1.4.0</span></div>
 <div id="portrait">横向きにしてください</div>
-<div id="dbg"><button id="adv">物語を進める</button><button id="rst">最初から</button><button id="adjBtn">調整</button></div>
+<div id="dbg"><button id="adv">物語を進める</button><button id="rst">最初から</button><button id="demo">見本で埋める</button><button id="adjBtn">調整</button></div>
 <div id="adj">
   <div class="tabs"><button data-p="lay" class="on">配置</button><button data-p="snd">効果音</button><button id="adjSide">左右</button><button id="adjClose">閉じる</button></div>
   <div class="pane on" id="p-lay">
@@ -107,12 +107,18 @@
   var KEY='nakoto-sample-v1';  // 配置・効果音の調整もここに保存
   function load(){ try{ return JSON.parse(localStorage.getItem(KEY))||null; }catch(_){ return null; } }
   function save(d){ try{ localStorage.setItem(KEY,JSON.stringify(d)); }catch(_){} }
-  var data=load()||{step:0,state:null};
+  // 見本の書き込み：最初に開いたとき、途中まで進んだ状態（セーブ2つ）にしておく
+  function demo(){
+    var seen=[], shown=[];
+    path.forEach(function(p,i){ p[0].forEach(function(id){ seen.push(id); if(i<path.length-2) shown.push(id); }); }); seen.push('c1-q2:B','c1-e2','c1-q3:B','c1-e3'); shown.push('c1-q2:B','c1-e2','c1-q3:B','c1-e3');
+    return {step:path.length,state:{seen:seen,shown:shown,opened:false,hasBook:true,hinted:false,saves:[{node:'c1-q2',time:0},{node:'c2-s1',time:0},null]}};
+  }
+  var data=load()||demo();
 
   var desk=NakotoDesk.create({
     base:'../assets/nakoto/', assets:'../assets/', chart:chart, state:data.state, layout:data.layout, sounds:data.sounds,
     onLayout:function(l){ data.layout=l; save(data); },
-    onSounds:function(m){ data.sounds=m; save(data); }, version:'見本 v1.3.0',
+    onSounds:function(m){ data.sounds=m; save(data); }, version:'見本 v1.4.0',
     current: data.step>0?path[data.step-1][1]:null,
     onState:function(s){ data.state=s; save(data); },
     onLoad:function(slot,sv){ alertish('セーブ'+['壱','弐','参'][slot]+'から再開（見本なので表示だけ）'); },
@@ -127,6 +133,7 @@
     alertish('物語が進んだ（'+data.step+'/'+path.length+'）');
   }
   if(data.step===0){ advance(); }
+  document.getElementById('demo').addEventListener('click',function(){ var d=demo(); d.layout=data.layout; d.sounds=data.sounds; save(d); location.reload(); });
   document.getElementById('adv').addEventListener('click',advance);
   document.getElementById('rst').addEventListener('click',function(){ try{ var keep={step:0,state:null,layout:data.layout,sounds:data.sounds}; localStorage.setItem(KEY,JSON.stringify(keep)); }catch(_){} location.reload(); });
 
