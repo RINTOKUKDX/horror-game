@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>探索者づくり 見本 v1.1</title>
+<title>探索者づくり 見本 v1.2</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* 探索者づくりの見本。計算は assets/charmake/character-rules.js、ダイスは assets/dice/dice-engine.js（どちらも部品） */
@@ -20,6 +20,7 @@
   select,input[type=text]{font-size:3dvh;padding:.7dvh .6vw;background:#0c0a08;border:1px solid #4a3a22;border-radius:3px;min-width:9vw}
   input[type=text]{user-select:text;width:14vw}
   .stats{display:grid;grid-template-columns:1fr 1fr;gap:0 2vw}
+  .chip{display:inline-block;width:1.1em;height:1.1em;border-radius:50%;background:#c9a97a;margin-right:.5em;vertical-align:-.15em}
   .rest{font-size:3.4dvh;margin:1.2dvh 0;color:var(--gold)}
   .rest.bad{color:#d84444}
   .go{width:100%;font-size:3.6dvh;padding:1.6dvh 0;background:#2a1010;border:1px solid #8c1414;border-radius:3px;letter-spacing:.3em;margin-top:1dvh}
@@ -61,24 +62,27 @@
   </div>
 </div>
 <div id="dice"></div>
-<div class="ver">探索者づくり 見本 v1.1</div>
-<div id="start" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span style="font-size:2.4dvh;color:#6c6455">探索者づくり 見本 v1.1</span></div>
+<div class="ver">探索者づくり 見本 v1.2</div>
+<div id="start" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span style="font-size:2.4dvh;color:#6c6455">探索者づくり 見本 v1.2</span></div>
 <div id="portrait">スマホを横向きにしてください</div>
 
 <!-- 部品を直したら ?v= を上げる（スマホに古い部品が残るのを防ぐ） -->
 <script src="../assets/charmake/character-rules.js?v=1.0.0"></script>
-<script src="../assets/dice/dice-engine.js?v=1.6.0"></script>
+<script src="../assets/dice/dice-engine.js?v=1.7.0"></script>
 <script>
 (function(){
   'use strict';
   var $=function(id){ return document.getElementById(id); };
   var R=HorrorCharRules, C=R.cfg;
+  var HUES=[0,45,90,135,180,225,270,315]; // 能力値ごとのダイスの色合い（STR→EDUの順）
   var alloc={}; C.stats.forEach(function(k){ alloc[k]=Math.round(C.total/C.stats.length/C.allocStep)*C.allocStep; });
   // 年齢
   for(var a=C.ageMin;a<=C.ageMax;a++){ var o=document.createElement('option'); o.value=a; o.textContent=a+'歳'; if(a===34) o.selected=true; $('age').appendChild(o); }
   // 能力値の振り分け（ドロップダウン）
   C.stats.forEach(function(k){
-    var lb=document.createElement('label'), sel=document.createElement('select'); lb.textContent=k+' ';
+    var lb=document.createElement('label'), sel=document.createElement('select'), nm=document.createElement('span');
+    // 色の目印：ダイスの色（STR→EDUの順）と同じ色合い
+    nm.innerHTML='<i class="chip" style="filter:sepia(.55) hue-rotate('+HUES[C.stats.indexOf(k)]+'deg) saturate(1.9)"></i>'+k; lb.appendChild(nm);
     for(var v=C.allocMin;v<=C.allocMax;v+=C.allocStep){ var o=document.createElement('option'); o.value=v; o.textContent=v; if(v===alloc[k]) o.selected=true; sel.appendChild(o); }
     sel.addEventListener('change',function(){ alloc[k]=+sel.value; refresh(); });
     lb.appendChild(sel); $('stats').appendChild(lb);
@@ -100,7 +104,7 @@
   }
   $('go').addEventListener('click',function(){
     var age=+$('age').value;
-    rollParts({formula:R.diceFormula(),title:'定められた器を、運命が形づくる',noTotal:true,hue:0}).then(function(dv){
+    rollParts({formula:R.diceFormula(),title:'定められた器を、運命が形づくる',noTotal:true,dieHues:HUES}).then(function(dv){
       return rollParts({formula:R.luckFormula(),title:'貴方の運命の強さを、ダイスに問う',noTotal:false,hue:170}).then(function(lv){ show(R.makeStats(alloc,age,dv),R.luckFromDice(lv),age); });
     });
   });
