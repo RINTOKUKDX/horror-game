@@ -1,5 +1,5 @@
 /* ============================================================================
-   探索者シート部品（InvestigatorSheet） v1.2.5
+   探索者シート部品（InvestigatorSheet） v1.2.6
    ----------------------------------------------------------------------------
    古びた羊皮紙の見開き。1ページ目＝探索者記録と技能、2ページ目＝所持品とバックストーリー。
    本体（index.html）も机メニュー（assets/nakoto/）も、これを呼ぶだけ。シートを直すときはこのファイルだけ。
@@ -16,7 +16,7 @@
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.2.5';
+  var VERSION='1.2.6';
   var SAMPLE={
     name:'貴方（見本）', job:'古書店の店主', age:'34／—', address:'（見本）', birth:'（見本）',
     abil:{STR:9,DEX:12,INT:13,CON:11,APP:10,POW:16,SIZ:13,EDU:14},
@@ -70,7 +70,7 @@ border:1.5px solid #3a2410;background:linear-gradient(90deg,rgba(255,240,200,.28
 .isheet .wp th{font-weight:700}
 .isheet .inv{columns:2;column-gap:1.5vw}
 .isheet .inv div{break-inside:avoid;height:4.2dvh;line-height:4.2dvh;font-size:clamp(12px,3.2dvh,16px);border-bottom:1px solid rgba(50,28,6,.55)}
-.isheet .flip{position:absolute;right:2vw;bottom:1.2dvh;z-index:3;font-size:clamp(11px,3dvh,15px);background:rgba(230,205,150,.85);border:1.5px solid #3a2410;color:#2a1a08;padding:.6dvh 2vw;border-radius:3px}`;
+.isheet .flip{position:absolute;right:2vw;bottom:1.2dvh;z-index:5;font-size:clamp(11px,3dvh,15px);background:rgba(230,205,150,.85);border:1.5px solid #3a2410;color:#2a1a08;padding:.6dvh 2vw;border-radius:3px}`;
   function injectCss(){ if(document.getElementById('isheet-css')) return; var s=document.createElement('style'); s.id='isheet-css'; s.textContent=CSS; document.head.appendChild(s); }
   function esc(t){ return String(t==null?'':t).replace(/[&<>]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); }
   function fl(a,b){ return '<div class="fl"><b>'+esc(a)+'</b><span>'+(b?esc(b):'&nbsp;')+'</span></div>'; }
@@ -125,7 +125,7 @@ border:1.5px solid #3a2410;background:linear-gradient(90deg,rgba(255,240,200,.28
       var t0=performance.now(), D=700;
       (function f(){ var k=Math.min(1,(performance.now()-t0)/D), e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
         leaf.style.transform='rotateY('+((fw?-180:180)*e).toFixed(2)+'deg)';
-        var sh=(Math.sin(e*Math.PI)*.5).toFixed(2); front.style.setProperty('--sh',sh); back.style.setProperty('--sh',sh); var fl=(1-Math.sin(e*Math.PI)).toFixed(2); front.style.setProperty('--flat',fl); back.style.setProperty('--flat',fl);
+        var sn=Math.sin(e*Math.PI), sh=(sn*sn*.35).toFixed(3); front.style.setProperty('--sh',sh); back.style.setProperty('--sh',sh); var fl=(1-Math.sin(e*Math.PI)).toFixed(2); front.style.setProperty('--flat',fl); back.style.setProperty('--flat',fl);
         if(k<1) requestAnimationFrame(f); else { if(fw) pgs[0].innerHTML=newL; else pgs[1].innerHTML=newR; front.style.visibility='hidden'; back.style.transition='opacity .18s'; back.style.opacity='0'; setTimeout(function(){ leaf.remove(); flipping=false; },190); } })();
     }
     flip.addEventListener('click',function(e){ e.stopPropagation(); turn(pageNo?0:1); });

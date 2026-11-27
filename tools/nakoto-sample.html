@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ナコト写本 見本 v1.9.5</title>
+<title>ナコト写本 見本 v1.9.6</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* 机メニュー＋ナコト写本だけを試す見本。ゲーム本体には影響しない */
@@ -42,7 +42,7 @@
 </style>
 </head>
 <body>
-<div id="start"><b>タップして始める</b><span>全画面・横向きになります</span><span>ナコト写本 見本 v1.9.5</span></div>
+<div id="start"><b>タップして始める</b><span>全画面・横向きになります</span><span>ナコト写本 見本 v1.9.6</span></div>
 <div id="portrait">横向きにしてください</div>
 <div id="dbg"><button id="adv">物語を進める</button><button id="rst">最初から</button><button id="demo">見本で埋める</button><button id="adjBtn">調整</button></div>
 <div id="adj">
@@ -61,10 +61,10 @@
     <div class="row"><button id="sndReset">効果音を元に戻す</button></div></div>
 </div>
 
-<script src="../assets/manifest.js?v=1.9.5"></script>
-<script src="../assets/picker/asset-picker.js?v=1.9.5"></script>
-<script src="../assets/sheet/investigator-sheet.js?v=1.9.5"></script>
-<script src="../assets/nakoto/nakoto-desk.js?v=1.9.5"></script>
+<script src="../assets/manifest.js?v=1.9.6"></script>
+<script src="../assets/picker/asset-picker.js?v=1.9.6"></script>
+<script src="../assets/sheet/investigator-sheet.js?v=1.9.6"></script>
+<script src="../assets/nakoto/nakoto-desk.js?v=1.9.6"></script>
 <script>
 (function(){
   'use strict';
@@ -115,7 +115,7 @@
   var desk=NakotoDesk.create({
     base:'../assets/nakoto/', assets:'../assets/', chart:chart, state:data.state, layout:data.layout, sounds:data.sounds,
     onLayout:function(l){ data.layout=l; save(data); },
-    onSounds:function(m){ data.sounds=m; save(data); }, version:'見本 v1.9.5',
+    onSounds:function(m){ data.sounds=m; save(data); }, version:'見本 v1.9.6',
     current: data.step>0?path[data.step-1][1]:null,
     onState:function(s){ data.state=s; save(data); },
     onLoad:function(slot,sv){ alertish('セーブ'+['壱','弐','参'][slot]+'から再開（見本なので表示だけ）'); },
