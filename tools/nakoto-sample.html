@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ナコト写本 見本 v1.2.0</title>
+<title>ナコト写本 見本 v1.3.0</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* 机メニュー＋ナコト写本だけを試す見本。ゲーム本体には影響しない */
@@ -21,6 +21,8 @@
   #dbg button{min-height:40px;padding:6px 12px;background:rgba(20,14,8,.8);border:1px solid #6a5434;border-radius:4px;color:#e8dcc4;font-family:inherit;font-size:13px;letter-spacing:.08em}
   #adj{position:fixed;z-index:155;right:max(8px,env(safe-area-inset-right,0px));top:8px;bottom:8px;width:min(330px,40vw);display:none;flex-direction:column;background:rgba(14,10,6,.9);border:1px solid #6a5434;border-radius:5px;font-size:13px}
   #adj.on{display:flex}
+  #adj{transition:opacity .35s}
+  #adj.peek{opacity:.06}
   #adj.left{right:auto;left:max(8px,env(safe-area-inset-left,0px))}
   #adj .objs button.on{border-color:#d4b060;color:#f0d890;background:#2a1e10}
   #adj .pad{display:grid;grid-template-columns:repeat(3,44px);gap:4px;justify-content:center}
@@ -43,7 +45,7 @@
 </style>
 </head>
 <body>
-<div id="start"><b>タップして始める</b><span>全画面・横向きになります</span><span>ナコト写本 見本 v1.2.0</span></div>
+<div id="start"><b>タップして始める</b><span>全画面・横向きになります</span><span>ナコト写本 見本 v1.3.0</span></div>
 <div id="portrait">横向きにしてください</div>
 <div id="dbg"><button id="adv">物語を進める</button><button id="rst">最初から</button><button id="adjBtn">調整</button></div>
 <div id="adj">
@@ -110,7 +112,7 @@
   var desk=NakotoDesk.create({
     base:'../assets/nakoto/', assets:'../assets/', chart:chart, state:data.state, layout:data.layout, sounds:data.sounds,
     onLayout:function(l){ data.layout=l; save(data); },
-    onSounds:function(m){ data.sounds=m; save(data); }, version:'見本 v1.2.0',
+    onSounds:function(m){ data.sounds=m; save(data); }, version:'見本 v1.3.0',
     current: data.step>0?path[data.step-1][1]:null,
     onState:function(s){ data.state=s; save(data); },
     onLoad:function(slot,sv){ alertish('セーブ'+['壱','弐','参'][slot]+'から再開（見本なので表示だけ）'); },
@@ -132,10 +134,11 @@
   var $=function(id){ return document.getElementById(id); };
   var adj=$('adj'), sel=null;
   var objBox=$('objs');
-  Object.keys(NakotoDesk.OBJ_LABELS).forEach(function(k){ var b=document.createElement('button'); b.textContent=NakotoDesk.OBJ_LABELS[k]; b.dataset.k=k; b.onclick=function(){ desk.selectObj(k); }; objBox.appendChild(b); });
-  var stepV=10;
+  Object.keys(NakotoDesk.OBJ_LABELS).forEach(function(k){ var b=document.createElement('button'); b.textContent=NakotoDesk.OBJ_LABELS[k]; b.dataset.k=k; b.onclick=function(){ desk.selectObj(k); peekPanel(); }; objBox.appendChild(b); });
+  var stepV=10, peekT=0;
+  function peekPanel(){ adj.classList.add('peek'); clearTimeout(peekT); peekT=setTimeout(function(){ adj.classList.remove('peek'); },1600); }
   $('step').onclick=function(e){ e.stopPropagation(); stepV=stepV===10?2:stepV===2?40:10; this.textContent=stepV; };
-  adj.querySelectorAll('.pad button[data-d]').forEach(function(b){ if(b.id==='step') return; b.onclick=function(){ if(!sel) return; var d=b.dataset.d.split(',').map(Number), v=desk.getLayout()[sel]; desk.setObj(sel,{x:v.x+d[0]*stepV,y:v.y+d[1]*stepV}); }; });
+  adj.querySelectorAll('.pad button[data-d]').forEach(function(b){ if(b.id==='step') return; b.onclick=function(){ if(!sel) return; peekPanel(); var d=b.dataset.d.split(',').map(Number), v=desk.getLayout()[sel]; desk.setObj(sel,{x:v.x+d[0]*stepV,y:v.y+d[1]*stepV}); }; });
   $('adjSide').onclick=function(){ adj.classList.toggle('left'); };
   function onSel(k,v){ sel=k; objBox.querySelectorAll('button').forEach(function(b){ b.classList.toggle('on',b.dataset.k===k); }); $('selName').textContent=k?NakotoDesk.OBJ_LABELS[k]:'（何も選んでいない）';
     if(v){ $('sz').value=v.w; $('szv').textContent=v.w; $('rt').value=v.r||0; $('rtv').textContent=(v.r||0)+'°'; } }
