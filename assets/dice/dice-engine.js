@@ -1,5 +1,5 @@
 /* ============================================================================
-   ダイス部品（HorrorDice） v1.4.2
+   ダイス部品（HorrorDice） v1.5.0
    ※この部品を直したら、読み込む側（index.html・tools/dice-sample.html）の ?v= も同じ番号に上げる
    ----------------------------------------------------------------------------
    ゲーム本編・ダイス見本・戦闘盤など、どの画面からも同じダイスを呼ぶための部品。
@@ -11,6 +11,9 @@
      dice.roll({ skill:'目星', target:60 }).then(function(r){
        // r.total（出目） r.outcome（'critical'|'success'|'fail'|'fumble'） r.success（true/false）
      });
+     // 幸運で補う：luck に今の幸運を渡すと、失敗したとき右下に「命運を削る」が出る（足りない分だけ幸運が減って成功に変わる）
+     // 使えない判定（正気度・幸運・神話など）は luck を渡さない（または0）。結果 r.luckSpent に削った量が入る
+     dice.roll({ skill:'目星', target:60, luck:50 })
      dice.roll({ formula:'2D6+1D4' }).then(function(r){ r.total, r.parts });
 
    create のオプション：
@@ -30,7 +33,7 @@
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.4.2';
+  var VERSION='1.5.0';
   // この部品と同じフォルダの画像を使う（どの画面から読み込んでも場所がずれない）
   var BASE=(function(){ var s=document.currentScript&&document.currentScript.src; return s?s.replace(/[^\/]*$/,''):'assets/dice/'; })();
 
@@ -39,7 +42,7 @@
     trayR:7.1,trayRot:29,pitch:45,dist:31,offY:-.03,
     vol:1,tone:'bone',room:'cathedral',wet:1,decay:6,rollVol:.23,lowVol:1,resVol:.8,diceStyle:'img2',trayStyle:'img1',layout:'sides',rPitch:84,rDist:32.5,rOffY:.01,rFocus:0,rTime:.7,rYaw:-29,rOffX:0,cutinAlpha:.52,cutinVol:1};
 
-  var CSS=".hdice{position:absolute;inset:0;overflow:hidden;--gold:#c7b07c;color:#e8e2da;font-family:'Shippori Mincho','Noto Serif JP','Hiragino Mincho ProN',serif;touch-action:none;user-select:none;-webkit-user-select:none}\n.hdice *,.hdice *::before,.hdice *::after{box-sizing:border-box;margin:0;padding:0}\n.hdice .hd-cv{position:absolute;inset:0;width:100%;height:100%;touch-action:none}\n/* カットイン（シックでレトロ） */\n.hdice .hd-band{position:absolute;left:0;right:0;top:2dvh;padding:.9dvh 6vw .9dvh;text-align:center;color:#e8d9b0;pointer-events:none;\nbackground:linear-gradient(180deg,#1b130b,#2a1c0e 50%,#1b130b);border-top:2px solid #a8864a;border-bottom:2px solid #a8864a;\nbox-shadow:0 0 0 1px #3a2a14,0 1dvh 3dvh rgba(0,0,0,.8)}\n.hdice .hd-band.in{animation:hd-bandIn .4s ease-out}\n@keyframes hd-bandIn{from{transform:translateX(-100%)}to{transform:none}}\n.hdice .hd-band .t{font-size:3.6dvh;letter-spacing:.3em;color:var(--gold)}\n.hdice .hd-band .c{font-size:2.4dvh;margin-top:.2dvh;color:#cdbb90}\n.hdice .hd-scale{position:relative;height:1dvh;margin:.8dvh auto 0;width:46vw;background:#3a1010;border:1px solid #a8864a}\n.hdice .hd-fill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#8a6a2a,#d4b060)}\n.hdice .hd-mark{position:absolute;top:-.8dvh;bottom:-.8dvh;width:3px;margin-left:-1px;background:#fff;opacity:0;box-shadow:0 0 6px #fff;transition:left .3s}\n/* 結果は左側に出す（真ん中はトレイ） */\n.hdice .hd-res{position:absolute;left:calc(1vw + env(safe-area-inset-left,0px));width:27vw;top:30dvh;text-align:center;opacity:0;pointer-events:none}\n.hdice .hd-res.on{opacity:1;animation:hd-resIn .4s ease-out}\n@keyframes hd-resIn{from{transform:scale(1.3);opacity:0}to{transform:none;opacity:1}}\n.hdice .hd-res b{display:block;font-size:14dvh;line-height:1;font-weight:600;font-variant-numeric:tabular-nums}\n.hdice .hd-res span{display:block;font-size:5dvh;letter-spacing:.4em;margin-top:.6dvh}\n.hdice .hd-res small{display:block;font-size:2.6dvh;margin-top:.6dvh;color:#cdbb90;letter-spacing:.05em;line-height:1.4}\n.hdice .hd-res.ok b,.hdice .hd-res.ok span{color:#e6c877;text-shadow:0 0 .5dvh #000,0 0 1.4dvh #000,0 0 3dvh rgba(230,200,110,.6)}\n.hdice .hd-res.ng b,.hdice .hd-res.ng span{color:#d84444;text-shadow:0 0 .5dvh #000,0 0 1.4dvh #000,0 0 3dvh rgba(150,20,20,.75)}\n.hdice .hd-res.sum b{color:#efe3c4;text-shadow:0 0 .5dvh #000,0 0 1.4dvh #000,0 0 2dvh rgba(0,0,0,.9)}\n/* 表示タイプ：左に基準・右に結果 */\n.hdice.L-sides .hd-band{left:calc(1.5vw + env(safe-area-inset-left,0px));right:auto;top:20dvh;width:max-content;max-width:30vw;padding:2dvh 2.2vw;white-space:nowrap;border:2px solid #a8864a;border-radius:3px}\n.hdice.L-sides .hd-band.in,.hdice.L-tate .hd-band.in{animation:hd-fadeIn .5s ease-out}\n@keyframes hd-fadeIn{from{opacity:0}to{opacity:1}}\n.hdice.L-sides .hd-band .t{font-size:3.4dvh;letter-spacing:.2em}\n.hdice.L-sides .hd-scale{display:none!important}\n.hdice.L-sides .hd-res{left:auto;right:calc(1.5vw + env(safe-area-inset-right,0px));width:25vw;top:24dvh}\n.hdice .hd-band .big{display:block;font-size:10dvh;line-height:1.1;color:#efe3c4;font-variant-numeric:tabular-nums;margin-top:.6dvh}\n.hdice .hd-band .note{display:block;font-size:2.1dvh;color:#9a8c72;margin-top:1dvh;line-height:1.5}\n/* 表示タイプ：真ん中に浮かぶ */\n.hdice.L-center .hd-band{left:26vw;right:26vw;padding:.6dvh 2vw}\n.hdice.L-center .hd-band .t{font-size:3dvh}\n.hdice.L-center .hd-band .c{font-size:2.2dvh}\n.hdice.L-center .hd-scale{width:80%}\n.hdice.L-center .hd-res{left:0;right:0;width:auto;top:20dvh;padding:6dvh 0}\n.hdice.L-center .hd-res.on{background:radial-gradient(ellipse 30vw 32dvh at center,rgba(0,0,0,.8),rgba(0,0,0,0))}\n.hdice.L-center .hd-res b{font-size:20dvh}\n/* 表示タイプ：縦書きの札 */\n.hdice.L-tate .hd-band{left:auto;right:calc(2vw + env(safe-area-inset-right,0px));top:3dvh;height:76dvh;padding:2.6dvh 1.2vw;writing-mode:vertical-rl;text-align:start;color:#3a0c08;\nbackground:linear-gradient(90deg,#bba878,#dccda4 30%,#d2c194 70%,#b29e6e);border:none;border-top:4px double #5a1a10;border-bottom:4px double #5a1a10;box-shadow:0 1dvh 3dvh rgba(0,0,0,.85),inset 0 0 3dvh rgba(80,40,10,.5)}\n.hdice.L-tate .hd-band .t{font-size:4.8dvh;letter-spacing:.4em;color:#5a0e08;font-weight:700}\n.hdice.L-tate .hd-band .c{font-size:2.9dvh;color:#3a1c10;margin:0 .8vw 0 0;letter-spacing:.25em}\n.hdice.L-tate .hd-band .note{color:#5a3a20;font-size:2.3dvh;margin:0 .8vw 0 0}\n.hdice.L-tate .hd-scale{display:none!important}\n.hdice .tcu{text-combine-upright:all;-webkit-text-combine:horizontal}\n.hdice.L-tate .hd-res{left:auto;right:calc(12.5vw + env(safe-area-inset-right,0px));width:13vw;top:14dvh}\n.hdice.L-tate .hd-res b{font-size:12dvh}\n.hdice.L-tate .hd-res span{writing-mode:vertical-rl;margin:1.6dvh auto 0;letter-spacing:.35em;font-size:5.5dvh}\n.hdice .hd-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,rgba(120,0,0,.0),rgba(120,0,0,.65))}\n.hdice .hd-flash.on{animation:hd-flash .9s ease-out}\n@keyframes hd-flash{0%{opacity:1}100%{opacity:0}}\n.hdice .hd-hint{position:absolute;left:calc(2vw + env(safe-area-inset-left,0px));bottom:7dvh;width:26vw;text-align:center;font-size:2.8dvh;color:#cdbb90;letter-spacing:.15em;pointer-events:none;animation:hd-hint 1.4s ease-in-out infinite}\n@keyframes hd-hint{50%{opacity:.35}}.hdice .hd-cut{position:absolute;left:0;right:0;top:50%;z-index:6;pointer-events:none;opacity:0;transform:translate(0,-50%)}.hdice .hd-cut img{display:block;width:100%;height:auto}.hdice .hd-cut.in{animation:hd-cutIn var(--cin) ease-out forwards}.hdice .hd-cut.out{animation:hd-cutOut var(--cout) ease-in forwards}@keyframes hd-cutIn{from{opacity:0;transform:translate(-30%,-50%)}to{opacity:var(--ca);transform:translate(0,-50%)}}@keyframes hd-cutOut{from{opacity:var(--ca);transform:translate(0,-50%)}to{opacity:0;transform:translate(30%,-50%)}}.hdice>.hd-cv,.hdice>.hd-band,.hdice>.hd-res,.hdice>.hd-hint{transition:opacity var(--cout) ease}.hdice.hd-intro>.hd-cv,.hdice.hd-intro>.hd-band,.hdice.hd-intro>.hd-res,.hdice.hd-intro>.hd-hint{opacity:0!important;transition:none}";
+  var CSS=".hdice{position:absolute;inset:0;overflow:hidden;--gold:#c7b07c;color:#e8e2da;font-family:'Shippori Mincho','Noto Serif JP','Hiragino Mincho ProN',serif;touch-action:none;user-select:none;-webkit-user-select:none}\n.hdice *,.hdice *::before,.hdice *::after{box-sizing:border-box;margin:0;padding:0}\n.hdice .hd-cv{position:absolute;inset:0;width:100%;height:100%;touch-action:none}\n/* カットイン（シックでレトロ） */\n.hdice .hd-band{position:absolute;left:0;right:0;top:2dvh;padding:.9dvh 6vw .9dvh;text-align:center;color:#e8d9b0;pointer-events:none;\nbackground:linear-gradient(180deg,#1b130b,#2a1c0e 50%,#1b130b);border-top:2px solid #a8864a;border-bottom:2px solid #a8864a;\nbox-shadow:0 0 0 1px #3a2a14,0 1dvh 3dvh rgba(0,0,0,.8)}\n.hdice .hd-band.in{animation:hd-bandIn .4s ease-out}\n@keyframes hd-bandIn{from{transform:translateX(-100%)}to{transform:none}}\n.hdice .hd-band .t{font-size:3.6dvh;letter-spacing:.3em;color:var(--gold)}\n.hdice .hd-band .c{font-size:2.4dvh;margin-top:.2dvh;color:#cdbb90}\n.hdice .hd-scale{position:relative;height:1dvh;margin:.8dvh auto 0;width:46vw;background:#3a1010;border:1px solid #a8864a}\n.hdice .hd-fill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#8a6a2a,#d4b060)}\n.hdice .hd-mark{position:absolute;top:-.8dvh;bottom:-.8dvh;width:3px;margin-left:-1px;background:#fff;opacity:0;box-shadow:0 0 6px #fff;transition:left .3s}\n/* 結果は左側に出す（真ん中はトレイ） */\n.hdice .hd-res{position:absolute;left:calc(1vw + env(safe-area-inset-left,0px));width:27vw;top:30dvh;text-align:center;opacity:0;pointer-events:none}\n.hdice .hd-res.on{opacity:1;animation:hd-resIn .4s ease-out}\n@keyframes hd-resIn{from{transform:scale(1.3);opacity:0}to{transform:none;opacity:1}}\n.hdice .hd-res b{display:block;font-size:14dvh;line-height:1;font-weight:600;font-variant-numeric:tabular-nums}\n.hdice .hd-res span{display:block;font-size:5dvh;letter-spacing:.4em;margin-top:.6dvh}\n.hdice .hd-res small{display:block;font-size:2.6dvh;margin-top:.6dvh;color:#cdbb90;letter-spacing:.05em;line-height:1.4}\n.hdice .hd-res.ok b,.hdice .hd-res.ok span{color:#e6c877;text-shadow:0 0 .5dvh #000,0 0 1.4dvh #000,0 0 3dvh rgba(230,200,110,.6)}\n.hdice .hd-res.ng b,.hdice .hd-res.ng span{color:#d84444;text-shadow:0 0 .5dvh #000,0 0 1.4dvh #000,0 0 3dvh rgba(150,20,20,.75)}\n.hdice .hd-res.sum b{color:#efe3c4;text-shadow:0 0 .5dvh #000,0 0 1.4dvh #000,0 0 2dvh rgba(0,0,0,.9)}\n/* 表示タイプ：左に基準・右に結果 */\n.hdice.L-sides .hd-band{left:calc(1.5vw + env(safe-area-inset-left,0px));right:auto;top:20dvh;width:max-content;max-width:30vw;padding:2dvh 2.2vw;white-space:nowrap;border:2px solid #a8864a;border-radius:3px}\n.hdice.L-sides .hd-band.in,.hdice.L-tate .hd-band.in{animation:hd-fadeIn .5s ease-out}\n@keyframes hd-fadeIn{from{opacity:0}to{opacity:1}}\n.hdice.L-sides .hd-band .t{font-size:3.4dvh;letter-spacing:.2em}\n.hdice.L-sides .hd-scale{display:none!important}\n.hdice.L-sides .hd-res{left:auto;right:calc(1.5vw + env(safe-area-inset-right,0px));width:25vw;top:24dvh}\n.hdice .hd-band .big{display:block;font-size:10dvh;line-height:1.1;color:#efe3c4;font-variant-numeric:tabular-nums;margin-top:.6dvh}\n.hdice .hd-band .note{display:block;font-size:2.1dvh;color:#9a8c72;margin-top:1dvh;line-height:1.5}\n/* 表示タイプ：真ん中に浮かぶ */\n.hdice.L-center .hd-band{left:26vw;right:26vw;padding:.6dvh 2vw}\n.hdice.L-center .hd-band .t{font-size:3dvh}\n.hdice.L-center .hd-band .c{font-size:2.2dvh}\n.hdice.L-center .hd-scale{width:80%}\n.hdice.L-center .hd-res{left:0;right:0;width:auto;top:20dvh;padding:6dvh 0}\n.hdice.L-center .hd-res.on{background:radial-gradient(ellipse 30vw 32dvh at center,rgba(0,0,0,.8),rgba(0,0,0,0))}\n.hdice.L-center .hd-res b{font-size:20dvh}\n/* 表示タイプ：縦書きの札 */\n.hdice.L-tate .hd-band{left:auto;right:calc(2vw + env(safe-area-inset-right,0px));top:3dvh;height:76dvh;padding:2.6dvh 1.2vw;writing-mode:vertical-rl;text-align:start;color:#3a0c08;\nbackground:linear-gradient(90deg,#bba878,#dccda4 30%,#d2c194 70%,#b29e6e);border:none;border-top:4px double #5a1a10;border-bottom:4px double #5a1a10;box-shadow:0 1dvh 3dvh rgba(0,0,0,.85),inset 0 0 3dvh rgba(80,40,10,.5)}\n.hdice.L-tate .hd-band .t{font-size:4.8dvh;letter-spacing:.4em;color:#5a0e08;font-weight:700}\n.hdice.L-tate .hd-band .c{font-size:2.9dvh;color:#3a1c10;margin:0 .8vw 0 0;letter-spacing:.25em}\n.hdice.L-tate .hd-band .note{color:#5a3a20;font-size:2.3dvh;margin:0 .8vw 0 0}\n.hdice.L-tate .hd-scale{display:none!important}\n.hdice .tcu{text-combine-upright:all;-webkit-text-combine:horizontal}\n.hdice.L-tate .hd-res{left:auto;right:calc(12.5vw + env(safe-area-inset-right,0px));width:13vw;top:14dvh}\n.hdice.L-tate .hd-res b{font-size:12dvh}\n.hdice.L-tate .hd-res span{writing-mode:vertical-rl;margin:1.6dvh auto 0;letter-spacing:.35em;font-size:5.5dvh}\n.hdice .hd-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,rgba(120,0,0,.0),rgba(120,0,0,.65))}\n.hdice .hd-flash.on{animation:hd-flash .9s ease-out}\n@keyframes hd-flash{0%{opacity:1}100%{opacity:0}}\n.hdice .hd-hint{position:absolute;left:calc(2vw + env(safe-area-inset-left,0px));bottom:7dvh;width:26vw;text-align:center;font-size:2.8dvh;color:#cdbb90;letter-spacing:.15em;pointer-events:none;animation:hd-hint 1.4s ease-in-out infinite}\n@keyframes hd-hint{50%{opacity:.35}}.hdice .hd-cut{position:absolute;left:0;right:0;top:50%;z-index:6;pointer-events:none;opacity:0;transform:translate(0,-50%)}.hdice .hd-cut img{display:block;width:100%;height:auto}.hdice .hd-cut.in{animation:hd-cutIn var(--cin) ease-out forwards}.hdice .hd-cut.out{animation:hd-cutOut var(--cout) ease-in forwards}@keyframes hd-cutIn{from{opacity:0;transform:translate(-30%,-50%)}to{opacity:var(--ca);transform:translate(0,-50%)}}@keyframes hd-cutOut{from{opacity:var(--ca);transform:translate(0,-50%)}to{opacity:0;transform:translate(30%,-50%)}}.hdice>.hd-cv,.hdice>.hd-band,.hdice>.hd-res,.hdice>.hd-hint{transition:opacity var(--cout) ease}.hdice.hd-intro>.hd-cv,.hdice.hd-intro>.hd-band,.hdice.hd-intro>.hd-res,.hdice.hd-intro>.hd-hint{opacity:0!important;transition:none}\n.hdice .hd-luck{position:absolute;right:calc(1.5vw + env(safe-area-inset-right,0px));bottom:7dvh;z-index:7;display:none;text-align:center}\n.hdice .hd-luck.on{display:block;animation:hd-fadeIn .6s ease-out}\n.hdice .hd-luck button,.hdice .hd-conf button{font-family:inherit;font-size:3.2dvh;letter-spacing:.25em;padding:1.6dvh 2.4vw;color:#e6c877;background:rgba(24,8,6,.85);border:1px solid #8c1414;border-radius:3px;box-shadow:0 0 2dvh rgba(140,20,20,.6)}\n.hdice .hd-luck button:active,.hdice .hd-conf button:active{background:rgba(70,14,10,.9)}\n.hdice .hd-luck small{display:block;font-size:2.2dvh;color:#cdbb90;margin-top:.8dvh;letter-spacing:.1em}\n.hdice .hd-conf{position:absolute;inset:0;z-index:8;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6)}\n.hdice .hd-conf.on{display:flex}\n.hdice .hd-conf .box{background:#150e09;border:2px solid #a8864a;padding:3.2dvh 4vw;text-align:center;border-radius:3px}\n.hdice .hd-conf p{font-size:3.4dvh;line-height:1.8;color:#e8d9b0}\n.hdice .hd-conf .row{display:flex;gap:3vw;justify-content:center;margin-top:2.6dvh}\n.hdice .hd-conf .no{color:#cdbb90;border-color:#4a3f33}\n.hdice .hd-flash.gold{background:radial-gradient(ellipse at center,rgba(230,200,110,0),rgba(230,200,110,.75))}\n.hdice .hd-res.fx b{animation:hd-luckShake .12s linear infinite}\n@keyframes hd-luckShake{25%{transform:translate(-.4dvh,.2dvh)}75%{transform:translate(.4dvh,-.2dvh)}}";
   function injectCss(){ if(document.getElementById('hdice-css')) return; var st=document.createElement('style'); st.id='hdice-css'; st.textContent=CSS; document.head.appendChild(st); }
 
   var KANJI=['','一','二','三','四','五','六','七','八','九'];
@@ -53,7 +56,9 @@
     host.innerHTML='<canvas class="hd-cv"></canvas><div class="hd-flash"></div>'+
       '<div class="hd-band"><div class="t hd-bandT"></div><div class="c hd-bandC"></div><div class="hd-scale"><i class="hd-fill"></i><i class="hd-mark"></i></div></div>'+
       '<div class="hd-res"><b></b><span></span><small></small></div><div class="hd-hint">ダイスをつかんで<br>投げる ➚</div>'+
-      '<div class="hd-cut"><img alt="Dice Roll" src="'+BASE+'cutin-diceroll.webp"></div>';
+      '<div class="hd-cut"><img alt="Dice Roll" src="'+BASE+'cutin-diceroll.webp"></div>'+
+      '<div class="hd-luck"><button type="button" class="hd-luckBtn">命運を削る</button><small></small></div>'+
+      '<div class="hd-conf"><div class="box"><p></p><div class="row"><button type="button" class="no">やめる</button><button type="button" class="yes">削る</button></div></div></div>';
     root.appendChild(host);
     root=host;
     var $=function(id){ return host.querySelector('.hd-'+id); };
@@ -63,6 +68,44 @@
     if(SK){ try{ var sv=JSON.parse(localStorage.getItem(SK)||'{}'); Object.keys(DEF).forEach(function(k){ if(sv[k]!==undefined && typeof sv[k]===typeof DEF[k]) CFG[k]=sv[k]; }); }catch(_){ } }
     function saveCfg(){ if(!SK) return; try{ localStorage.setItem(SK,JSON.stringify(CFG)); }catch(_){ } }
     var locked=false, running=false, raf=0, pending=null;
+    // ===== 幸運で補う「命運を削る」：失敗の結果に出るボタン→確認→数字が成功へ変わる =====
+    var luckNow=0, luckSpent=0, luckBusy=false, luckOffer=null, luckTimer=0;
+    function hideLuck(){ $('luck').classList.remove('on'); $('conf').classList.remove('on'); luckOffer=null; }
+    function offerLuck(v,rr){
+      var cost=v-target; if(cost<=0||cost>luckNow) return;
+      luckOffer={v:v,cost:cost,r:rr};
+      $('luck').querySelector('small').textContent='幸運 −'+cost+'（残り '+luckNow+'）';
+      $('luck').classList.add('on');
+    }
+    $('luck').querySelector('button').addEventListener('click',function(){
+      if(!luckOffer||luckBusy) return; ac();
+      $('conf').querySelector('p').innerHTML='命運を削りますか？<br>幸運 −'+luckOffer.cost+'　（'+luckNow+' → '+(luckNow-luckOffer.cost)+'）';
+      $('conf').classList.add('on');
+    });
+    $('conf').querySelector('.no').addEventListener('click',function(){ $('conf').classList.remove('on'); });
+    $('conf').querySelector('.yes').addEventListener('click',function(){ if(luckOffer) applyLuck(luckOffer); });
+    ['pointerdown','pointerup','click'].forEach(function(ev){ $('conf').addEventListener(ev,function(e){ e.stopPropagation(); }); $('luck').addEventListener(ev,function(e){ e.stopPropagation(); }); });
+    function applyLuck(o){
+      var v=o.v, cost=o.cost, rr=o.r, big=$('res').querySelector('b'), txt=$('res').querySelector('span'), sm=$('res').querySelector('small');
+      hideLuck(); luckBusy=true; luckNow-=cost; luckSpent+=cost;
+      try{ if(ac()&&BUS){ tone(196,0,1.4,.22,'sine',70); tone(130,.05,1.3,.12,'triangle',60); } }catch(_){ }
+      var fl=$('flash'); fl.classList.add('gold'); fl.classList.remove('on'); void fl.offsetWidth; fl.classList.add('on');
+      $('res').classList.add('fx'); var t0=performance.now(), D=1100; clearInterval(luckTimer);
+      luckTimer=setInterval(function(){
+        var k=Math.min(1,(performance.now()-t0)/D), e=1-Math.pow(1-k,3);
+        big.textContent=Math.round(v-(v-target)*e);
+        if(k>=1){
+          clearInterval(luckTimer); $('res').classList.remove('fx'); fl.classList.remove('gold');
+          big.textContent=target; txt.textContent='成功'; sm.textContent='幸運 −'+cost;
+          $('res').className='hd-res on ok'; $('mark').style.left=Math.min(100,target)+'%';
+          dice.forEach(function(d){ d.glow={f:upFace(d).f,color:'#e6c877'}; });
+          sndOk(false);
+          rr.rolled=v; rr.total=target; rr.outcome='success'; rr.success=true; rr.luckSpent=luckSpent;
+          if(opts.onLuck) opts.onLuck(cost,rr);
+          luckBusy=false;
+        }
+      },30);
+    }
     // 結果のあと「タップで閉じる」（tapToClose のとき）
     var CLOSE_DELAY=1000, FADE_MS=500, closeAt=0, closing=false, lastResult=null, closeTimer=0;
     var HINT_THROW='ダイスをつかんで<br>投げる ➚';
@@ -617,7 +660,9 @@
         res.className='hd-res on '+(ok?'ok':'ng'); $('mark').style.left=Math.min(100,v)+'%'; $('mark').style.opacity=1;
         var col=ok?'#e6c877':'#c03d3d'; dice.forEach(function(d){ d.glow={f:upFace(d).f,color:col}; });
         if(ok) sndOk(crit); else { sndNg(fum); var fl=$('flash'); fl.classList.remove('on'); void fl.offsetWidth; fl.classList.add('on'); }
-        report({check:true,skill:skill,target:target,total:v,outcome:crit?'critical':ok?'success':fum?'fumble':'fail',success:ok});
+        var rr={check:true,skill:skill,target:target,total:v,outcome:crit?'critical':ok?'success':fum?'fumble':'fail',success:ok,luckSpent:0};
+        report(rr);
+        if(!ok&&!fum&&luckNow>0) offerLuck(v,rr);
       } else {
         var parts=[], sum=0;
         dice.forEach(function(d,i){ var v=readValue(d); if(d.role==='d3') v=Math.ceil(v/2);
@@ -636,13 +681,13 @@
     function pointerAt(e){ return atHeight(e.clientX,e.clientY,TRAY.h+1.6); }
     cv.addEventListener('pointerdown',function(e){
       ac(); if(opts.onGrab) opts.onGrab();
-      if(cutBusy) return;
+      if(cutBusy||luckBusy) return;
       if(opts.tapToClose && lastResult){ if(!closing && performance.now()>=closeAt) closeNow(); return; }
       // 転がっている間・結果を出す前は触っても振り直せない
     if(locked||settling.length||state==='roll'||state==='settle'||(state==='done'&&!resultShown)) return;
       clearTimeout(resTimer);
       state='hold'; hold={id:e.pointerId}; trail=[{p:pointerAt(e),t:performance.now()}];
-      $('res').className='hd-res'; $('mark').style.opacity=0; $('hint').style.display='none'; resultShown=false;
+      $('res').className='hd-res'; $('mark').style.opacity=0; $('hint').style.display='none'; resultShown=false; hideLuck();
       dice.forEach(function(d){ sleep(d); d.glow=null; });
       if(camAnim||!isStart()) moveCam(startView(),.45);
       try{ cv.setPointerCapture(e.pointerId); }catch(_){ }
@@ -730,6 +775,7 @@
       if(o.skill) skill=String(o.skill);
       if(o.critMax!=null) critMax=o.critMax;
       if(o.fumbleMin!=null) fumbleMin=o.fumbleMin;
+      luckNow=o.luck!=null?Math.max(0,Math.floor(o.luck)):0; luckSpent=0; luckBusy=false; clearInterval(luckTimer); hideLuck();
       locked=false; resize(); setupDice();
     }
     function start(){ if(running) return; running=true; lastT=0; raf=requestAnimationFrame(frame); }
