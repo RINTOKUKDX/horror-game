@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>深淵の胎動（仮） v0.5.11</title>
+<title>深淵の胎動（仮） v0.5.12</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* ゲーム本体（11/25 に「ゲーム画面 見本 v1.8」を本体にした）。ダイスは部品 assets/dice/dice-engine.js */
@@ -240,7 +240,7 @@
     <button type="button" class="item" data-open="pTune">見本の調整</button>
     <button type="button" class="item" data-open="pAssets">素材を見る</button>
   </div>
-  <p class="small">深淵の胎動（仮） v0.5.11</p>
+  <p class="small">深淵の胎動（仮） v0.5.12</p>
 </div>
 <div class="panel" id="pSheet"><button type="button" class="close" data-back>戻る</button>
   <div id="sheetHost"></div></div>
@@ -266,20 +266,21 @@
   <div class="row"><input type="text" id="free" placeholder="技能名や行動を入力（例：目星）" autocomplete="off"><button type="button" class="item" id="freeGo">決定</button></div>
 </div>
 
-<div id="start" class="hide" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプでログ／長押しで絵だけ</span><span class="ver">深淵の胎動（仮） v0.5.11</span></div>
+<div id="start" class="hide" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプでログ／長押しで絵だけ</span><span class="ver">深淵の胎動（仮） v0.5.12</span></div>
 <div id="portrait">スマホを横向きにしてください</div>
 
 <script src="assets/manifest.js"></script>
 <script src="assets/sheet/investigator-sheet.js?v=1.2.7"></script>
 <!-- 部品を直したら ?v= を上げる（スマホに古い部品が残るのを防ぐ） -->
-<script src="assets/dice/dice-engine.js?v=1.4.2"></script>
+<script src="assets/dice/dice-engine.js?v=1.5.0"></script>
 <script src="assets/title/title-screen.js?v=1.0.0"></script>
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
-  var S = { checks:{}, san:80, sanMax:80, hp:12, hpMax:12, mythos:0, revealed:false, strokes:0, maxStrokes:8 };
+  var S = { checks:{}, luck:50, san:80, sanMax:80, hp:12, hpMax:12, mythos:0, revealed:false, strokes:0, maxStrokes:8 };
   var SKILLS = {'近接':50,'銃火器':20,'回避':60,'防御':50,'目星':60,'聞き耳':55,'隠密':10,'医学':30,'製作':20,'説得':15,'心理学':45,'クトゥルフ神話':0,'教養':70,'アイデア':65,'幸運':50};
   var SKILLS0=JSON.parse(JSON.stringify(SKILLS)); var NOGROW={'クトゥルフ神話':1,'アイデア':1,'幸運':1}; 
+  var NOLUCK={'幸運':1,'クトゥルフ神話':1}; // 幸運で補えない判定（正気度ロールを作るときもここに）
   var log = [];
 
   // ---- シナリオ（見本） ----
@@ -551,7 +552,9 @@
     var host=$('dice'), e=getDice();
     if(!e){ cb(1+Math.floor(Math.random()*100)<=val); return; } // 部品が読めないときは数字だけで判定
     host.classList.add('on'); e.start();
-    e.roll({skill:name,target:val}).then(function(r){ e.stop(); host.classList.remove('on'); cb(r.success); });
+    e.roll({skill:name,target:val,luck:NOLUCK[name]?0:S.luck}).then(function(r){ e.stop(); host.classList.remove('on');
+      if(r.luckSpent){ S.luck=Math.max(0,S.luck-r.luckSpent); SKILLS['幸運']=S.luck; renderSheet(); } // 命運を削った分だけ幸運が減る
+      cb(r.success); });
   }
 
   ['pointerdown','pointerup','pointermove','touchstart','touchend','touchmove','click','mousedown','mouseup'].forEach(function(ev){ $('dice').addEventListener(ev,function(e){ e.stopPropagation(); },false); });
@@ -686,7 +689,7 @@
     var out=[]; Object.keys(S.checks).forEach(function(k){ var r=1+Math.floor(Math.random()*100);
       if(r>SKILLS[k]||r>95){ var up=1+Math.floor(Math.random()*10); SKILLS[k]+=up; out.push(k+' +'+up+'（'+r+'）'); } else out.push(k+' 変化なし（'+r+'）'); });
     S.checks={}; $('growOut').textContent=out.length?'成長：'+out.join('／'):'✓の付いた技能がありません'; });
-  $('tReset').addEventListener('click',function(){ S.san=80; S.hp=12; S.mythos=0; S.revealed=false; S.strokes=0; S.checks={}; Object.keys(SKILLS0).forEach(function(k){ SKILLS[k]=SKILLS0[k]; }); log=[];
+  $('tReset').addEventListener('click',function(){ S.san=80; S.hp=12; S.mythos=0; S.revealed=false; S.strokes=0; S.checks={}; Object.keys(SKILLS0).forEach(function(k){ SKILLS[k]=SKILLS0[k]; }); S.luck=SKILLS0['幸運']; log=[];
     $('tSan').value=80; $('tHp').value=12; $('tMy').value=0; $('vSan').textContent='80/80'; $('vHp').textContent='12/12'; $('vMy').textContent='0';
     drawCircle(false); $('stage').style.filter=''; applyState(); closePanels(); go('start'); });
 
@@ -727,7 +730,7 @@
   // ---- タイトル（部品 assets/title/title-screen.js）：注意書き→演出→メニュー ----
   function beginGame(){ if(!begun){ begun=true; applyState(); go('start'); } }
   if(window.HorrorTitle){
-    var title=HorrorTitle.create({ version:'v0.5.11', onStartTap:goFull,
+    var title=HorrorTitle.create({ version:'v0.5.12', onStartTap:goFull,
       onNewGame:function(){ title.hide(); beginGame(); } });  // つづきから・設定は、セーブと設定を作ったら渡す
     title.show();
   } else { start.querySelector('b').textContent='タップして始める'; start.classList.remove('hide'); start.addEventListener('click',beginGame); }
