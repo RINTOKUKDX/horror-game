@@ -1,5 +1,5 @@
 /* ============================================================================
-   ダイス部品（HorrorDice） v1.6.0
+   ダイス部品（HorrorDice） v1.7.0
    ※この部品を直したら、読み込む側（index.html・tools/dice-sample.html）の ?v= も同じ番号に上げる
    ----------------------------------------------------------------------------
    ゲーム本編・ダイス見本・戦闘盤など、どの画面からも同じダイスを呼ぶための部品。
@@ -14,7 +14,7 @@
      // 幸運で補う：luck に今の幸運を渡すと、失敗したとき右下に「命運を削る」が出る（足りない分だけ幸運が減って成功に変わる）
      // 使えない判定（正気度・幸運・神話など）は luck を渡さない（または0）。結果 r.luckSpent に削った量が入る
      dice.roll({ skill:'目星', target:60, luck:50 })
-     // 式の判定の見せ方：title/note=上の帯の文、noTotal=合計を出さない、hue=ダイスの色合い（度。判定の種類を見分ける用）
+     // 式の判定の見せ方：title/note=上の帯の文、noTotal=合計を出さない、hue=全体の色合い（度）、dieHues=[度,度,…]でダイス1個ずつ色を変える
      dice.roll({ formula:'8D10', title:'能力値を運命に委ねます', noTotal:true, hue:0 })
      dice.roll({ formula:'2D6+1D4' }).then(function(r){ r.total, r.parts });
 
@@ -35,7 +35,7 @@
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.6.0';
+  var VERSION='1.7.0';
   // この部品と同じフォルダの画像を使う（どの画面から読み込んでも場所がずれない）
   var BASE=(function(){ var s=document.currentScript&&document.currentScript.src; return s?s.replace(/[^\/]*$/,''):'assets/dice/'; })();
 
@@ -70,7 +70,7 @@
     if(SK){ try{ var sv=JSON.parse(localStorage.getItem(SK)||'{}'); Object.keys(DEF).forEach(function(k){ if(sv[k]!==undefined && typeof sv[k]===typeof DEF[k]) CFG[k]=sv[k]; }); }catch(_){ } }
     function saveCfg(){ if(!SK) return; try{ localStorage.setItem(SK,JSON.stringify(CFG)); }catch(_){ } }
     var locked=false, running=false, raf=0, pending=null;
-    var bandTitle=null, bandNote=null, noTotal=false; // roll({title,note,noTotal}) で変えられる式の見せ方
+    var bandTitle=null, bandNote=null, noTotal=false, dieHues=null; // roll({title,note,noTotal}) で変えられる式の見せ方
     // ===== 幸運で補う「命運を削る」：失敗の結果に出るボタン→確認→数字が成功へ変わる =====
     var luckNow=0, luckSpent=0, luckBusy=false, luckOffer=null, luckTimer=0;
     function hideLuck(){ $('luck').classList.remove('on'); $('conf').classList.remove('on'); luckOffer=null; }
@@ -525,6 +525,15 @@
     var TEXA={t2a:[[.499,.0118],[.9628,.9348],[.0351,.9333]],t2b:[[.4995,.0611],[.9679,.8763],[.0299,.8769]],t2d4:[[.499,.0364],[.9709,.8559],[.0251,.8601]],
       sq2:[[.0391,.0377],[.9593,.0378],[.9609,.9569],[.0373,.9574]],kite2:[[.4992,.0093],[.8855,.5844],[.4983,.9882],[.1122,.5849]],
       pent2:[[.4984,.0141],[.9563,.379],[.7902,.9123],[.201,.9126],[.0394,.3799]]};
+    // dieHues：ダイスごとの色合い。毎フレームのフィルターは重いので、色を変えた画像を1回だけ作って使い回す
+    var TINT={};
+    function tinted(key,h){
+      var im=TEX[key]; if(h==null||!im) return im;
+      var k=key+'|'+h; if(TINT[k]) return TINT[k];
+      var cv2=document.createElement('canvas'); cv2.width=im.width; cv2.height=im.height; var c2=cv2.getContext('2d');
+      if(!('filter' in c2)) return im; // フィルターが使えない端末では色を変えない
+      c2.filter='sepia(.55) hue-rotate('+h+'deg) saturate(1.9)'; c2.drawImage(im,0,0); TINT[k]=cv2; return cv2;
+    }
     function texKey(d,f){ if(d.sides===4) return 't2d4'; if(d.sides===6) return 'sq2'; if(d.sides===10) return 'kite2'; if(d.sides===12) return 'pent2'; return d.sh.faces.indexOf(f)%2?'t2b':'t2a'; }
     // 浮き出た数字（左上に光、右下に影、縁取りつき）
     // 彫り込んだ数字（骨の面に深く刻んだ黒い溝。下側の縁に光）
@@ -548,7 +557,7 @@
       else up=sub(Vw[f.ix[0]],c);
       var a=norm(sub(up,mul(n,dot(up,n)))), b=cross(a,n);
       var L=outer.map(function(p,k){ var q2=sub(p,c); return {x:dot(q2,b),y:dot(q2,a),s:outerS[k],w:p}; });
-      var key=texKey(d,f), img=TEX[key], TA=TEXA[key].map(function(t){ return [t[0]*img.width,t[1]*img.height]; }), top=null;
+      var key=texKey(d,f), img=tinted(key,d.hue), TA=TEXA[key].map(function(t){ return [t[0]*img.width,t[1]*img.height]; }), top=null;
       if(TA.length===L.length){
         // 一番上の角から時計回りに、画像の角と面の角を合わせて貼る
         L.forEach(function(p){ var v=d.sides===6?p.y-p.x:p.y; if(!top||v>top.v){ top=p; top.v=v; } });
@@ -599,7 +608,8 @@
         });
       });
       polys.sort(function(a,b){ return b.z-a.z; });
-      ctx.lineJoin='round'; polys.forEach(drawFace);
+      ctx.lineJoin='round';
+      polys.forEach(drawFace);
     }
 
     // ===== 式・カットイン・結果 =====
@@ -779,10 +789,11 @@
       if(o.skill) skill=String(o.skill);
       if(o.critMax!=null) critMax=o.critMax;
       if(o.fumbleMin!=null) fumbleMin=o.fumbleMin;
-      bandTitle=o.title||null; bandNote=o.note||null; noTotal=!!o.noTotal; $('band').classList.toggle('txt',!!bandTitle);
+      dieHues=o.dieHues||null; bandTitle=o.title||null; bandNote=o.note||null; noTotal=!!o.noTotal; $('band').classList.toggle('txt',!!bandTitle);
       $('cv').style.filter=o.hue?'hue-rotate('+o.hue+'deg)':'';
       luckNow=o.luck!=null?Math.max(0,Math.floor(o.luck)):0; luckSpent=0; luckBusy=false; clearInterval(luckTimer); hideLuck();
       locked=false; resize(); setupDice();
+      dice.forEach(function(d,i){ d.hue=dieHues?dieHues[i%dieHues.length]:null; });
     }
     function start(){ if(running) return; running=true; lastT=0; raf=requestAnimationFrame(frame); }
     function stop(){ running=false; if(raf) cancelAnimationFrame(raf); raf=0; if(AC&&ROLLG) ROLLG.gain.setTargetAtTime(0,AC.currentTime,.02); }
