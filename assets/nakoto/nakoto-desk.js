@@ -1,5 +1,5 @@
 /* ============================================================================
-   机メニュー＋ナコト写本 部品（NakotoDesk） v1.4.0
+   机メニュー＋ナコト写本 部品（NakotoDesk） v1.5.0
    ----------------------------------------------------------------------------
    机そのものがメニュー。本＝探索者シート（部品 assets/sheet/investigator-sheet.js）、紙の束＝ルート分岐表（付箋付きファイル）、羽ペン＝セーブ。
    本体は呼ぶだけ。見た目を作り直すときは、このファイルと assets/nakoto/ の絵だけを差しかえる。
@@ -36,7 +36,7 @@
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.4.0';
+  var VERSION='1.5.0';
   // 効果音（assets からの場所）。空なら鳴らさない。見本の「調整」で差しかえられる
   var SOUNDS={glow:'',sheet:'sfx/紙を広げる1.mp3',openWet:'sfx/うごめく触手.mp3',strap:'sfx/ベルトを付ける.mp3',cover:'sfx/ページをめくる1.mp3',coverWet:'sfx/ねんえきネバネバ.mp3',
     peek:'sfx/ページをめくる2.mp3',grow:'sfx/うごめく触手.mp3',grow2:'sfx/暗黒魔法.mp3',close:'sfx/本を閉じる1.mp3',saveOpen:'sfx/紙を広げる2.mp3',write:'sfx/シャーペンで字を書く.mp3',
@@ -292,7 +292,7 @@
 
     function applyBook(){
       sheets.style.display=st.hasBook?'':'none';
-      book.classList.toggle('isopen',!!st.opened);
+      book.classList.remove('isopen');  // 本は普段は閉じたまま（ベルトは最初の一度だけ）
       book.querySelectorAll('.strap').forEach(function(s){ s.style.display=st.opened?'none':''; });
     }
 
@@ -310,7 +310,10 @@
           await wait(420);
         }
         await wait(500);
-        // 表紙がめくれる
+      }
+      {
+        // 表紙がめくれる（毎回）
+        var wet2=st.opened?null:wet;
         var cover=book.querySelector('.cover'); var closed=book.querySelector('.bk-closed');
         cover.style.transition='none'; cover.style.opacity='1'; cover.style.transform='none';
         closed.style.transition='opacity .1s'; void cover.offsetWidth;
@@ -319,9 +322,9 @@
         cover.style.transform='perspective(900px) rotateY(-170deg)'; cover.style.opacity='0';
         book.classList.add('isopen');
         await wait(1200);
-        st.opened=true; applyBook(); emit();
+        if(!st.opened){ st.opened=true; emit(); book.querySelectorAll('.strap').forEach(function(x){ x.style.display='none'; }); }
         await wait(300);
-        fadeOut(wet,1500);
+        if(wet2) fadeOut(wet2,1500);
       }
       await peek(book);
       await showSheet();
@@ -345,7 +348,8 @@
       if(!isheet) svin.textContent='探索者シートの部品が読み込まれていません';
       sv.classList.add('on'); void sv.offsetWidth; sv.classList.add('vis'); await wait(700);
     }
-    sback.addEventListener('click',async function(){ if(busy) return; sv.classList.remove('vis'); await wait(700); sv.classList.remove('on'); unpeek(); snd('close',.25,.9); });
+    sback.addEventListener('click',async function(){ if(busy) return; sv.classList.remove('vis'); await wait(700); sv.classList.remove('on'); unpeek(); snd('close',.25,.9); closeBook(); });
+    function closeBook(){ book.classList.remove('isopen'); var cv=book.querySelector('.cover'); cv.style.transition='none'; cv.style.opacity='0'; cv.style.transform='none'; }
     function unpeek(){ cam.style.transform=''; cam.classList.remove('peek'); }
 
     /* ---------- 分岐表 ---------- */
