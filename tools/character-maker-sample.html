@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>探索者づくり 見本 v1.0</title>
+<title>探索者づくり 見本 v1.1</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* 探索者づくりの見本。計算は assets/charmake/character-rules.js、ダイスは assets/dice/dice-engine.js（どちらも部品） */
@@ -61,13 +61,13 @@
   </div>
 </div>
 <div id="dice"></div>
-<div class="ver">探索者づくり 見本 v1.0</div>
-<div id="start" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span style="font-size:2.4dvh;color:#6c6455">探索者づくり 見本 v1.0</span></div>
+<div class="ver">探索者づくり 見本 v1.1</div>
+<div id="start" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span style="font-size:2.4dvh;color:#6c6455">探索者づくり 見本 v1.1</span></div>
 <div id="portrait">スマホを横向きにしてください</div>
 
 <!-- 部品を直したら ?v= を上げる（スマホに古い部品が残るのを防ぐ） -->
 <script src="../assets/charmake/character-rules.js?v=1.0.0"></script>
-<script src="../assets/dice/dice-engine.js?v=1.5.0"></script>
+<script src="../assets/dice/dice-engine.js?v=1.6.0"></script>
 <script>
 (function(){
   'use strict';
@@ -94,14 +94,14 @@
   // ---- ダイス（部品）----
   var dice=null;
   function getDice(){ if(!dice) dice=HorrorDice.create({root:$('dice'),tapToClose:true,fadeEl:$('dice'),cutin:false}); return dice; }
-  function rollParts(formula){
+  function rollParts(opt){
     var e=getDice(), host=$('dice'); host.classList.add('on'); e.start();
-    return e.roll({formula:formula}).then(function(r){ e.stop(); host.classList.remove('on'); return r.parts; });
+    return e.roll(opt).then(function(r){ e.stop(); host.classList.remove('on'); return r.parts; });
   }
   $('go').addEventListener('click',function(){
     var age=+$('age').value;
-    rollParts(R.diceFormula()).then(function(dv){
-      return rollParts(R.luckFormula()).then(function(lv){ show(R.makeStats(alloc,age,dv),R.luckFromDice(lv),age); });
+    rollParts({formula:R.diceFormula(),title:'定められた器を、運命が形づくる',noTotal:true,hue:0}).then(function(dv){
+      return rollParts({formula:R.luckFormula(),title:'貴方の運命の強さを、ダイスに問う',noTotal:false,hue:170}).then(function(lv){ show(R.makeStats(alloc,age,dv),R.luckFromDice(lv),age); });
     });
   });
   function sgn(n){ return n>0?'＋'+n:n<0?'−'+(-n):'±0'; }
