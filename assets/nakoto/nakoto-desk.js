@@ -1,5 +1,5 @@
 /* ============================================================================
-   机メニュー＋ナコト写本 部品（NakotoDesk） v1.10.0
+   机メニュー＋ナコト写本 部品（NakotoDesk） v1.10.1
    ----------------------------------------------------------------------------
    机そのものがメニュー。本＝探索者シート（部品 assets/sheet/investigator-sheet.js）、紙の束＝ルート分岐表（付箋付きファイル）、羽ペン＝セーブ。
    本体は呼ぶだけ。見た目を作り直すときは、このファイルと assets/nakoto/ の絵だけを差しかえる。
@@ -36,7 +36,7 @@
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.10.0';
+  var VERSION='1.10.1';
   // 効果音（assets からの場所）。空なら鳴らさない。見本の「調整」で差しかえられる
   var SOUNDS={glow:'',sheet:'sfx/紙を広げる1.mp3',
     peek:'sfx/ページをめくる2.mp3',grow:'sfx/うごめく触手.mp3',grow2:'sfx/暗黒魔法.mp3',close:'sfx/本を閉じる1.mp3',saveOpen:'sfx/紙を広げる2.mp3',write:'sfx/シャーペンで字を書く.mp3',
@@ -103,7 +103,7 @@
 '.nd-codex.on{display:flex}.nd-codex.vis{opacity:1}',
 '.nd-file{position:relative;width:min(84vw,calc(88dvh * 1.62));height:min(88dvh,calc(84vw / 1.62));margin-left:9vw}',
 '.nd-file::before{content:"";position:absolute;inset:-2.2% -1.6% -2.6% -1%;border-radius:4px 10px 10px 4px;background:radial-gradient(circle at 70% 90%,rgba(20,10,4,.45) 0,transparent 14%),radial-gradient(circle at 12% 18%,rgba(25,12,4,.4) 0,transparent 10%),linear-gradient(135deg,#6a4c2c,#4a331c 60%,#3a2814);box-shadow:0 0 50px #000,inset 0 0 30px rgba(0,0,0,.6)}',
-'.nd-fsheet{position:absolute;inset:0;border-radius:2px 6px 6px 2px;overflow:hidden;color:#3a2412;background:radial-gradient(circle at 82% 14%,rgba(95,52,14,.3) 0,transparent 9%),radial-gradient(circle at 22% 84%,rgba(80,42,10,.28) 0,transparent 11%),radial-gradient(circle at 64% 58%,transparent 5.6%,rgba(105,58,16,.3) 6.2%,rgba(105,58,16,.1) 6.9%,transparent 7.6%),radial-gradient(circle at 40% 10%,rgba(60,30,8,.18) 0,transparent 6%),var(--tex) center/cover;box-shadow:inset 0 0 60px rgba(70,35,8,.75),inset 0 0 6px rgba(40,20,5,.6)}',
+'.nd-fsheet{position:absolute;inset:0;border-radius:2px 6px 6px 2px;overflow:hidden;color:#3a2412;background:radial-gradient(circle at 82% 14%,rgba(95,52,14,.3) 0,transparent 9%),radial-gradient(circle at 22% 84%,rgba(80,42,10,.28) 0,transparent 11%),radial-gradient(circle at 40% 10%,rgba(60,30,8,.18) 0,transparent 6%),var(--tex) center/cover;box-shadow:inset 0 0 60px rgba(70,35,8,.75),inset 0 0 6px rgba(40,20,5,.6)}',
 '.nd-fsheet::after{content:"";position:absolute;left:44%;top:-1.2%;width:12%;height:5.5%;border-radius:0 0 4px 4px;background:linear-gradient(#8a7a64,#4c4234);box-shadow:0 2px 4px rgba(0,0,0,.5);pointer-events:none}',
 '.nd-fhead{position:absolute;left:4%;right:4%;top:5%;display:flex;align-items:baseline;gap:3%;padding-bottom:1.2%;border-bottom:2px double rgba(90,45,15,.45)}',
 '.nd-ptitle{font-family:"Cinzel","Times New Roman",serif;font-size:clamp(13px,3.2dvh,24px);font-weight:700;letter-spacing:.12em;color:#4a1c0c;white-space:nowrap}',
@@ -119,7 +119,7 @@
 '.nd-sv{position:absolute;z-index:25;inset:0;display:none;align-items:center;justify-content:center;background:#050302;opacity:0;transition:opacity .9s}',
 '.nd-sv.on{display:flex}.nd-sv.vis{opacity:1}',
 '.nd-svin{position:relative;width:min(94vw,calc(86dvh * 2));height:86dvh;perspective:2000px}',
-'.nd-tree{position:absolute;z-index:1;inset:15% 4% 3% 7%;overflow:auto;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:none}',
+'.nd-tree{position:absolute;z-index:1;inset:15% 4% 3% 7%;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:none}',
 '.nd-tree::-webkit-scrollbar{display:none}',
 '.nd-tin{position:relative;padding:4% 2% 18%}',
 '.nd-tin svg.ln{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}',
@@ -134,7 +134,7 @@
 '.nd-bx.sc{background:#5a2414;color:#f7e7c8;border-color:#5a2414}',
 '.nd-bx.end{background:#9a1010;color:#fff;border-color:#4a0606}',
 '.nd-bx.dt{background:rgba(255,245,225,.45);color:#5a2414;border-color:#5a2414}',
-'.nd-bx.jp{background:#3a2a1a;color:#f0dcb0;border-color:#3a2a1a;font-size:14px}',
+'.nd-bx.jp{background:rgba(255,245,225,.45);color:#7a1a14;border-color:#7a1a14;font-size:14px}',
 '.nd-tx.jump{color:#5a2414;text-decoration:underline;text-underline-offset:4px}',
 '.nd-row.side{margin-top:-6px}',
 '.nd-bx.nz{border:1px dashed rgba(90,60,40,.6);background:var(--noise);background-size:90px;color:transparent;opacity:.7;animation:nd-noise .22s steps(2) infinite}',
@@ -234,6 +234,7 @@
       '<div class="nd-tree"><div class="nd-tin"></div></div></div></div><div class="nd-cmsg">「保存」の印を押すと、その時へ戻れる</div>';
     var cback=el('button','nd-back','閉じる'); cback.type='button'; codex.appendChild(cback);
     host.appendChild(codex);
+    host.style.setProperty('--tex','url('+B+'page-tex.webp)');  // 分岐表の紙の地
     /* 探索者シート（本の中身） */
     var sv=el('div','nd-sv'), svin=el('div','nd-svin'); sv.appendChild(svin);
     var sback=el('button','nd-back','閉じる'); sback.type='button'; sv.appendChild(sback); host.appendChild(sv);
