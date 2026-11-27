@@ -1,5 +1,5 @@
 /* ============================================================================
-   机メニュー＋ナコト写本 部品（NakotoDesk） v1.9.0
+   机メニュー＋ナコト写本 部品（NakotoDesk） v1.9.1
    ----------------------------------------------------------------------------
    机そのものがメニュー。本＝探索者シート（部品 assets/sheet/investigator-sheet.js）、紙の束＝ルート分岐表（付箋付きファイル）、羽ペン＝セーブ。
    本体は呼ぶだけ。見た目を作り直すときは、このファイルと assets/nakoto/ の絵だけを差しかえる。
@@ -36,7 +36,7 @@
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.9.0';
+  var VERSION='1.9.1';
   // 効果音（assets からの場所）。空なら鳴らさない。見本の「調整」で差しかえられる
   var SOUNDS={glow:'',sheet:'sfx/紙を広げる1.mp3',
     peek:'sfx/ページをめくる2.mp3',grow:'sfx/うごめく触手.mp3',grow2:'sfx/暗黒魔法.mp3',close:'sfx/本を閉じる1.mp3',saveOpen:'sfx/紙を広げる2.mp3',write:'sfx/シャーペンで字を書く.mp3',
@@ -206,7 +206,7 @@
     var room=el('div','nd-room'); room.style.backgroundImage='url('+B+'room.webp)';
     var desk=el('img','nd-desk'); desk.src=B+'desk.webp';
     function obj(cls,img,label){ var d=el('div','nd-obj '+cls); if(img){ var i=el('img'); i.src=B+img; d.appendChild(i); } if(label) d.appendChild(el('div','nd-label',label)); return d; }
-    var sheets=obj('nd-sheets','cardbox.webp','ルート分岐表');
+    var sheets=obj('nd-sheets','cardbox.webp?v='+VERSION,'ルート分岐表');
     var lantern=obj('nd-lantern','lantern.webp',null); lantern.style.cursor='default';
     var flame=el('div','nd-flame'); lantern.appendChild(flame);
     var ink=obj('nd-ink','ink.webp',null); ink.style.pointerEvents='none';
