@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>深淵の胎動（仮） v0.5.14</title>
+<title>深淵の胎動（仮） v0.5.15</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&display=swap">
 <style>
   /* ゲーム本体（11/25 に「ゲーム画面 見本 v1.8」を本体にした）。ダイスは部品 assets/dice/dice-engine.js */
@@ -240,7 +240,7 @@
     <button type="button" class="item" data-open="pTune">見本の調整</button>
     <button type="button" class="item" data-open="pAssets">素材を見る</button>
   </div>
-  <p class="small">深淵の胎動（仮） v0.5.14</p>
+  <p class="small">深淵の胎動（仮） v0.5.15</p>
 </div>
 <div class="panel" id="pSheet"><button type="button" class="close" data-back>戻る</button>
   <div id="sheetHost"></div></div>
@@ -266,7 +266,7 @@
   <div class="row"><input type="text" id="free" placeholder="技能名や行動を入力（例：目星）" autocomplete="off"><button type="button" class="item" id="freeGo">決定</button></div>
 </div>
 
-<div id="start" class="hide" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプでログ／長押しで絵だけ</span><span class="ver">深淵の胎動（仮） v0.5.14</span></div>
+<div id="start" class="hide" role="button" tabindex="0"><b>タップして始める</b><span>全画面・横向きになります</span><span>タップで文章を進める／下スワイプでログ／長押しで絵だけ</span><span class="ver">深淵の胎動（仮） v0.5.15</span></div>
 <div id="portrait">スマホを横向きにしてください</div>
 
 <script src="assets/manifest.js"></script>
@@ -360,7 +360,13 @@
     curBg=name;
   }
   function sfxUrl(n){ return 'assets/sfx/'+encodeURIComponent(n)+'.mp3'; }
-  function se(name,vol){ try{ var a=new Audio(sfxUrl(name)); a.volume=vol==null?.8:vol; a.play().catch(function(){}); return a; }catch(_){ } }
+  // 効果音：dur を渡すと、その時間（動きが終わるころ）で自然にフェードして消える
+  function fadeSe(a,ms){ if(!a) return; var v=a.volume, t0=performance.now(); (function f(){ var k=(performance.now()-t0)/(ms||450); if(k>=1){ a.pause(); return; } a.volume=v*(1-k); requestAnimationFrame(f); })(); }
+  function se(name,vol,dur){ try{ var a=new Audio(sfxUrl(name)); a.volume=vol==null?.8:vol; a.play().catch(function(){}); if(dur) setTimeout(function(){ fadeSe(a,450); },dur); return a; }catch(_){ } }
+  // 場面の効果音は、次のページへ進んだらフェードして消す（間延び防止）
+  var sceneSe=[];
+  function sceneSE(name){ var a=se(name); if(a) sceneSe.push(a); }
+  function endSceneSE(){ sceneSe.forEach(function(a){ fadeSe(a,500); }); sceneSe=[]; }
   function amb(name){ try{ if(ambEl){ if(ambEl.dataset.n===name) return; ambEl.pause(); }
     ambEl=new Audio(sfxUrl(name)); ambEl.dataset.n=name; ambEl.loop=true; ambEl.volume=.25; ambEl.play().catch(function(){}); }catch(_){ } }
 
@@ -424,7 +430,7 @@
     cur=SCRIPT[key]; pageI=0; paraI=0;
     cur.pages=cur.pages.map(function(pg){ return Array.isArray(pg)?{paras:pg}:pg; });
     setBg(cur.pages[0].bg||cur.bg, cur.pages[0].cam||cur.cam);
-    if(cur.amb) amb(cur.amb); if(cur.se) se(cur.se); if(cur.pages[0].se) se(cur.pages[0].se);
+    if(cur.amb) amb(cur.amb); endSceneSE(); if(cur.se) sceneSE(cur.se); if(cur.pages[0].se) sceneSE(cur.pages[0].se);
     hideChoices(); textEl.innerHTML=''; shade.classList.remove('on'); nextEl.classList.remove('on');
     clearTimeout(autoT); pageFx(cur.pages[0]);
     newHide(); refreshEat();
@@ -465,7 +471,7 @@
     setTimeout(function(){
       $('flash').classList.remove('on'); void $('flash').offsetWidth; $('flash').classList.add('on');
       $('stage').classList.remove('shake'); void $('stage').offsetWidth; $('stage').classList.add('shake');
-      se('ドアをドンドン叩く',1);
+      se('ドアをドンドン叩く',1,1600);
       var el=document.createElement('p'); el.textContent='——ドンッ！！'; el.style.fontSize='1.6em'; el.style.color='#d9b0a0';
       textEl.appendChild(el); log.push('——ドンッ！！');
       setTimeout(function(){ mode='text'; nextEl.classList.add('on'); },600);
@@ -485,7 +491,7 @@
       var pg=cur.pages[pageI]; pageFx(pg);
       var prevBg=curBg;
       if(pg.bg||pg.cam) setBg(pg.bg||curBg, pg.cam||'still');
-      if(pg.se) se(pg.se);
+      endSceneSE(); if(pg.se) sceneSE(pg.se);
       newHide(); refreshEat();
       if(pg.bg && pg.bg!==prevBg){ showPicture(showPara); return; }
     }
@@ -498,7 +504,7 @@
     var box=$('choices'); box.innerHTML='';
     CHOICES[key].forEach(function(c){
       var b=document.createElement('button'); b.type='button'; b.className='ch'; b.textContent=c[0];
-      b.addEventListener('click',function(e){ e.stopPropagation(); se('ページをめくる1',.6); log.push('▶ '+c[0]); textEl.style.opacity=1; go(c[1]); });
+      b.addEventListener('click',function(e){ e.stopPropagation(); se('ページをめくる1',.6,800); log.push('▶ '+c[0]); textEl.style.opacity=1; go(c[1]); });
       box.appendChild(b);
     });
     var r=document.createElement('button'); r.type='button'; r.className='ch resist'; resistLabel(r);
@@ -607,7 +613,7 @@
   }
   function tick(){
     if(S.strokes>=S.maxStrokes) return;
-    S.strokes++; drawCircle(true); se('血がたれる1',.9);
+    S.strokes++; drawCircle(true); se('血がたれる1',.9,1200);
     var c=$('circle'); c.classList.add('on'); clearTimeout(circleHide);
     circleHide=setTimeout(function(){ c.classList.remove('on'); },5200);
     if(S.strokes>=S.maxStrokes){
@@ -730,7 +736,7 @@
   // ---- タイトル（部品 assets/title/title-screen.js）：注意書き→演出→メニュー ----
   function beginGame(){ if(!begun){ begun=true; applyState(); go('start'); } }
   if(window.HorrorTitle){
-    var title=HorrorTitle.create({ version:'v0.5.14', onStartTap:goFull,
+    var title=HorrorTitle.create({ version:'v0.5.15', onStartTap:goFull,
       onNewGame:function(){ title.hide(); beginGame(); } });  // つづきから・設定は、セーブと設定を作ったら渡す
     title.show();
   } else { start.querySelector('b').textContent='タップして始める'; start.classList.remove('hide'); start.addEventListener('click',beginGame); }
