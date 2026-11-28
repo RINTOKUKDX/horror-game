@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>行動の輪 見本</title>
+<style>
+  :root { --gold:#c7b07c; --text:#e8dcc0; --dim:#928b82; }
+  html,body { margin:0; height:100%; background:#0b0908; color:var(--text); font-family:'Noto Serif JP','Hiragino Mincho ProN','Yu Mincho',serif; overflow:hidden; -webkit-user-select:none; user-select:none; }
+  #app { position:fixed; inset:0; display:flex; }
+  #stage { position:relative; flex:1; overflow:hidden; background:#000 url(../assets/bg/corridor.webp) center/cover; }
+  #stage::before { content:''; position:absolute; inset:0; background:radial-gradient(circle at 50% 55%, rgba(0,0,0,.15) 10%, rgba(0,0,0,.85) 75%); }
+  #chara { position:absolute; left:50%; top:52%; width:46vh; height:50vh; transform:translate(-50%,-50%); }
+  #ver { position:absolute; left:8px; top:6px; font-size:11px; color:var(--dim); z-index:3; }
+  #hint { position:absolute; left:50%; bottom:10px; transform:translateX(-50%); font-size:13px; color:var(--dim); z-index:3; white-space:nowrap; text-shadow:0 0 4px #000; }
+  #msg { position:absolute; left:0; right:0; top:14px; text-align:center; font-size:17px; z-index:3; text-shadow:0 0 6px #000,0 0 3px #000; opacity:0; transition:opacity .4s; }
+  #msg.on { opacity:1; }
+  #panel { width:34%; max-width:300px; background:rgba(14,11,10,.97); border-left:1px solid #3a3128; overflow-y:auto; padding:8px 10px; box-sizing:border-box; font-size:13px; }
+  #panel h3 { margin:6px 0 6px; font-size:13px; color:var(--gold); font-weight:normal; border-bottom:1px solid #3a3128; padding-bottom:3px; }
+  .row { display:flex; align-items:center; justify-content:space-between; gap:6px; margin:5px 0; }
+  .row select { flex:0 0 52%; background:#1a1512; color:var(--text); border:1px solid #4a3f33; border-radius:3px; font:inherit; font-size:13px; padding:4px; }
+  button.b { width:100%; margin:4px 0; padding:8px; background:#1a1512; color:var(--gold); border:1px solid var(--gold); border-radius:3px; font:inherit; font-size:13px; }
+  #out { width:100%; height:90px; box-sizing:border-box; background:#000; color:#b9ad95; border:1px solid #3a3128; font-size:11px; font-family:monospace; }
+  #start, #rot { position:fixed; inset:0; z-index:100; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; background:#0b0908; text-align:center; }
+  #start b { font-size:20px; font-weight:normal; } #start span { color:var(--dim); font-size:13px; }
+  #rot { display:none; }
+  @media (orientation:portrait){ #rot { display:flex; } }
+</style>
+</head><body>
+<div id="app">
+  <div id="stage">
+    <canvas id="chara"></canvas>
+    <div id="ver">行動の輪 見本 v1.0</div>
+    <div id="msg"></div>
+    <div id="hint">キャラをタップすると行動の輪が開きます（なぞって離すと決定、中心をタップで閉じる）</div>
+  </div>
+  <div id="panel">
+    <h3>見た目</h3>
+    <div class="row">質感<select id="theme"><option value="brass">真鍮</option><option value="bone">骨</option><option value="blood">血</option><option value="mist">霧</option></select></div>
+    <div class="row">大きさ<select id="radius"><option value="100">小</option><option value="130">中</option><option value="160">大</option><option value="190">特大</option></select></div>
+    <div class="row">輪の太さ<select id="thick"><option value="0.32">細い</option><option value="0.42">ふつう</option><option value="0.52">太い</option></select></div>
+    <div class="row">アイコン<select id="icon"><option value="20">小</option><option value="24">中</option><option value="30">大</option></select></div>
+    <div class="row">文字<select id="label"><option value="10">小</option><option value="12">中</option><option value="15">大</option></select></div>
+    <div class="row">紋様の輪<select id="runes"><option value="1">あり</option><option value="0">なし</option></select></div>
+    <div class="row">紋様の回転<select id="runeSpin"><option value="20">速い</option><option value="40">ふつう</option><option value="80">ゆっくり</option></select></div>
+    <div class="row">ロウソク<select id="candles"><option value="1">あり</option><option value="0">なし</option></select></div>
+    <div class="row">消費Pの印<select id="cost"><option value="1">あり</option><option value="0">なし</option></select></div>
+    <div class="row">足りない時のひび<select id="cracks"><option value="1">あり</option><option value="0">なし</option></select></div>
+    <h3>動き</h3>
+    <div class="row">開き方<select id="open"><option value="unfold">1つずつ広がる</option><option value="spin">回りながら</option><option value="fade">ふわっと</option></select></div>
+    <div class="row">速さ<select id="speed"><option value="0.6">ゆっくり</option><option value="1">ふつう</option><option value="1.6">速い</option></select></div>
+    <div class="row">選択中の脈打ち<select id="pulse"><option value="1">あり</option><option value="0">なし</option></select></div>
+    <h3>試す</h3>
+    <div class="row">残り行動P<select id="pts"></select></div>
+    <button class="b" id="bOpen">輪を開く</button>
+    <button class="b" id="bOut">今の設定を書き出す</button>
+    <textarea id="out" readonly placeholder="ここに出た文字を、そのままチャットに貼ってください。部品の決まり（DEFAULTS）に入れます。"></textarea>
+  </div>
+</div>
+<div id="start"><b>タップして始める</b><span>全画面・横向きになります</span><span id="sv"></span></div>
+<div id="rot"><div>スマホを横向きにしてください</div></div>
+
+<script type="importmap">{"imports":{"three":"../assets/lib/three/build/three.module.min.js"}}</script>
+<script type="module" src="../assets/model3d/chara3d.js"></script>
+<script src="../assets/ring/action-ring.js"></script>
+<script>
+(function(){
+  var VER = 'v1.0';
+  document.getElementById('sv').textContent = '行動の輪 見本 ' + VER;
+  var $ = function(id){ return document.getElementById(id); };
+  var KEYS = ['theme','radius','thick','icon','label','runes','runeSpin','candles','cost','cracks','open','speed','pulse'];
+  var NUM = { radius:1, thick:1, icon:1, label:1, runeSpin:1, speed:1 }, BOOL = { runes:1, candles:1, cost:1, cracks:1, pulse:1 };
+  for (var i=0;i<=12;i++){ var op = document.createElement('option'); op.value = i; op.textContent = i+'P'; $('pts').appendChild(op); }
+  // 前回の設定（なければ部品の DEFAULTS）
+  var saved = {}; try { saved = JSON.parse(localStorage.getItem('actionRingSample')||'{}')||{}; } catch(e){}
+  KEYS.forEach(function(k){
+    var v = saved[k]!=null ? saved[k] : ActionRing.DEFAULTS[k];
+    $(k).value = BOOL[k] ? (v ? '1' : '0') : String(v);
+    if ($(k).selectedIndex < 0) $(k).selectedIndex = 0;
+    $(k).onchange = store;
+  });
+  $('pts').value = saved.pts!=null ? saved.pts : 8; $('pts').onchange = store;
+  function opt(){ var o = {}; KEYS.forEach(function(k){ var v = $(k).value; o[k] = BOOL[k] ? v==='1' : NUM[k] ? +v : v; }); return o; }
+  function store(){ var o = opt(); o.pts = +$('pts').value; try { localStorage.setItem('actionRingSample', JSON.stringify(o)); } catch(e){} if (ring){ ring.close(); setTimeout(openRing, 350); } }
+
+  // 決めたルールどおりの行動（移動1P・技能3P・荷物を下ろす1P）。技能は中に一覧を持つ
+  var ITEMS = [
+    { id:'move',  label:'移動',   icon:'move',  cost:1 },
+    { id:'skill', label:'技能',   icon:'skill', cost:3, children:[
+      { id:'fist',   label:'こぶし', icon:'atk',    cost:3 },
+      { id:'dodge',  label:'回避',   icon:'dodge',  cost:3 },
+      { id:'look',   label:'目星',   icon:'look',   cost:3 },
+      { id:'occult', label:'オカルト', icon:'occult', cost:3 },
+      { id:'spell',  label:'呪文',   icon:'spell',  cost:5 } ] },
+    { id:'item',  label:'アイテム', icon:'item' },
+    { id:'drop',  label:'荷下ろし', icon:'drop', cost:1 },
+    { id:'end',   label:'ターン終了', icon:'end' }
+  ];
+  var ring = null, msgT = null;
+  function say(t){ var m = $('msg'); m.textContent = t; m.classList.add('on'); clearTimeout(msgT); msgT = setTimeout(function(){ m.classList.remove('on'); }, 2200); }
+  function openRing(){
+    if (ring) return;
+    var st = $('stage').getBoundingClientRect(), c = $('chara').getBoundingClientRect();
+    ring = ActionRing.open({
+      parent: $('stage'), x: c.left - st.left + c.width/2, y: c.top - st.top + c.height*.55,
+      items: ITEMS, points: +$('pts').value, opt: opt(),
+      pick: function(it){ ring = null; say('「'+it.label+'」を選んだ' + (it.cost!=null ? '（'+it.cost+'P）' : ''));
+        if (k3){ var mv = { move:'walk', fist:'slash', dodge:'afraid', look:'idle', occult:'idle', spell:'fire', drop:'idle', end:'idle', item:'idle' }[it.id]; if (mv) k3.play(mv); if (it.id==='move') setTimeout(function(){ k3.play('idle'); }, 1500); } },
+      close: function(){ ring = null; }
+    });
+  }
+  $('bOpen').onclick = openRing;
+  $('chara').addEventListener('click', openRing);
+  $('bOut').onclick = function(){ var o = opt(), t = 'ActionRing DEFAULTS\n' + JSON.stringify(o); $('out').value = t; $('out').select(); try { navigator.clipboard.writeText(t); say('書き出してコピーした'); } catch(e){ say('書き出した'); } };
+
+  // 3Dキャラ（部品 Chara3D）。読み込めないときは何も出ないだけ
+  var k3 = null;
+  function make3d(){ if (k3 || !window.Chara3D) return; k3 = Chara3D.create({ url:'../assets/model3d/investigator_purple.glb', canvas:$('chara'), height:1.3 }); k3.view(25, 20); }
+  window.addEventListener('chara3d-ready', make3d); make3d();
+
+  // 全画面・横向き
+  function isFull(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+  $('start').onclick = async function(){
+    var el = document.documentElement;
+    try { if (!isFull()){ if (el.requestFullscreen) await el.requestFullscreen(); else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen(); } } catch(_){}
+    try { if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape'); } catch(_){}
+    $('start').style.display = 'none';
+    setTimeout(openRing, 600);
+  };
+})();
+</script>
+</body></html>
