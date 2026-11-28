@@ -24,7 +24,7 @@
   .unit img { width:100%; height:100%; display:block; }
   .unit canvas.c3d { width:100%; height:100%; display:block; }
   body.mood .unit canvas.c3d { filter:brightness(.85) contrast(1.06) saturate(.8); }
-  #act3d { position:absolute; left:8px; top:58px; z-index:14; display:none; flex-wrap:wrap; gap:4px; max-width:46%; }
+  #act3d { position:absolute; right:calc(var(--pw) + 8px); top:58px; z-index:14; display:none; flex-wrap:wrap; justify-content:flex-end; gap:4px; max-width:42%; }
   #act3d.on { display:flex; }
   #act3d button { font-size:11px; padding:4px 7px; background:rgba(18,15,14,.88); color:#e8dcc0; border:1px solid var(--gold); border-radius:4px; }
   .unit.enemy img { filter:sepia(1) saturate(2.2) hue-rotate(-35deg) brightness(.75); }
@@ -105,7 +105,7 @@
   .beam.broken { animation:sway 3.4s ease-in-out infinite, flick 2.6s linear infinite; }
   @keyframes sway { 0%,100% { transform:translateZ(1.5px) rotateZ(-1.8deg); } 50% { transform:translateZ(1.5px) rotateZ(1.8deg); } }
   @keyframes flick { 0%,100%{opacity:1} 7%{opacity:.2} 9%{opacity:1} 41%{opacity:.85} 43%{opacity:.05} 46%{opacity:.9} 70%{opacity:1} 72%{opacity:.35} 74%{opacity:1} 88%{opacity:.6} 90%{opacity:1} }
-  #bMode { position:absolute; left:6px; top:58px; z-index:10; display:none; background:rgba(18,15,14,.85); color:var(--gold); border:1px solid var(--gold); font:inherit; font-size:13px; padding:5px 9px; border-radius:2px; }
+  #bMode { position:absolute; left:84px; top:22px; z-index:10; display:none; background:rgba(18,15,14,.85); color:var(--gold); border:1px solid var(--gold); font:inherit; font-size:13px; padding:5px 9px; border-radius:2px; }
   #vLabel { font-size:12px; color:var(--gold); text-align:center; }
   #field { touch-action:none; }
   #stage.exp #field { right:0; bottom:0; }
@@ -226,7 +226,7 @@
 <div id="app">
   <div id="stage">
     <div id="bgimg"></div><div id="bgshade"></div>
-    <div id="ver">戦闘盤 見本 v2.11</div><div id="act3d"></div>
+    <div id="ver">戦闘盤 見本 v2.12</div><div id="act3d"></div>
     <button id="bMenu">☰ 設定</button>
     <button id="bMode"></button>
     <div id="field"><div id="board"><div id="grid"></div></div></div>
@@ -286,9 +286,10 @@
 
 <script type="importmap">{"imports":{"three":"../assets/lib/three/build/three.module.min.js"}}</script>
 <script type="module" src="../assets/model3d/chara3d.js"></script>
+<script src="../assets/board/view-control.js"></script>
 <script>
 (function(){
-  var VER = 'v2.11';
+  var VER = 'v2.12';
   Array.prototype.forEach.call(document.querySelectorAll('.vv'), function(e){ e.textContent = '戦闘盤 見本 ' + VER; });
   var BGS = ['corridor','factory','hospital','mansion','prison','sewage','lab','parking'];
   var TILT = 55, MAXC = 40;   // マスの上限（横・縦）
@@ -296,7 +297,10 @@
   var stage = $('stage'), field = $('field'), board = $('board'), grid = $('grid');
 
   var S = { cols:8, rows:6, cells:{}, dur:{}, seen:{}, met:{}, lead:null,
-    ve:{ tilt:50, yaw:0, ox:0, oy:0, scale:100 },   // 探索用の画角（S.tilt などは戦闘用） bg:0, tilt:55, yaw:0, ox:0, oy:0, scale:100,
+    bg:0, tilt:55, yaw:0, ox:0, oy:0, scale:100,     // 戦闘用の画角
+    ve:{ tilt:50, yaw:0, ox:0, oy:0, scale:100 },   // 探索用の画角（S.tilt などは戦闘用）
+    vz:{ tilt:48, yaw:0, ox:0, oy:0, scale:170 },   // ズーム（行動中のキャラが中心）
+    vw:{ tilt:62, yaw:0, ox:0, oy:0, scale:70 },    // ズームアウト（全体） bg:0, tilt:55, yaw:0, ox:0, oy:0, scale:100,
     units:[
       {id:'a1', side:'ally', c:6, r:5, name:'探索者A', hp:12, mhp:12, mp:8, mmp:10, san:62, msan:70},
       {id:'a2', side:'ally', c:7, r:3, name:'探索者B', hp:9, mhp:11, mp:5, mmp:6, san:48, msan:55},
@@ -304,7 +308,13 @@
       {id:'e2', side:'enemy', c:0, r:2, name:'歪んだ者', hp:14, mhp:16, mp:3, mmp:3} ] };
   var edit = false, selected = null, size = 60, brush = 0, dragging = false, selObj = null, explore = false, inBattle = false, panX = 0, panY = 0, noClick = false, lastCam = null;
   function camExplore(){ return explore && !inBattle; }
-  function V(){ return camExplore() ? S.ve : S; }   // 今の画角（探索用 or 戦闘用）
+  // 画角は4つ：exp=探索 bat=戦闘 zoom=ズーム wide=ズームアウト。探索⇔戦闘が切り替わると自動でそちらへ戻る
+  var CAMS = ['exp','bat','zoom','wide'], CAMN = ['探索','戦闘','ズーム','ズームアウト'], camSel = 'bat', camAuto = null;
+  function V(){
+    var a = camExplore(); if (a !== camAuto){ camAuto = a; camSel = a ? 'exp' : 'bat'; }
+    return camSel==='exp' ? S.ve : camSel==='zoom' ? S.vz : camSel==='wide' ? S.vw : S;
+  }
+  function camCentered(){ V(); return camSel==='exp' || camSel==='zoom'; }   // キャラを画面の中心にする画角
   function leadUnit(){ var al = S.units.filter(function(u){ return u.side==='ally'; }); return al.filter(function(u){ return u.id===S.lead; })[0] || al[0] || null; }
 
   function key(c,r){ return r*100+c; }
@@ -317,7 +327,7 @@
     if (!o || !o.cols || !o.rows) return;
     S.cols = Math.max(3, Math.min(MAXC, o.cols|0)); S.rows = Math.max(3, Math.min(MAXC, o.rows|0));
     S.cells = o.cells || {}; S.dur = o.dur || {}; S.bg = (o.bg|0) % BGS.length; S.tilt = o.tilt||55; S.yaw = o.yaw||0; S.ox = o.ox||0; S.oy = o.oy||0; S.scale = o.scale||100;
-    if (o.ve) S.ve = o.ve; S.seen = o.seen || {}; S.met = o.met || {}; S.lead = o.lead || null; S.isSample = !!o.isSample;
+    if (o.ve) S.ve = o.ve; if (o.vz) S.vz = o.vz; if (o.vw) S.vw = o.vw; S.seen = o.seen || {}; S.met = o.met || {}; S.lead = o.lead || null; S.isSample = !!o.isSample;
     if (o.units && o.units.length) S.units = o.units;
     clampUnits();
   }
@@ -333,7 +343,7 @@
   function fit(){
     var v = V(); TILT = v.tilt;
     var W = field.clientWidth, H = field.clientHeight;
-    if (camExplore()){ size = Math.max(Math.floor(H*0.62/4.2 * v.scale/100), 6); return; }   // 探索：盤の大きさに関係なく、手前から奥まで4〜5マスほど
+    if (camCentered()){ size = Math.max(Math.floor(H*0.62/4.2 * v.scale/100), 6); return; }   // 探索：盤の大きさに関係なく、手前から奥まで4〜5マスほど
     var cos = Math.cos(TILT*Math.PI/180), y = Math.abs(v.yaw)*Math.PI/180;
     var ex = S.cols*Math.cos(y) + S.rows*Math.sin(y), ey = (S.rows*Math.cos(y) + S.cols*Math.sin(y))*cos;
     size = Math.min(W*0.88/ex, H*0.66/ey, 90) * v.scale/100;
@@ -342,10 +352,10 @@
 
   // 画面の向き・位置。探索中は先頭の味方が画面の中心に来る
   function camera(){
-    var v = V(), w = S.cols*size, h = S.rows*size, m = camExplore();
-    if (m!==lastCam){ board.classList.remove('cam'); lastCam = m; requestAnimationFrame(function(){ requestAnimationFrame(function(){ if (camExplore()) board.classList.add('cam'); }); }); }
+    var v = V(), w = S.cols*size, h = S.rows*size, m = camCentered();
+    if (m!==lastCam){ board.classList.remove('cam'); lastCam = m; requestAnimationFrame(function(){ requestAnimationFrame(function(){ if (camCentered()) board.classList.add('cam'); }); }); }
     if (m){
-      var L = leadUnit(), ux = (L ? L.c+.5 : S.cols/2)*size, uy = (L ? L.r+.5 : S.rows/2)*size;
+      var L = (camSel==='zoom' && selected) || leadUnit(), ux = (L ? L.c+.5 : S.cols/2)*size, uy = (L ? L.r+.5 : S.rows/2)*size;
       board.style.top = '60%'; board.style.transformOrigin = ux+'px '+uy+'px';
       board.style.marginLeft = (-ux + (v.ox||0) + panX)+'px'; board.style.marginTop = (-uy + (v.oy||0) + panY)+'px';
     } else {
@@ -353,7 +363,7 @@
       board.style.marginLeft = (-w/2 + (v.ox||0))+'px'; board.style.marginTop = (-h/2 + (v.oy||0))+'px';
     }
     board.style.transform = 'rotateX('+TILT+'deg) rotateZ('+v.yaw+'deg)';
-    field.classList.toggle('explore', m);
+    field.classList.toggle('explore', camExplore());
     if (typeof updateSil==='function' && grid.children.length) updateSil();
     var mb = $('bMode'); mb.style.display = explore ? 'block' : 'none'; mb.textContent = inBattle ? '探索へ戻る' : '戦闘へ';
   }
@@ -563,9 +573,9 @@
   function add3d(u, el, n){
     var k = C3[u.id];
     if (!k){ var cv = document.createElement('canvas'); cv.className = 'c3d'; k = C3[u.id] = window.Chara3D.create({ url:C3URL, canvas:cv }); }
-    // 3Dは腕を振っても切れないよう、絵より広い範囲を映す（幅1.6マス×高さ2マス）
+    // 3Dは腕を振ったり倒れたりしても切れないよう、絵より広い範囲を映す（大きさは部品の DEFAULTS.frameW/frameH）
     var fr = LASTPOS[u.id];
-    place(el, u.c, u.r, size*1.6*n, size*2.0*n); unitPos(el, u);
+    var D3 = window.Chara3D.DEFAULTS; place(el, u.c, u.r, size*D3.frameW*n, size*D3.frameH*n); unitPos(el, u);
     el.appendChild(k.canvas);
     board.appendChild(el); u.el = el;
     // 前の位置から滑らかに移動する（作り直しても飛ばない）
@@ -679,11 +689,11 @@
   $('bClear').onclick = function(){ S.cells = {}; S.dur = {}; hideInfo(); save(); render(); };
 
   function stageObj(){
-    return { cols:S.cols, rows:S.rows, bg:S.bg, tilt:S.tilt, yaw:S.yaw, ox:S.ox||0, oy:S.oy||0, scale:S.scale, ve:JSON.parse(JSON.stringify(S.ve)), cells:JSON.parse(JSON.stringify(S.cells)), dur:JSON.parse(JSON.stringify(S.dur||{})),
+    return { cols:S.cols, rows:S.rows, bg:S.bg, tilt:S.tilt, yaw:S.yaw, ox:S.ox||0, oy:S.oy||0, scale:S.scale, ve:JSON.parse(JSON.stringify(S.ve)), vz:JSON.parse(JSON.stringify(S.vz)), vw:JSON.parse(JSON.stringify(S.vw)), cells:JSON.parse(JSON.stringify(S.cells)), dur:JSON.parse(JSON.stringify(S.dur||{})),
       units:S.units.map(function(u){ var q={}; Object.keys(u).forEach(function(k){ if (k!=='el' && k!=='_mv') q[k]=u[k]; }); return q; }) };
   }
   function syncSliders(){ var v = V(); $('sTilt').value = v.tilt; $('sScale').value = v.scale; $('sYaw').value = v.yaw; $('sOx').value = v.ox||0; $('sOy').value = v.oy||0;
-    $('vLabel').textContent = camExplore() ? '画角：探索用（キャラ中心）' : (explore ? '画角：戦闘用' : '画角：戦闘用（通常）'); }
+    V(); $('vLabel').textContent = '画角：' + CAMN[CAMS.indexOf(camSel)] + (camCentered() ? '（キャラ中心）' : ''); if (VC) VC.refresh(); }
 
   // ---- 戦闘の保存（名前付き）----
   var stages = {};
@@ -1056,7 +1066,7 @@
   function hitAt(x, y){
     // キャラは絵のどこを触っても反応する（手前のキャラ優先）
     var us = S.units.filter(function(u){ return u.el; }).sort(function(a,b){ return (b.r+usize(b)) - (a.r+usize(a)); });
-    for (var i=0;i<us.length;i++){ var q = us[i].el.getBoundingClientRect(), mg = is3d(us[i]) ? .3 : .15, tp = is3d(us[i]) ? q.height*.3 : 0; if (x>=q.left+q.width*mg && x<=q.right-q.width*mg && y>=q.top+tp && y<=q.bottom) return { kind:'unit', u:us[i], c:us[i].c, r:us[i].r }; }
+    for (var i=0;i<us.length;i++){ var q = us[i].el.getBoundingClientRect(), mg = is3d(us[i]) ? .36 : .15, tp = is3d(us[i]) ? q.height*.4 : 0; if (x>=q.left+q.width*mg && x<=q.right-q.width*mg && y>=q.top+tp && y<=q.bottom) return { kind:'unit', u:us[i], c:us[i].c, r:us[i].r }; }
     var el = document.elementFromPoint(x, y);
     if (el && el.classList.contains('f') && el.dataset.c != null) return { kind:'obj', c:+el.dataset.c, r:+el.dataset.r };
     var g = groundCell(x, y); if (!g) return null;
@@ -1406,12 +1416,22 @@
       .sort(function(a,b){ return (a.side==='ally'?0:1)-(b.side==='ally'?0:1) || (b.r+usize(b))-(a.r+usize(a)); });
     for (var i=0;i<us.length;i++){
       var q = us[i].el.getBoundingClientRect();
-      if (x>=q.left+q.width*.18 && x<=q.right-q.width*.18 && y>=q.top+q.height*.05 && y<=q.bottom){
+      var m3 = is3d(us[i]) ? .36 : .18, t3 = is3d(us[i]) ? .4 : .05;
+      if (x>=q.left+q.width*m3 && x<=q.right-q.width*m3 && y>=q.top+q.height*t3 && y<=q.bottom){
         e.stopPropagation(); e.preventDefault(); cellTap(us[i].c, us[i].r); return;
       }
     }
   }, true);
 
+  // ¤ボタン（指で画角を動かす）と画角ボタン（4つの画角を切り替え）は部品 ViewControl に任せる
+  var VC = window.ViewControl ? window.ViewControl.create({
+    parent: stage, names: CAMN,
+    index: function(){ V(); return CAMS.indexOf(camSel); },
+    choose: function(i){ V(); camSel = CAMS[i]; panX = panY = 0; syncSliders(); render(); toast('画角：'+CAMN[i]); },
+    get: function(){ return V(); },
+    set: function(o){ var v = V(); Object.keys(o).forEach(function(k){ v[k] = o[k]; }); if (!vcRaf) vcRaf = requestAnimationFrame(function(){ vcRaf = 0; render(); }); },
+    end: function(){ save(); syncSliders(); }
+  }) : null, vcRaf = 0;
   load(); syncSliders(); render();
 })();
 </script>

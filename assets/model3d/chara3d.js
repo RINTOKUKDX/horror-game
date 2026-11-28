@@ -18,18 +18,18 @@ import * as THREE from 'three';
 import { GLTFLoader } from '../lib/three/jsm/loaders/GLTFLoader.js';
 import * as SkeletonUtils from '../lib/three/jsm/utils/SkeletonUtils.js';
 
-var VERSION = '1.0.0';
+var VERSION = '1.0.1';
 
 var DEFAULTS = {
   height: 1.5,      // キャラの背の高さ（マス）
-  frameW: 1.6,      // 映す範囲の幅（マス）
-  frameH: 2.0,      // 映す範囲の高さ（画面上、マス）
+  frameW: 2.6,      // 映す範囲の幅（マス）倒れる・蹴るでも切れない広さ
+  frameH: 2.8,      // 映す範囲の高さ（画面上、マス）
   footPad: 0.1,     // 足元の余白（マス）
   fade: 0.2,        // 動きの切り替え（秒）
   breath: 0.025,    // 待機の呼吸の大きさ
   ambient: 2.4,     // 周りの明るさ
   sun: 2.0,         // 上からの光
-  maxPx: 420        // canvas の最大の大きさ（重さ対策）
+  maxPx: 560        // canvas の最大の大きさ（重さ対策）
 };
 
 // 動きの呼び名 → モデルの中の名前（なければ順に探す）
