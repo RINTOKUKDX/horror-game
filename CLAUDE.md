@@ -11,9 +11,14 @@
 - 一つの部品に何でも詰め込まない。一つ直すと他が壊れる状態を避けるのが目的。
 - 今ある部品が大きくなりすぎたと感じたら、分け方を提案する。
 
+## 演出・効果音
+- エフェクト（光・暗転・ノイズなど）は、特に指定が無ければ突然出さず、フェードで入れてフェードで消す。
+- 効果音は、その動きが終わるころに自然にフェードして消す（間延びさせない）。新しく効果音を付ける時も同じにする。
+
 ## 今ある部品
 - `assets/sheet/investigator-sheet.js` 探索者シート
 - `assets/picker/asset-picker.js` 素材えらび（効果音・背景・BGM）
 - `assets/charmake/character-rules.js` 探索者づくりのルール（計算だけ。数値は DEFAULTS に集約）
 - `assets/model3d/chara3d.js` 3Dキャラ（骨入りGLBを小さな画面に映して動かす。three.js は assets/lib/three に同梱）
+- `assets/fx/screen-fx.js` 画面効果（ビネット・フィルムノイズ・ブロックノイズ。フェードで出入り）
 - `assets/nakoto/nakoto-desk.js` 机メニュー（※分岐表とセーブ演出がまだ中に入っている。分ける予定）
