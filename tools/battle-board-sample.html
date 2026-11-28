@@ -22,6 +22,11 @@
   .cell.hint { background:rgba(120,160,120,.22); }
   .bb { position:absolute; transform-origin:50% 100%; pointer-events:none; }
   .unit img { width:100%; height:100%; display:block; }
+  .unit canvas.c3d { width:100%; height:100%; display:block; }
+  body.mood .unit canvas.c3d { filter:brightness(.85) contrast(1.06) saturate(.8); }
+  #act3d { position:absolute; left:8px; top:58px; z-index:14; display:none; flex-wrap:wrap; gap:4px; max-width:46%; }
+  #act3d.on { display:flex; }
+  #act3d button { font-size:11px; padding:4px 7px; background:rgba(18,15,14,.88); color:#e8dcc0; border:1px solid var(--gold); border-radius:4px; }
   .unit.enemy img { filter:sepia(1) saturate(2.2) hue-rotate(-35deg) brightness(.75); }
   .unit .ring { position:absolute; left:10%; right:10%; bottom:-4%; height:8%; border-radius:50%; background:rgba(0,0,0,.5); }
   .blk { position:absolute; transform-style:preserve-3d; pointer-events:none; }
@@ -221,7 +226,7 @@
 <div id="app">
   <div id="stage">
     <div id="bgimg"></div><div id="bgshade"></div>
-    <div id="ver">戦闘盤 見本 v2.10</div>
+    <div id="ver">戦闘盤 見本 v2.11</div><div id="act3d"></div>
     <button id="bMenu">☰ 設定</button>
     <button id="bMode"></button>
     <div id="field"><div id="board"><div id="grid"></div></div></div>
@@ -279,9 +284,11 @@
 <div id="start"><div>タップして開始<br>（全画面・横向きになります）<br><button id="bSample" style="margin:10px 0;background:#120f0e;color:#c7b07c;border:1px solid #c7b07c;font:inherit;font-size:16px;padding:10px 16px;border-radius:4px">見本の部屋（怨霊の家）で始める<br><small style="font-size:12px;color:#928b82">音が出ます／今の盤は自動保存されます</small></button><br><small class="vv"></small></div></div>
 <div id="rot"><div>スマホを横向きにしてください<br><small class="vv"></small></div></div>
 
+<script type="importmap">{"imports":{"three":"../assets/lib/three/build/three.module.min.js"}}</script>
+<script type="module" src="../assets/model3d/chara3d.js"></script>
 <script>
 (function(){
-  var VER = 'v2.10';
+  var VER = 'v2.11';
   Array.prototype.forEach.call(document.querySelectorAll('.vv'), function(e){ e.textContent = '戦闘盤 見本 ' + VER; });
   var BGS = ['corridor','factory','hospital','mansion','prison','sewage','lab','parking'];
   var TILT = 55, MAXC = 40;   // マスの上限（横・縦）
@@ -425,7 +432,7 @@
       var ct = Math.max(0, o.top-q.top), cb = Math.max(0, q.bottom-o.bottom), cl = Math.max(0, o.left-q.left), cr = Math.max(0, q.right-o.right);
       if (ct+cb >= q.height-1 || cl+cr >= q.width-1) return;   // 重なっていない
       im.style.clipPath = 'inset('+ct+'px '+cr+'px '+cb+'px '+cl+'px)';
-      im.src = u.el.firstChild.src; im.style.left = (q.left-fr.left)+'px'; im.style.top = (q.top-fr.top)+'px';
+      im.src = is3d(u) ? u.el.firstChild.toDataURL() : u.el.firstChild.src; im.style.left = (q.left-fr.left)+'px'; im.style.top = (q.top-fr.top)+'px';
       im.style.width = q.width+'px'; im.style.height = q.height+'px';
       if (u.el.firstChild.style.transform) im.style.transform = u.el.firstChild.style.transform;
       box.appendChild(im);
@@ -525,11 +532,12 @@
     u._flip = sx > 0; return u._flip;
   }
   function updateFacing(){
-    S.units.forEach(function(u){ if (u.el && u.el.firstChild) u.el.firstChild.style.transform = flipOf(u) ? 'scaleX(-1)' : ''; });
+    S.units.forEach(function(u){ if (is3d(u)){ face3d(u); return; } if (u.el && u.el.firstChild) u.el.firstChild.style.transform = flipOf(u) ? 'scaleX(-1)' : ''; });
   }
   function unitPos(el, u){
     var n = usize(u);
     el.style.left = ((u.c+n/2)*size)+'px'; el.style.top = ((u.r+n-.38)*size)+'px';
+    if (C3 && C3[u.id]) LASTPOS[u.id] = { l:el.style.left, t:el.style.top, s:size };
   }
   function addUnit(u){
     var n = usize(u);
@@ -537,11 +545,65 @@
     var h = size*1.5*n;
     place(el, u.c, u.r, h*469/811, h); unitPos(el, u);
     el.style.transition = 'left .4s ease, top .4s ease';
+    if (use3d(u)){ add3d(u, el, n); return; }
     var img = document.createElement('img');
     img.src = '../assets/chara/sample_' + (u.side==='ally' ? 'back' : 'front') + '.webp';
     if (flipOf(u)) img.style.transform = 'scaleX(-1)';
     el.appendChild(img);
     board.appendChild(el); u.el = el;
+  }
+
+  // ===== 3Dキャラ（部品 Chara3D に表示を任せる）=====
+  // 味方は3Dモデル、敵は今までの絵。部品が読み込めないときは今までの絵のまま。
+  var C3URL = '../assets/model3d/investigator_purple.glb';
+  var C3 = {}, LASTPOS = {};
+  function use3d(u){ return u.side==='ally' && !!window.Chara3D; }
+  function is3d(u){ return !!(u.el && u.el.firstChild && u.el.firstChild.tagName==='CANVAS'); }
+  window.addEventListener('chara3d-ready', function(){ render(); });
+  function add3d(u, el, n){
+    var k = C3[u.id];
+    if (!k){ var cv = document.createElement('canvas'); cv.className = 'c3d'; k = C3[u.id] = window.Chara3D.create({ url:C3URL, canvas:cv }); }
+    // 3Dは腕を振っても切れないよう、絵より広い範囲を映す（幅1.6マス×高さ2マス）
+    var fr = LASTPOS[u.id];
+    place(el, u.c, u.r, size*1.6*n, size*2.0*n); unitPos(el, u);
+    el.appendChild(k.canvas);
+    board.appendChild(el); u.el = el;
+    // 前の位置から滑らかに移動する（作り直しても飛ばない）
+    var to = { l:el.style.left, t:el.style.top, s:size };
+    if (fr && fr.s===size && (fr.l!==to.l || fr.t!==to.t)){
+      el.style.transition = 'none'; el.style.left = fr.l; el.style.top = fr.t; el.offsetWidth;
+      el.style.transition = walking ? 'left .56s linear, top .56s linear' : 'left .4s ease, top .4s ease';
+      el.style.left = to.l; el.style.top = to.t;
+    }
+    LASTPOS[u.id] = to;
+    face3d(u);
+  }
+  // 向き：歩いている間は進む方向、止まったら一番近い敵の方向
+  function face3d(u){
+    var k = C3[u.id]; if (!k) return;
+    var dc, dr;
+    if (u._mv){ dc = u._mv[0]; dr = u._mv[1]; }
+    else {
+      var best = null, bd = 1e9;
+      S.units.forEach(function(o){ if (o.side===u.side) return; var a = o.c+usize(o)/2-u.c-usize(u)/2, b = o.r+usize(o)/2-u.r-usize(u)/2, d = a*a+b*b; if (d<bd){ bd = d; best = [a,b]; } });
+      if (best){ dc = best[0]; dr = best[1]; } else { var a0 = (u.dir!=null ? u.dir : 90)*Math.PI/180; dc = Math.cos(a0); dr = Math.sin(a0); }
+    }
+    var yw = V().yaw*Math.PI/180;
+    var x = dc*Math.cos(yw) - dr*Math.sin(yw), z = dc*Math.sin(yw) + dr*Math.cos(yw);   // 画面の右・手前
+    k.view(90-TILT, Math.atan2(x, z)*180/Math.PI);
+  }
+  function anim3d(u, name, opt){ var k = C3[u.id]; if (k) k.play(name, opt); }
+  // 動きを試すボタン（味方を選んだときに出る）
+  var ACTS = [['slash','斬る'],['chop','振り下ろす'],['fire','撃つ'],['kick','蹴る'],['hit','被弾'],['afraid','怯える'],['fall','転ぶ'],['defeat','倒れる'],['dance','踊る'],['idle','待機']];
+  function updateAct3d(){
+    var b = $('act3d'), u = selected;
+    if (!u || !C3[u.id] || edit){ b.classList.remove('on'); return; }
+    if (!b.childNodes.length) ACTS.forEach(function(a){
+      var x = document.createElement('button'); x.textContent = a[1];
+      x.onclick = function(e){ e.stopPropagation(); var s = selected; if (!s) return; anim3d(s, a[0], { restart:true }); };
+      b.appendChild(x);
+    });
+    b.classList.add('on');
   }
 
   function onCell(e){ cellTap(+this.dataset.c, +this.dataset.r); }
@@ -552,7 +614,9 @@
     if (selected && !u && !blockedAt(c,r) && camExplore()){ walkTo(selected, c, r); return; }
     if (selected && !u && !blockedAt(c,r)){
       var m = selected;
-      var ddc = c-(m.c), ddr = r-(m.r); if (ddc||ddr) m.dir = Math.round(Math.atan2(ddr,ddc)*180/Math.PI/45)*45; sfxSteps(Math.min(6, Math.max(2, Math.round(Math.sqrt(ddc*ddc+ddr*ddr)*1.5)))); m.c = c; m.r = r; updateFacing(); selected = null; if (explore){ S.lead = m.id; panX = panY = 0; camera(); } save(); render2(); say('味方は 素早く移動した。');
+      var ddc = c-(m.c), ddr = r-(m.r);
+      if (C3[m.id] && (ddc||ddr)){ m._mv = [ddc, ddr]; anim3d(m, 'run'); setTimeout(function(){ m._mv = null; anim3d(m, 'idle'); face3d(m); }, 420); }
+      if (ddc||ddr) m.dir = Math.round(Math.atan2(ddr,ddc)*180/Math.PI/45)*45; sfxSteps(Math.min(6, Math.max(2, Math.round(Math.sqrt(ddc*ddc+ddr*ddr)*1.5)))); m.c = c; m.r = r; updateFacing(); selected = null; if (explore){ S.lead = m.id; panX = panY = 0; camera(); } save(); render2(); say('味方は 素早く移動した。');
       if (m.el){ unitPos(m.el, m); setTimeout(render, 450); } else render();
       return;
     }
@@ -573,7 +637,7 @@
     $('params').innerHTML = h;
   }
   function render2(){
-    renderParams(); updateLP();
+    renderParams(); updateLP(); updateAct3d();
     Array.prototype.forEach.call(grid.children, function(d){
       d.classList.toggle('sel', !!selected && selected.c===+d.dataset.c && selected.r===+d.dataset.r);
     });
@@ -616,7 +680,7 @@
 
   function stageObj(){
     return { cols:S.cols, rows:S.rows, bg:S.bg, tilt:S.tilt, yaw:S.yaw, ox:S.ox||0, oy:S.oy||0, scale:S.scale, ve:JSON.parse(JSON.stringify(S.ve)), cells:JSON.parse(JSON.stringify(S.cells)), dur:JSON.parse(JSON.stringify(S.dur||{})),
-      units:S.units.map(function(u){ var q={}; Object.keys(u).forEach(function(k){ if (k!=='el') q[k]=u[k]; }); return q; }) };
+      units:S.units.map(function(u){ var q={}; Object.keys(u).forEach(function(k){ if (k!=='el' && k!=='_mv') q[k]=u[k]; }); return q; }) };
   }
   function syncSliders(){ var v = V(); $('sTilt').value = v.tilt; $('sScale').value = v.scale; $('sYaw').value = v.yaw; $('sOx').value = v.ox||0; $('sOy').value = v.oy||0;
     $('vLabel').textContent = camExplore() ? '画角：探索用（キャラ中心）' : (explore ? '画角：戦闘用' : '画角：戦闘用（通常）'); }
@@ -877,8 +941,9 @@
     if (!path){ say('そこへは行けない。'); return; }
     walking = true; selected = null; S.lead = m.id; render2();
     (function step(i){
-      if (i>=path.length || ENC){ walking = false; save(); if (!ENC) render2(); return; }
+      if (i>=path.length || ENC){ walking = false; m._mv = null; anim3d(m, 'idle'); face3d(m); save(); if (!ENC) render2(); return; }
       var ddc = path[i][0]-m.c, ddr = path[i][1]-m.r;
+      m._mv = [ddc, ddr]; anim3d(m, 'walk');
       m.dir = Math.round(Math.atan2(ddr,ddc)*180/Math.PI/45)*45; m.c = path[i][0]; m.r = path[i][1];
       sfxSteps(1); panX = panY = 0; render();
       setTimeout(function(){ step(i+1); }, 560);
@@ -991,7 +1056,7 @@
   function hitAt(x, y){
     // キャラは絵のどこを触っても反応する（手前のキャラ優先）
     var us = S.units.filter(function(u){ return u.el; }).sort(function(a,b){ return (b.r+usize(b)) - (a.r+usize(a)); });
-    for (var i=0;i<us.length;i++){ var q = us[i].el.getBoundingClientRect(); if (x>=q.left+q.width*.15 && x<=q.right-q.width*.15 && y>=q.top && y<=q.bottom) return { kind:'unit', u:us[i], c:us[i].c, r:us[i].r }; }
+    for (var i=0;i<us.length;i++){ var q = us[i].el.getBoundingClientRect(), mg = is3d(us[i]) ? .3 : .15, tp = is3d(us[i]) ? q.height*.3 : 0; if (x>=q.left+q.width*mg && x<=q.right-q.width*mg && y>=q.top+tp && y<=q.bottom) return { kind:'unit', u:us[i], c:us[i].c, r:us[i].r }; }
     var el = document.elementFromPoint(x, y);
     if (el && el.classList.contains('f') && el.dataset.c != null) return { kind:'obj', c:+el.dataset.c, r:+el.dataset.r };
     var g = groundCell(x, y); if (!g) return null;
