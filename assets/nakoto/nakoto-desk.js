@@ -1,5 +1,5 @@
 /* ============================================================================
-   机メニュー＋ナコト写本 部品（NakotoDesk） v1.11.0
+   机メニュー＋ナコト写本 部品（NakotoDesk） v1.12.0
    ----------------------------------------------------------------------------
    机そのものがメニュー。本＝探索者シート（部品 assets/sheet/investigator-sheet.js）、紙の束＝ルート分岐表（付箋付きファイル）、羽ペン＝セーブ。
    本体は呼ぶだけ。見た目を作り直すときは、このファイルと assets/nakoto/ の絵だけを差しかえる。
@@ -36,7 +36,7 @@
    ============================================================================ */
 (function(){
   'use strict';
-  var VERSION='1.11.0';
+  var VERSION='1.12.0';
   // 効果音（assets からの場所）。空なら鳴らさない。見本の「調整」で差しかえられる
   var SOUNDS={glow:'',sheet:'sfx/紙を広げる1.mp3',
     peek:'sfx/ページをめくる2.mp3',grow:'sfx/うごめく触手.mp3',grow2:'sfx/暗黒魔法.mp3',close:'sfx/本を閉じる1.mp3',saveOpen:'sfx/紙を広げる2.mp3',write:'sfx/シャーペンで字を書く.mp3',
@@ -154,19 +154,22 @@
 '@keyframes nd-vanish{0%{filter:none}40%{filter:brightness(3) drop-shadow(0 0 14px #bff) ;opacity:1}100%{opacity:0;filter:brightness(4) blur(6px) drop-shadow(0 0 30px #bff);transform:rotate(-2deg) scale(1.4)}}',
 '.nd-mark.burnin{-webkit-mask-image:radial-gradient(circle at 30% 60%,#000 var(--r),rgba(0,0,0,0) calc(var(--r) + 14%));mask-image:radial-gradient(circle at 30% 60%,#000 var(--r),rgba(0,0,0,0) calc(var(--r) + 14%));box-shadow:0 0 calc(var(--g) * 18px) rgba(255,120,30,var(--g));text-shadow:0 0 calc(var(--g) * 10px) rgba(255,150,40,var(--g))}',
 /* 魔法陣・イス人 */
-'.nd-circle{position:absolute;width:150px;height:150px;margin:-75px 0 0 -75px;pointer-events:none;opacity:0}',
-'.nd-circle.on{animation:nd-circ 2.6s ease-out forwards}',
-'@keyframes nd-circ{0%{opacity:0;transform:scale(.3) rotate(-90deg)}25%{opacity:1}70%{opacity:.9;transform:scale(1) rotate(20deg)}100%{opacity:0;transform:scale(1.15) rotate(40deg)}}',
-'.nd-circle svg{width:100%;height:100%;filter:drop-shadow(0 0 6px rgba(150,40,20,.8))}',
-'.nd-yith{position:absolute;width:150px;height:210px;pointer-events:none;opacity:0;transition:opacity 1s,filter 1s;filter:blur(6px);transform:scale(.5);transform-origin:0 0}',
-'.nd-yith.on{opacity:1;filter:blur(0)}',
+'.nd-circle{position:absolute;width:130px;height:130px;margin:-65px 0 0 -65px;pointer-events:none;opacity:0;mix-blend-mode:multiply;filter:url(#nd-ink) blur(.3px)}',
+'.nd-circle.on{animation:nd-circ 3.2s ease-in-out forwards}',
+'@keyframes nd-circ{0%{opacity:0}12%{opacity:.75}70%{opacity:.6}100%{opacity:0}}',
+'.nd-circle path,.nd-circle circle{stroke-dasharray:var(--l);stroke-dashoffset:var(--l)}',
+'.nd-circle.on path,.nd-circle.on circle{animation:nd-ink-draw var(--dd,1.2s) ease-in-out forwards;animation-delay:var(--dl,0s)}',
+'@keyframes nd-ink-draw{to{stroke-dashoffset:0}}',
+'.nd-circle svg{width:100%;height:100%}',
+'.nd-yith{position:absolute;width:150px;height:210px;pointer-events:none;opacity:0;transition:opacity 1.8s ease,filter 1.8s ease;filter:blur(5px) brightness(.25) saturate(0) sepia(.5);mix-blend-mode:multiply;transform:scale(.5);transform-origin:0 0}',
+'.nd-yith.on{opacity:.62;filter:blur(1.2px) brightness(.32) saturate(0) sepia(.5)}',
 '.nd-yith img{position:absolute;display:block}',
 '.nd-yith .yh{animation:nd-bob 2.4s ease-in-out infinite;transform-origin:50% 100%}',
 '.nd-yith .ya{animation:nd-sway 3s ease-in-out infinite}',
 '.nd-yith .yb{animation:nd-sway 2.6s ease-in-out infinite reverse}',
 '.nd-yith .yt{animation:nd-sway 3.4s ease-in-out infinite}',
-'@keyframes nd-bob{50%{transform:translateY(-3px) rotate(2deg)}}',
-'@keyframes nd-sway{50%{transform:rotate(7deg)}}',
+'@keyframes nd-bob{50%{transform:translateY(-1px) rotate(.8deg)}}',
+'@keyframes nd-sway{50%{transform:rotate(2.5deg)}}',
 '.nd-yglow{position:absolute;left:-40%;top:-20%;width:180%;height:140%;background:radial-gradient(ellipse,rgba(140,220,255,.35),rgba(140,220,255,0) 60%);mix-blend-mode:screen}',
 '.nd-codex .nd-back{z-index:12}',
 '.nd-cmsg{position:absolute;z-index:12;left:50%;bottom:2.5%;transform:translateX(-50%);font-size:13px;letter-spacing:.2em;color:#b8a07a;opacity:.8;pointer-events:none;white-space:nowrap}'
@@ -543,9 +546,9 @@
         if(mark){
           var y=yith(); placeNear(y,mark,-85,-75); tin.appendChild(y);
           var fx=await getFx();
-          if(fx){ fx.on({vignette:.85,film:.4}); }
+          if(fx){ fx.on({vignette:.8,film:.65}); }
           snd('yithIn',.4); await wait(60); y.classList.add('on');
-          await wait(350); if(fx){ fx.glitch(280); snd('glitch',.45); }
+          await wait(500); if(fx){ fx.glitch(320); snd('glitch',.4); }
           await wait(1150);
           snd('vanish',.55); mark.classList.add('fadeout'); await wait(1200);
           y.classList.remove('on'); if(fx) fx.off(); await wait(500);
@@ -559,7 +562,7 @@
       if(nmark){ nmark.style.visibility='hidden'; tree.scrollTo({top:Math.max(0,nrow.offsetTop-tree.clientHeight*.45),behavior:'smooth'}); }
       await wait(900);
       if(nmark){
-        var circ=magicCircle(); placeNear(circ,nmark,0,0,true); tin.appendChild(circ);
+        var circ=magicCircle(); placeNear(circ,nmark,0,0,true); tin.appendChild(circ); circ.prep();
         snd('circle',.5); void circ.offsetWidth; circ.classList.add('on');
         await wait(700);
         await burnIn(nmark);
@@ -569,7 +572,7 @@
       busy=false;
     }
     var fxInst=null;
-    async function getFx(){ if(fxInst) return fxInst; if(!window.ScreenFX) await loadFx(B); if(window.ScreenFX) fxInst=ScreenFX.create({root:host}); return fxInst; }
+    async function getFx(){ if(fxInst) return fxInst; if(!window.ScreenFX) await loadFx(B); if(window.ScreenFX) fxInst=ScreenFX.create({root:host,target:codex.querySelector('.nd-file')||codex}); return fxInst; }
     function placeNear(elm,target,dx,dy,center){
       var r=target.getBoundingClientRect(), b=tin.getBoundingClientRect();
       var x=r.left-b.left+(center?r.width/2:0)+dx, y=r.top-b.top+(center?r.height/2:0)+dy;
@@ -584,16 +587,22 @@
       });
     }
     function magicCircle(){
-      var d=el('div','nd-circle'), ticks='';
-      for(var i=0;i<24;i++){ var a=i*15*Math.PI/180; ticks+='<line x1="'+(50+44*Math.cos(a))+'" y1="'+(50+44*Math.sin(a))+'" x2="'+(50+(i%2?40:38)*Math.cos(a))+'" y2="'+(50+(i%2?40:38)*Math.sin(a))+'"/>'; }
-      d.innerHTML='<svg viewBox="0 0 100 100" fill="none" stroke="#8a1a10" stroke-width="1.1"><circle cx="50" cy="50" r="47"/><circle cx="50" cy="50" r="36"/>'+ticks+
-        '<rect x="27" y="27" width="46" height="46"/><rect x="27" y="27" width="46" height="46" transform="rotate(45 50 50)"/><circle cx="50" cy="50" r="10"/><path d="M50 14 L50 86 M14 50 L86 50" stroke-width=".5"/></svg>';
+      // 赤茶のインクで、少しゆがんだ線が一筆ずつ描かれる（円を二重、内側に旧き印の枝）
+      var d=el('div','nd-circle');
+      function wob(r,seed){ var p='', N=36; for(var i=0;i<=N;i++){ var a=i/N*Math.PI*2, rr=r+Math.sin(a*3+seed)*0.8+Math.sin(a*7+seed*2)*0.4; p+=(i?'L':'M')+(50+rr*Math.cos(a)).toFixed(2)+','+(50+rr*Math.sin(a)).toFixed(2); } return p; }
+      var parts=[
+        [wob(45,1),'.9',0],[wob(41,2),'.5',.35],
+        ['M50,78 L50,24','.8',.8],['M50,62 L38,52','.6',1.0],['M50,62 L62,50','.6',1.1],['M50,46 L40,36','.6',1.2],['M50,46 L61,35','.6',1.3],['M50,32 L45,26','.5',1.4],['M50,32 L56,26','.5',1.45]
+      ];
+      var h='<svg viewBox="0 0 100 100" fill="none" stroke="rgba(110,26,14,.85)" stroke-linecap="round" stroke-linejoin="round">';
+      parts.forEach(function(q){ h+='<path d="'+q[0]+'" stroke-width="'+q[1]+'" style="--dl:'+q[2]+'s;--dd:'+(q[2]<.5?1.1:.45)+'s"/>'; });
+      d.innerHTML=h+'</svg>';
+      d.prep=function(){ d.querySelectorAll('path').forEach(function(p){ var L=p.getTotalLength?Math.ceil(p.getTotalLength())+1:300; p.style.setProperty('--l',L); }); };
       return d;
     }
     function yith(){
       var d=el('div','nd-yith');
       function part(src,css,cls){ var i=el('img',cls||''); i.src=B+src; i.style.cssText=css; d.appendChild(i); }
-      d.appendChild(el('div','nd-yglow'));
       part('yith-arm-long.webp','left:84px;top:46px;width:58px;transform-origin:5% 95%','yt');
       part('yith-trumpet.webp','left:112px;top:10px;width:62px','yt');
       part('yith-arm-a.webp','left:4px;top:98px;width:62px;transform-origin:100% 40%','ya');
