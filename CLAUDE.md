@@ -21,5 +21,6 @@
 - `assets/charmake/character-rules.js` 探索者づくりのルール（計算だけ。数値は DEFAULTS に集約）
 - `assets/model3d/chara3d.js` 3Dキャラ（骨入りGLBを小さな画面に映して動かす。three.js は assets/lib/three に同梱）
 - `assets/board/view-control.js` 盤の画角操作（¤ボタン：移動・大きさ／角度・回転、画角ボタン：登録した画角の切り替え）
+- `assets/ring/action-ring.js` 行動の輪（ドーナツ型の行動メニュー。見本 tools/action-ring-sample.html）
 - `assets/fx/screen-fx.js` 画面効果（ビネット・フィルムノイズ・ブロックノイズ。フェードで出入り）
 - `assets/nakoto/nakoto-desk.js` 机メニュー（※分岐表とセーブ演出がまだ中に入っている。分ける予定）

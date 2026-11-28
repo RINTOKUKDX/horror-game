@@ -18,7 +18,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from '../lib/three/jsm/loaders/GLTFLoader.js';
 import * as SkeletonUtils from '../lib/three/jsm/utils/SkeletonUtils.js';
 
-var VERSION = '1.0.1';
+var VERSION = '1.0.2';
 
 var DEFAULTS = {
   height: 1.5,      // キャラの背の高さ（マス）
@@ -111,9 +111,9 @@ function Inst(opt){
     var m = SkeletonUtils.clone(g.scene);
     m.updateMatrixWorld(true);
     // 背の高さを合わせる（頭のてっぺんの骨〜足元）
-    var top = bone(m, 'HeadTopEnd'), v = new THREE.Vector3(), lo = 1e9;
-    m.traverse(function(o){ if (o.isBone){ o.getWorldPosition(v); lo = Math.min(lo, v.y); } });
-    var hi = top ? top.getWorldPosition(v).y : 1;
+    var top = bone(m, 'HeadTopEnd'), v = new THREE.Vector3(), lo = 1e9, mx = -1e9;
+    m.traverse(function(o){ if (o.isBone){ o.getWorldPosition(v); lo = Math.min(lo, v.y); mx = Math.max(mx, v.y); } });
+    var hi = top ? top.getWorldPosition(v).y : lo + (mx-lo)*1.12;   // 頭のてっぺんの骨がないモデル（Mixamo以外の骨）は一番上の骨から見積もる
     var s = (opt.height || DEFAULTS.height) / Math.max(0.01, hi - lo);
     m.scale.multiplyScalar(s); m.position.y = -lo*s;
     self.holder.add(m); self.model = m;
